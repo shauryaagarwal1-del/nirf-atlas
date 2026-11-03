@@ -151,11 +151,36 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 | `bivariate.scatter_relation` | one dot per institution (optionally coloured by group) + least-squares line | `scatterplot` |
 | `bivariate.correlation_with_overall` | correlation heatmap with r in each cell; `view="bar"`: ranked bars of r | `correlogram` / `bar chart` |
 | `bivariate.correlation_over_time` | two lines (Pearson r, Spearman ρ) by year | `multi-series line chart` |
+| `multivariate.parameter_profile` | parameters on x, one bar per institution; `view="heatmap"`: institution × parameter grid | `grouped bar chart` / `matrix heatmap` |
+| `multivariate.gap_finder` | dots with dashed median lines (four quadrants), one quadrant highlighted and labelled | `scatterplot` |
+| `multivariate.improved_despite_decline` | one small bar chart of parameter changes per institution, shared y-axis | `small-multiple bar charts` |
+| `multivariate.strongest_weakest_gap` | sorted stems with a dot (gap = strongest − weakest parameter) | `lollipop chart` |
+| `multivariate.parameter_pca` | PC1 vs PC2 per institution, coloured by rank band | `PCA scatterplot` |
+| `distribution.top10_vs_rest` | two violins with a box inside and every institution as a dot; `view="histogram"` | `violin plot` / `overlapping histogram` |
+| `distribution.dispersion_by_year` | one box per year; `view="sd"`: SD per year as a line | `box-and-whisker plot` / `line chart` |
+| `distribution.parameter_variability` | ranked horizontal bars of CV; `view="box"`: one box per parameter | `bar chart` / `box-and-whisker plot` |
+| `distribution.median_iqr_over_time` | point = median, error bar = Q1 to Q3, per year | `point plot with error bars` |
+| `distribution.score_by_state` | one horizontal box per state, sorted by median, dots = institutions | `box-and-whisker plot` |
+| `mobility.band_transitions` | band in year A × band in year B grid with counts (confusion-matrix style) | `matrix heatmap` |
+| `mobility.top10_entries_exits` | one row per institution, dot per top-10 year, entry/exit markers | `time-series dot plot` |
+| `mobility.band_retention` | % staying in the same band per year pair; `by_band=True`: one line per band | `line chart` / `multi-series line chart` |
+| `mobility.biggest_rank_moves` | stems from zero, blue right (up) / red left (down) | `lollipop chart` |
+| `mobility.up_down_same_counts` | one bar per year pair split into up / same / down | `stacked bar chart` |
+| `outliers.research_vs_overall_outliers` | dots + least-squares line, residual z > 2 highlighted and labelled | `scatterplot` |
+| `outliers.research_over_teaching` | ranked horizontal bars of RPC − TLR | `bar chart` |
+| `outliers.unusual_score_jumps` | jittered dots over a box per year pair, abs(z) > 2 coloured and labelled | `jittered strip chart` |
+| `outliers.strong_param_poor_rank` | parameter vs rank (reversed) with Q3 and median-rank lines | `scatterplot` |
+| `outliers.volatility_vs_peers` | box of rank SD per peer band with jittered dots, outliers labelled | `box-and-whisker plot` |
 
 Notes on closest-allowed choices: the "diverging" bars of `biggest_movers` and `state_representation_change` are
 ordinary ranked horizontal bar charts whose values can be negative (bars left of zero), so no separate chart type is
 needed. The faint vertical bars in `rank_trajectory` (years where NIRF published only a band such as 101-150) are
-range marks inside the line chart, read like an error bar ("the rank is somewhere in here").
+range marks inside the line chart, read like an error bar ("the rank is somewhere in here"). The lollipop chart is a bar chart drawn
+with a thin stem and a dot (less ink for long sorted lists). Box plots with jittered dots (`unusual_score_jumps`,
+`volatility_vs_peers`) are named after the layer that answers the question: the dots in Q8.3 (each change), the box
+rule in Q8.5 (beyond the whisker = unusual). Shared drawing helpers: `core/theme.py :: add_lollipops()` and `jitter()`
+(fixed random seed, so the same data always gives the same picture); `core/data.py :: category_year()` returns the rows
+of one category-year (default: its latest year).
 
 ### Q1.1: How has the overall NIRF ranking of a selected institution changed from 2017 to 2025?
 - **Engine / function:** `core/engines/trends.py :: rank_trajectory()`
@@ -341,3 +366,241 @@ range marks inside the line chart, read like an error bar ("the rank is somewher
   institutions changes between years.
 - **Chart and why:** line chart with two lines (Pearson, Spearman), one point per year: change over time.
 - **Filters the user can change:** parameter, category.
+
+### Q5.1: How do the top five institutions compare across all five NIRF parameters?
+- **Engine / function:** `core/engines/multivariate.py :: parameter_profile(institutions, year, category, view)`
+- **Definition used:** each institution's five parameter scores (TLR, RPC, GO, OI, PR; each out of 100) in one
+  category-year. Default institutions: the top 5 of the year.
+- **Calculation (plain words):** look up the five values; for each parameter, "difference" = highest − lowest value
+  among the chosen institutions. The hover gives each value's position among all institutions that year (1st = highest).
+- **Chart and why:** **grouped bar chart**: parameters on the x-axis, one bar per institution inside each group, so the
+  institutions are compared one parameter at a time. Alternative (`view="heatmap"`): **matrix heatmap** institution ×
+  parameter with the value in each cell. (A radar chart is the usual picture for this question but is not on our
+  allowed list; grouped bars show the same profile and are easier to read exactly.)
+- **Filters the user can change:** institutions (up to 8), year, category (Research Institutions: QnR, QlR, SFC, OI, PR).
+
+### Q5.2 / Q5.3: Which institutions are high on one parameter but relatively low on another?
+- **Engine / function:** `multivariate.py :: gap_finder(param_high, param_low, year, category, n_labels)`;
+  Q5.2 = RPC high / TLR low, Q5.3 = TLR high / PR low.
+- **Definition used:** "high on A, relatively low on B" = A above the median of A **and** B below the median of B, in
+  the same category-year. Medians, because they are not moved by a few extreme values.
+- **Calculation (plain words):** compute both medians; keep institutions in the "high A, low B" quadrant; sort them by
+  the gap in z-scores z(A) − z(B), where z = (value − mean) / SD ("how many SDs above average on A minus on B"). z-scores
+  put both parameters on one scale even though, e.g., RPC is usually much lower than TLR.
+- **Chart and why:** **scatterplot** with B on x, A on y and a dashed line at each median, which splits it into four
+  quadrants; the top-left quadrant is highlighted and the largest gaps are labelled. A scatterplot shows both
+  parameters for every institution at once, so "high on one, low on the other" is a region of the picture.
+- **Filters the user can change:** both parameters, year, category, number of labels.
+
+### Q5.4: Which institutions improved their overall scores despite declining scores in one or more parameters?
+- **Engine / function:** `multivariate.py :: improved_despite_decline(category, start_year, end_year, n)`
+- **Definition used:** change = end-year value − start-year value. Qualifies if the overall score change > 0 and at
+  least one parameter change < 0.
+- **Calculation (plain words):** institutions with published scores in both years; compute all six changes; keep those
+  that qualify, sorted by overall gain. This is possible because the overall score is a weighted sum: a gain on a heavy
+  parameter can outweigh a loss on another.
+- **Chart and why:** **small-multiple bar charts**: the same small bar chart repeated for each of the first n
+  institutions (blue = parameter rose, red = fell, dark bar = overall change), all on one shared y-axis so panels can be
+  compared. One chart per institution keeps each "which parameter fell" story readable.
+- **Filters the user can change:** category, start and end year (default 2017 → 2025), n. Note: NIRF adjusted some
+  sub-metrics over the years, so part of a long-range change can come from the method.
+
+### Q5.5: Which institutions have the largest difference between their strongest and weakest parameters?
+- **Engine / function:** `multivariate.py :: strongest_weakest_gap(year, category, n)`
+- **Definition used:** gap = highest parameter score − lowest parameter score of the same institution (all out of 100).
+- **Calculation (plain words):** find each institution's max and min parameter, subtract, sort, keep the n largest.
+- **Chart and why:** **lollipop chart** (a bar chart drawn as a thin stem with a dot), sorted, with "strongest −
+  weakest" as the label; the hover names both parameters and values. A lollipop keeps a long sorted list calm.
+- **Caveat on the chart:** parameters differ in typical level (PR is usually far below GO), so part of every gap shows
+  how hard each parameter is; the most common pattern (GO strongest, PR weakest) is reported in the insight.
+- **Filters the user can change:** year, category, n.
+
+### Extra: PCA of the five parameters
+- **Engine / function:** `multivariate.py :: parameter_pca(year, category)`
+- **Definition used:** principal component analysis. PC1 = the direction along which institutions differ the most;
+  PC2 = the next-most-varied direction at right angles to PC1. % of variance = share of the institutions' differences an
+  axis keeps.
+- **Calculation (plain words):** turn every parameter into a z-score (so each counts equally), run numpy's singular
+  value decomposition, and give every institution a PC1 and PC2 value = a weighted sum of its z-scores (the weights are
+  the loadings, listed in the method text). Signs are chosen so PC1 grows with the parameters.
+- **Chart and why:** **PCA scatterplot**, PC1 vs PC2, coloured by rank band (darker = better). In Overall 2025 PC1
+  keeps 44% of the variation and correlates r = 0.99 with the overall score (a general "strength" axis); PC2 (22%)
+  contrasts OI against RPC.
+- **Filters the user can change:** year, category.
+
+### Q6.1: How does the score distribution differ between the top 10 and the remaining institutions?
+- **Engine / function:** `core/engines/distribution.py :: top10_vs_rest(year, category, top, view)`
+- **Definition used:** "Top 10" = exact rank ≤ 10; "Rest" = every other institution with a published score.
+- **Calculation (plain words):** n, mean, median, SD, Q1, Q3, IQR, min, max per group; the insight also checks whether
+  the two groups overlap at all (lowest top-10 score vs highest score of the rest) and reports skewness.
+- **Chart and why:** **violin plot** with a box inside: the outline is a smoothed density (KDE) mirrored on both sides
+  (wide = many institutions at that score), the white box runs from Q1 to Q3 with the median line, and every
+  institution is a dot. It compares shape, centre and spread of two groups of very different sizes (10 vs 90).
+  Alternative (`view="histogram"`): **overlapping histogram**, both groups on the same 2.5-point bins, half-transparent.
+- **Filters the user can change:** year, category, top (e.g. 20), view.
+
+### Q6.2: Are NIRF scores more dispersed in one year than another?
+- **Engine / function:** `distribution.py :: dispersion_by_year(category, top_n, view)`
+- **Definition used:** dispersion = standard deviation (typical distance from the mean) and IQR (width of the middle 50%).
+- **Calculation (plain words):** per year: n, mean, median, SD, Q1, Q3, IQR, min, max, range and CV = SD / mean. A
+  warning is added when the number of scored institutions changes between years; `top_n=100` fixes that.
+- **Chart and why:** **box-and-whisker plot** per year: a taller box / longer whiskers = more dispersed, and outliers
+  appear as dots. Alternative (`view="sd"`): **line chart** of the yearly SD.
+- **Filters the user can change:** category, top_n, view.
+
+### Q6.3: Which NIRF parameter exhibits the greatest variability across institutions?
+- **Engine / function:** `distribution.py :: parameter_variability(year, category, view)`
+- **Definition used:** coefficient of variation CV = SD / mean, i.e. spread relative to the parameter's own average.
+  CV is used (not SD) because parameters sit at very different levels (PR mean ≈ 24, GO mean ≈ 75 in Overall 2025).
+- **Calculation (plain words):** mean, SD, IQR and CV per parameter, sorted by CV. The insight says when ranking by SD
+  alone would give a different answer.
+- **Chart and why:** **bar chart** (ranked, horizontal) of CV, most variable first. Alternative (`view="box"`):
+  **box-and-whisker plot** per parameter in the same order, to see the full spread.
+- **Filters the user can change:** year, category, view.
+
+### Q6.4: How do the median and interquartile range of scores change over time?
+- **Engine / function:** `distribution.py :: median_iqr_over_time(category, top_n)` (draws with
+  `trends.average_score_over_time(stat="median", show_spread=True)`, so both questions share one calculation).
+- **Definition used:** per year, the median score and IQR = Q3 − Q1.
+- **Calculation (plain words):** median and quartiles per year; the insight compares the first and last year and names
+  the years with the widest and narrowest IQR (a change below 0.5 points is called "about the same").
+- **Chart and why:** **point plot with error bars**: point = median, error bar = Q1 to Q3, so the bar's length *is*
+  the IQR. Exactly the two quantities the question asks about, in one picture.
+- **Filters the user can change:** category, top_n.
+
+### Q6.5: How does the score distribution differ across states?
+- **Engine / function:** `distribution.py :: score_by_state(year, category, min_institutions)`
+- **Definition used:** the published overall scores of each state's institutions in one category-year.
+- **Calculation (plain words):** per state: n, median, Q1, Q3, IQR, mean, min, max; states with fewer than
+  `min_institutions` (default 3) are kept in the table but not drawn (a box of one or two values shows no spread).
+- **Chart and why:** **box-and-whisker plot**, one horizontal box per state sorted by median, every institution as a
+  dot: compares level and spread across many groups. Sorted by median because one very high scorer cannot move it.
+- **Filters the user can change:** year, category, min_institutions.
+
+### Mobility bands (used by Q7.1 and Q7.3)
+Every row gets one band: **1-10, 11-50, 51-100, 101+**, or **Not ranked** (absent from that year's list). The band
+comes from `rank_upper`: the exact rank, or the end of NIRF's own band. Every NIRF band (51-75, 76-100, 101-150 ...)
+lies wholly inside one of these four, so institutions known only by band can be followed too and nothing is guessed.
+
+### Q7.1: How many institutions moved from the 51–100 band into the top 50 between two selected years?
+- **Engine / function:** `core/engines/mobility.py :: band_transitions(category, year_a, year_b)`
+- **Definition used:** "moved from 51-100 into the top 50" = band 51-100 in year A and band 1-10 or 11-50 in year B.
+- **Calculation (plain words):** every institution listed in year A or year B gets a band in both years; count
+  institutions for each (band in A, band in B) pair.
+- **Chart and why:** **matrix heatmap** read like a confusion matrix: rows = band in year A, columns = band in year B,
+  cell = number of institutions (darker = more), names in the hover. The diagonal (dotted) = stayed in the same band;
+  left of it = moved to a better band, right = worse. The orange box (51-100 → 1-10 and 11-50) answers Q7.1. A
+  transition matrix shows every movement at once, including drop-outs and newcomers (a Sankey diagram would be the
+  other usual choice but is not on the allowed list).
+- **Filters the user can change:** category, year A, year B (default 2017 → 2025).
+
+### Q7.2: Which institutions entered or exited the top 10 between consecutive years?
+- **Engine / function:** `mobility.py :: top10_entries_exits(category, top)`
+- **Definition used:** in the top 10 = rank certainly ≤ 10. Entered in Y = in the top 10 in Y, not in the previous
+  published year; exited in Y = in the top 10 the previous year, not in Y.
+- **Calculation (plain words):** compare each year with the previous one; list every entry and exit with the rank
+  before and after (table).
+- **Chart and why:** **time-series dot plot**: one row per institution ever in the top 10, a faint dot in every year it
+  was there, a blue triangle where it entered and a red cross in the first year outside. Each institution's whole
+  history and every change are visible in one picture.
+- **Filters the user can change:** category, top (e.g. 5 or 20).
+
+### Q7.3: What percentage of institutions remained in the same rank band from one year to the next?
+- **Engine / function:** `mobility.py :: band_retention(category, by_band)`
+- **Definition used:** retention (Y−1 → Y) = institutions in the same band in both years / institutions ranked in
+  both years × 100. Institutions that join or leave the list are counted separately in the table.
+- **Calculation (plain words):** for every pair of consecutive published years: ranked in both, stayed, retention %,
+  joined, left, and the retention of each starting band.
+- **Chart and why:** **line chart** with markers, one point per year pair (change over time); `by_band=True` gives a
+  **multi-series line chart** with one line per band. Note on the chart: a wide band keeps institutions more easily
+  than a narrow one.
+- **Filters the user can change:** category, by_band.
+
+### Q7.4: Which institutions experienced the largest upward and downward rank movements?
+- **Engine / function:** `mobility.py :: biggest_rank_moves(category, year_a, year_b, n)` (same calculation as
+  `trends.biggest_movers(direction="both")`).
+- **Definition used:** improvement = rank in year A − rank in year B (positive = moved up), exact ranks in both years.
+- **Calculation (plain words):** subtract, sort, keep the n largest climbs and the n largest falls.
+- **Chart and why:** **lollipop chart**: stems from zero, blue dots right of zero for climbs and red dots left of zero
+  for falls, labelled "old → new rank". Both directions in one sorted picture.
+- **Filters the user can change:** category, year A, year B (default 2017 → 2025), n.
+
+### Q7.5: How many institutions moved up, moved down, or retained their positions each year?
+- **Engine / function:** `mobility.py :: up_down_same_counts(category)`
+- **Definition used:** for consecutive published years, among institutions with an exact rank in both: up =
+  improvement > 0, down = improvement < 0, same = 0.
+- **Calculation (plain words):** count the three groups per year pair; institutions listed only by band in either year
+  are counted as `not_comparable` in the table.
+- **Chart and why:** **stacked bar chart**, one bar per year pair split into up / same / down (blue / grey / red), so
+  both the counts and the mix can be read. Up and down tend to balance: when one institution climbs past another, the
+  other moves down.
+- **Filters the user can change:** category.
+
+### Q8.1: Which institutions have unusually high research scores relative to their overall scores?
+- **Engine / function:** `core/engines/outliers.py :: research_vs_overall_outliers(year, category, param, z_threshold)`
+- **Definition used:** expected RPC = the value on the least-squares line of RPC against the overall score. Residual =
+  actual − expected. Residual z-score = residual / SD of all residuals. Unusual = residual z > 2.
+- **Calculation (plain words):** fit the line, compute every residual and its z-score; with roughly normal residuals
+  only about 2.5% would be above +2 by chance.
+- **Chart and why:** **scatterplot** of overall score (x) vs RPC (y) with the least-squares line; the unusual points
+  (far above the line) are highlighted and labelled. "Relative to the overall score" is exactly the distance from the
+  line.
+- **Filters the user can change:** year, category, parameter, threshold.
+
+### Q8.2: Which institutions perform substantially better in research than in teaching?
+- **Engine / function:** `outliers.py :: research_over_teaching(year, category, n)`
+- **Definition used:** research advantage = RPC − TLR (both out of 100).
+- **Calculation (plain words):** subtract for every institution, sort, show the n largest. The table also has the gap
+  in z-scores, z(RPC) − z(TLR), which measures research strength relative to other institutions (RPC is typically far
+  below TLR: medians 41.5 vs 70.4 in Overall 2025, so only 3 institutions have RPC > TLR).
+- **Chart and why:** **bar chart** (ranked, horizontal): blue = RPC higher, red = TLR still higher, labelled with both
+  scores.
+- **Filters the user can change:** year, category, n.
+
+### Q8.3: Which institutions experienced an unusually large year-to-year score change?
+- **Engine / function:** `outliers.py :: unusual_score_jumps(category, z_threshold, max_labels)`
+- **Definition used:** change = score in year Y − score in the previous published year. z = (change − mean change that
+  year) / SD of that year's changes. Unusual = |z| > 2. z is computed per year pair so that a year in which NIRF's method
+  moved everyone (e.g. +4 on average in 2017 → 2018) does not make every institution look unusual.
+- **Calculation (plain words):** all changes, their z-scores, keep |z| > 2; the insight names institutions with more
+  than one unusual change.
+- **Chart and why:** **jittered strip chart** over a box plot per year pair: every change is a dot, spread sideways at
+  random (fixed seed) so dots do not hide each other; the box shows the year's typical change. Unusual jumps are blue,
+  unusual drops red, and the 12 largest are labelled.
+- **Filters the user can change:** category, threshold, number of labels.
+
+### Q8.4: Which institutions have a strong parameter score but a relatively poor overall rank?
+- **Engine / function:** `outliers.py :: strong_param_poor_rank(param, year, category)` (default parameter GO)
+- **Definition used:** strong = parameter at or above Q3 (top quarter) of the category-year; relatively poor rank =
+  exact rank worse than the median exact rank (bottom half).
+- **Calculation (plain words):** compute Q3 of the parameter and the median rank; flag institutions meeting both.
+- **Chart and why:** **scatterplot** of the parameter (x) against rank (y, reversed so rank 1 is at the top) with dashed
+  lines at Q3 and the median rank; the strong-parameter, poor-rank corner is highlighted and labelled.
+- **Filters the user can change:** parameter (TLR, RPC, GO, OI, PR), year, category.
+
+### Q8.5: Which institutions have unusually high ranking volatility compared with similar institutions?
+- **Engine / function:** `outliers.py :: volatility_vs_peers(category, min_years)`
+- **Definition used:** volatility = SD of an institution's exact ranks over the years (at least `min_years`, default 4).
+  Peers = institutions whose median rank is in the same band (1-10, 11-25, 26-50, 51-100 ...). Unusual = SD above
+  Q3 + 1.5 × IQR of its peer band's SDs (the box-plot outlier rule).
+- **Calculation (plain words):** rank SD per institution; group by peer band; flag those beyond the upper whisker.
+  Peers matter because ranks naturally move more lower down (median SD 0.8 in 1-10 vs 11.7 in 51-100).
+- **Chart and why:** **box-and-whisker plot** of rank SD per peer band, every institution as a jittered dot; the dots
+  beyond the whisker are the unusual ones and are labelled.
+- **Caveat:** years with only a band (e.g. 101-150) have no exact rank and are left out, which can understate the
+  volatility of institutions that drop out of the exact-rank list.
+- **Filters the user can change:** category, min_years.
+
+## Question registry and the 40-question run
+
+- **`core/questions.py`:** `QUESTION_REGISTRY` holds the 40 Annexure A questions (Q1.1–Q8.5): ID, section, the question
+  text word for word, the engine and function that answer it, the default parameters, the chart type (a name from
+  `docs/allowed_charts.md`) and one sentence on why that chart fits. Defaults: category Overall; years = the full range
+  (2017–2025), or 2025 for single-year questions. `run_question("Q2.1", year=2019, top_n=50)` reruns a question with
+  changed filters (Level 2).
+- **`scripts/run_all_questions.py`:** runs all 40 with their defaults, saves each chart to `docs/previews/<id>.html`
+  and prints a pass/fail table with each insight. Pass = complete ChartResult (figure with data and title, source note,
+  non-empty table, insight, method) whose chart type is allowed and matches the registry.
+- **Tests:** `tests/test_questions.py` checks the 40 IDs, the word-for-word text, that every registered chart type is in
+  `docs/allowed_charts.md`, that every call's parameters exist, and that every question runs and draws its registered
+  chart type.

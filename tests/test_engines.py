@@ -1,4 +1,4 @@
-"""Engine tests (Phase 6): every analysis function runs on the real master table and answers correctly.
+"""Engine tests (Phases 6-7): every analysis function runs on the real master table and answers correctly.
 
 Three kinds of checks:
   1. Every public engine function, called with its defaults, returns a complete ChartResult: a Plotly
@@ -22,14 +22,15 @@ import plotly.graph_objects as go
 import pytest
 
 from core.data import MASTER_PATH, NirfInputError, filter_df, find_institution, load_master
-from core.engines import bivariate, geography, trends, univariate
+from core.engines import (bivariate, distribution, geography, mobility, multivariate, outliers, trends,
+                          univariate)
 from core.result import ChartResult
 from core.theme import SOURCE_NOTE
 
 if not MASTER_PATH.exists():
     pytest.skip("run `python -m pipeline.clean` first", allow_module_level=True)
 
-ENGINES = [trends, geography, univariate, bivariate]
+ENGINES = [trends, geography, univariate, bivariate, multivariate, distribution, mobility, outliers]
 FUNCTIONS = [
     (module.__name__.split(".")[-1], name, fn)
     for module in ENGINES
@@ -56,6 +57,12 @@ VARIANTS = [
     ("bivariate.correlation_with_overall(bar)", lambda: bivariate.correlation_with_overall(view="bar")),
     ("bivariate.scatter_relation(color_by)", lambda: bivariate.scatter_relation(color_by="region")),
     ("univariate.quartile_shares(statistical)", lambda: univariate.quartile_shares(mode="statistical")),
+    ("multivariate.parameter_profile(heatmap)", lambda: multivariate.parameter_profile(view="heatmap")),
+    ("multivariate.parameter_pca(Research)", lambda: multivariate.parameter_pca(category="Research Institutions")),
+    ("distribution.top10_vs_rest(histogram)", lambda: distribution.top10_vs_rest(view="histogram")),
+    ("distribution.dispersion_by_year(sd)", lambda: distribution.dispersion_by_year(view="sd")),
+    ("distribution.parameter_variability(box)", lambda: distribution.parameter_variability(view="box")),
+    ("mobility.band_retention(by_band)", lambda: mobility.band_retention(by_band=True)),
 ]
 
 
@@ -74,6 +81,14 @@ def test_every_requested_function_exists():
         "univariate.score_distribution", "univariate.rank_distribution", "univariate.summary_stats",
         "univariate.quartile_shares", "univariate.spread_by_category",
         "bivariate.scatter_relation", "bivariate.correlation_with_overall", "bivariate.correlation_over_time",
+        "multivariate.parameter_profile", "multivariate.gap_finder", "multivariate.improved_despite_decline",
+        "multivariate.strongest_weakest_gap", "multivariate.parameter_pca",
+        "distribution.top10_vs_rest", "distribution.dispersion_by_year", "distribution.parameter_variability",
+        "distribution.median_iqr_over_time", "distribution.score_by_state",
+        "mobility.band_transitions", "mobility.top10_entries_exits", "mobility.band_retention",
+        "mobility.biggest_rank_moves", "mobility.up_down_same_counts",
+        "outliers.research_vs_overall_outliers", "outliers.research_over_teaching", "outliers.unusual_score_jumps",
+        "outliers.strong_param_poor_rank", "outliers.volatility_vs_peers",
     }
     assert expected <= names
 
@@ -327,3 +342,177 @@ def test_correlogram_uses_research_parameters():
 def test_correlation_over_time_covers_every_year():
     t = bivariate.correlation_over_time("rpc", "Overall").table
     assert t["year"].tolist() == list(range(2017, 2026))
+
+
+# ---------- multivariate ----------
+
+def _overall(m: pd.DataFrame, year: int = 2025) -> pd.DataFrame:
+    return m[(m["category_std"] == "Overall") & (m["year"] == year)]
+
+
+def test_parameter_profile_defaults_to_top5_with_published_values(m):
+    t = multivariate.parameter_profile(year=2025, category="Overall").table
+    direct = _overall(m).dropna(subset=["tlr"]).sort_values(["rank", "canonical_name"]).head(5)
+    assert t["full_name"].tolist() == direct["canonical_name"].tolist()
+    assert t["TLR"].tolist() == pytest.approx(direct["tlr"].tolist())
+    with pytest.raises(NirfInputError, match="view must be"):
+        multivariate.parameter_profile(view="radar")
+
+
+def test_gap_finder_quadrant_uses_medians(m):
+    r = multivariate.gap_finder("rpc", "tlr", 2025, "Overall")
+    d = _overall(m).dropna(subset=["rpc", "tlr"])
+    expected = d[(d["rpc"] > d["rpc"].median()) & (d["tlr"] < d["tlr"].median())]
+    assert len(r.table) == len(expected)
+    assert set(r.table["full_name"]) == set(expected["canonical_name"])
+    assert r.table["z_gap"].is_monotonic_decreasing
+
+
+def test_improved_despite_decline_rule():
+    t = multivariate.improved_despite_decline("Overall", 2024, 2025).table
+    assert (t["score_change"] > 0).all()
+    changes = t[[c for c in t.columns if c.endswith("_change") and c != "score_change"]]
+    assert (changes.min(axis=1) < 0).all()
+    assert (t["n_declined"] == (changes < 0).sum(axis=1)).all()
+
+
+def test_strongest_weakest_gap_is_max_minus_min(m):
+    t = multivariate.strongest_weakest_gap(2025, "Overall").table
+    vals = _overall(m).dropna(subset=["tlr"])[["tlr", "rpc", "go", "oi", "pr"]]
+    assert t["gap"].iloc[0] == pytest.approx((vals.max(axis=1) - vals.min(axis=1)).max(), abs=0.01)
+    assert t["gap"].is_monotonic_decreasing
+
+
+def test_pca_variance_shares_and_pc1_tracks_score():
+    t = multivariate.parameter_pca(2025, "Overall").table
+    ev = t.attrs["explained_variance"]
+    assert len(ev) == 5 and sum(ev) == pytest.approx(1, abs=1e-3)
+    assert ev == sorted(ev, reverse=True)
+    assert np.corrcoef(t["pc1"], t["score"])[0, 1] > 0.8
+
+
+# ---------- distribution ----------
+
+def test_top10_vs_rest_groups(m):
+    t = distribution.top10_vs_rest(2025, "Overall").table.set_index("group")
+    scores = _overall(m).dropna(subset=["score"])
+    top = scores[scores["rank"] <= 10]["score"]
+    assert t.loc["Top 10", "n"] == len(top)
+    assert t.loc["Top 10", "median"] == pytest.approx(top.median(), abs=0.01)
+    assert t["n"].sum() == len(scores)
+
+
+def test_dispersion_by_year_sd_matches_pandas(m):
+    t = distribution.dispersion_by_year("Overall").table.set_index("year")
+    direct = m[m["category_std"] == "Overall"].groupby("year")["score"].std()
+    assert np.allclose(t["std"], direct.loc[t.index], atol=1e-3)
+
+
+def test_parameter_variability_cv(m):
+    t = distribution.parameter_variability(2025, "Overall").table.set_index("parameter")
+    pr = _overall(m)["pr"].dropna()
+    assert t.at["PR", "cv"] == pytest.approx(pr.std() / pr.mean(), abs=1e-3)
+    assert t["cv"].is_monotonic_decreasing
+
+
+def test_median_iqr_point_plot():
+    r = distribution.median_iqr_over_time("Overall")
+    assert r.chart_type == "point plot with error bars"
+    assert np.allclose(r.table["iqr"], r.table["q3"] - r.table["q1"], atol=0.02)
+    assert r.table["year"].tolist() == list(range(2017, 2026))
+
+
+def test_score_by_state_respects_min_institutions():
+    r = distribution.score_by_state(2025, "Overall", min_institutions=3)
+    drawn = {tr.name.rsplit(" (", 1)[0] for tr in r.fig.data}
+    assert drawn == set(r.table.loc[r.table["n"] >= 3, "state"])
+
+
+# ---------- mobility ----------
+
+def test_mobility_bands_follow_nirf_bands():
+    s = pd.Series([1, 10, 11, 50, 51, 75, 100, 101, 150, np.nan])
+    assert mobility._mobility_band(s).tolist() == ["1-10", "1-10", "11-50", "11-50", "51-100", "51-100", "51-100",
+                                                   "101+", "101+", "Not ranked"]
+
+
+def test_band_transitions_counts_51_100_into_top50(m):
+    r = mobility.band_transitions("Overall", 2017, 2025)
+    o = m[m["category_std"] == "Overall"]
+    a = o[(o["year"] == 2017) & o["rank_upper"].between(51, 100)]["institution_key"]
+    b = o[(o["year"] == 2025) & o["rank_upper"].le(50)]["institution_key"]
+    expected = len(set(a) & set(b))
+    t = r.table.set_index("band")
+    assert t.loc["2017: 51-100", ["2025: 1-10", "2025: 11-50"]].sum() == expected
+    assert f"{expected} Overall institutions moved from the 51-100 band" in r.insight
+    # Every institution listed in either year is counted exactly once.
+    assert t["total"].sum() == o[o["year"].isin([2017, 2025])]["institution_key"].nunique()
+
+
+def test_top10_entries_exits_balance_when_top10_is_full():
+    t = mobility.top10_entries_exits("Overall").table
+    per_year = t.groupby(["year", "change"]).size().unstack(fill_value=0)
+    assert (per_year["entered"] == per_year["exited"]).all()      # the top 10 always has 10 places
+
+
+def test_band_retention_is_a_percentage():
+    t = mobility.band_retention("Overall").table
+    assert t["retention_pct"].between(0, 100).all()
+    assert (t["stayed"] <= t["ranked_both"]).all()
+    assert t["year_to"].tolist() == list(range(2018, 2026))
+
+
+def test_biggest_rank_moves_both_directions():
+    r = mobility.biggest_rank_moves("Overall", 2017, 2025, n=5)
+    assert r.chart_type == "lollipop chart"
+    assert (r.table["improvement"] > 0).sum() == 5 and (r.table["improvement"] < 0).sum() == 5
+    assert (r.table["improvement"] == r.table["rank_start"] - r.table["rank_end"]).all()
+
+
+def test_up_down_same_counts_add_up(m):
+    t = mobility.up_down_same_counts("Overall").table
+    assert (t["moved_up"] + t["same"] + t["moved_down"] == t["compared"]).all()
+    o = m[(m["category_std"] == "Overall") & m["rank"].notna()]
+    a = o[o["year"] == 2024].set_index("institution_key")["rank"]
+    b = o[o["year"] == 2025].set_index("institution_key")["rank"]
+    both = a.index.intersection(b.index)
+    row = t.set_index("year_to").loc[2025]
+    assert row["moved_up"] == int((a[both] - b[both] > 0).sum())
+    assert row["compared"] == len(both)
+
+
+# ---------- outliers ----------
+
+def test_research_outliers_residual_z(m):
+    t = outliers.research_vs_overall_outliers(2025, "Overall").table
+    d = _overall(m).dropna(subset=["rpc", "score"])
+    slope, intercept = np.polyfit(d["score"], d["rpc"], 1)
+    resid = d["rpc"] - (intercept + slope * d["score"])
+    assert t["residual_z"].max() == pytest.approx((resid / resid.std()).max(), abs=0.01)
+    assert (t["unusual"] == (t["residual_z"] > 2)).all()
+
+
+def test_research_over_teaching_difference(m):
+    t = outliers.research_over_teaching(2025, "Overall").table
+    assert np.allclose(t["difference"], t["RPC"] - t["TLR"], atol=0.02)
+    d = _overall(m).dropna(subset=["rpc", "tlr"])
+    assert t["difference"].iloc[0] == pytest.approx((d["rpc"] - d["tlr"]).max(), abs=0.01)
+
+
+def test_unusual_score_jumps_are_beyond_two_sd():
+    r = outliers.unusual_score_jumps("Overall")
+    assert r.chart_type == "jittered strip chart"
+    assert (r.table["z"].abs() > 2).all()
+
+
+def test_strong_param_poor_rank_rule(m):
+    t = outliers.strong_param_poor_rank("go", 2025, "Overall").table
+    d = _overall(m).dropna(subset=["go", "rank"])
+    assert (t["GO"] >= d["go"].quantile(0.75) - 0.01).all()
+    assert (t["rank"] > d["rank"].astype(float).median()).all()
+
+
+def test_volatility_vs_peers_uses_box_plot_rule():
+    t = outliers.volatility_vs_peers("Overall").table
+    assert (t["unusual"] == (t["rank_sd"] > t["peer_fence_sd"])).all()
+    assert (t["years"] >= 4).all()

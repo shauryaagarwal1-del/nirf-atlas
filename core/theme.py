@@ -13,6 +13,7 @@ same whichever engine drew it. Design choices (kept deliberately quiet so the da
 
 from __future__ import annotations
 
+import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 
@@ -121,6 +122,39 @@ def add_source_note(fig: go.Figure, note: str | None = None) -> go.Figure:
                        yshift=-bottom + 6, showarrow=False, align="left",
                        font=dict(size=11, color=INK_MUTED))
     return fig
+
+
+def add_lollipops(fig: go.Figure, values, labels, colors, customdata=None, hovertemplate: str | None = None,
+                  text=None, row: int | None = None, col: int | None = None) -> go.Figure:
+    """Horizontal lollipop chart: a thin stem from 0 to each value and a dot at its end.
+
+    Reads like a bar chart (length = value) but with less ink, so long sorted lists stay calm.
+    `colors` is one colour per value; each colour's stems are drawn as one trace (no legend entry).
+    """
+    values, labels, colors = list(values), list(labels), list(colors)
+    where = dict(row=row, col=col) if row is not None else {}
+    for c in dict.fromkeys(colors):
+        xs, ys = [], []
+        for v, lab, cc in zip(values, labels, colors):
+            if cc == c:
+                xs += [0, v, None]
+                ys += [lab, lab, None]
+        fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", line=dict(color=c, width=2), hoverinfo="skip",
+                                 showlegend=False), **where)
+    fig.add_trace(go.Scatter(
+        x=values, y=labels, mode="markers+text" if text is not None else "markers", text=text,
+        textposition="middle right", textfont=dict(size=11, color=INK_SECONDARY), cliponaxis=False,
+        marker=dict(color=colors, size=11, line=dict(width=0)), customdata=customdata,
+        hovertemplate=hovertemplate, showlegend=False), **where)
+    return fig
+
+
+def jitter(n: int, width: float = 0.28, seed: int = 0):
+    """n small random sideways offsets in [-width, +width] for a jittered strip chart.
+
+    Fixed seed: the same data always gives the same picture (dots do not jump on every reload).
+    """
+    return np.random.default_rng(seed).uniform(-width, width, n)
 
 
 def finish(fig: go.Figure, title: str, subtitle: str | None = None, note: str | None = None,

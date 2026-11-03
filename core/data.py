@@ -159,6 +159,17 @@ def check_years(years, category: str, df: pd.DataFrame | None = None) -> list[in
     return ys
 
 
+def category_year(category: str, year=None) -> tuple[pd.DataFrame, str, int]:
+    """Rows of one category-year, plus the checked category name and year.
+
+    year=None means the latest year in which NIRF ranked the category.
+    """
+    df = _master()
+    category = check_category(category, df)
+    year = check_year(category_years(category, df)[-1] if year is None else year, category, df)
+    return filter_df(load_master(), categories=category, years=year), category, year
+
+
 def check_states(states, df: pd.DataFrame | None = None) -> list[str]:
     """Return official state names for the given spellings (case-insensitive, 'TN'-style not guessed)."""
     df = _master() if df is None else df
