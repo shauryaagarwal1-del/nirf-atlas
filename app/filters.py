@@ -3,7 +3,9 @@
 The sidebar is drawn once per run by the entry point (app/Home.py), so the same five choices follow
 the user from page to page: category, year range, states, institutions and top-N. A page reads them
 with current() and turns them into engine parameters; a page may offer its own control that starts
-from the global value (e.g. a single year that defaults to the end of the year range).
+from the global value (e.g. a single year that defaults to the end of the year range). On the Explore
+pages, the category, year range, states and institutions controls above each chart edit these same
+values (app/explorer.py), and the States filter limits every Explore analysis to those states.
 """
 
 from __future__ import annotations
@@ -120,7 +122,8 @@ def render_sidebar() -> Filters:
             st.session_state["f_years"] = (years[0], years[0])
             st.caption(f"Years: {category} exists only in {years[0]}.")
         st.multiselect("States", state_options(), key="f_states", placeholder="All states",
-                       help="Leave empty for all states and union territories.")
+                       help="Explore pages analyse only institutions in these states (ranks stay national). "
+                            "Leave empty for all of India.")
         st.multiselect("Institutions", list(institution_options()), key="f_institutions",
                        format_func=lambda k: institution_options()[k], max_selections=MAX_INSTITUTIONS,
                        placeholder="Search by name, e.g. IIT Madras",

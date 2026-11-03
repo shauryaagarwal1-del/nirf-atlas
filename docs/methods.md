@@ -134,6 +134,14 @@ scores are only compared within the same category unless a visible note says oth
   one that stays inside the plot, does not cover another label and covers as few points as possible; a thin leader
   line joins it to its point. This changes only where a name is printed, never the data.
 - **`core/result.py`:** every engine returns `ChartResult(fig, table, insight, method, chart_type)`.
+- **State filter for any analysis (`core/data.py :: only_states()`, `core/runner.py :: run()`):** inside
+  `only_states(["Kerala"])` every `load_master()` returns only the rows of institutions located in Kerala, so every
+  engine function can be asked "for Kerala only" without its own state parameter. `run(engine, function, params,
+  states)` runs one analysis this way and labels the answer: the subtitle starts "Only institutions in Kerala", the
+  insight starts "Among institutions in Kerala:" and the method adds that ranks stay the national NIRF ranks while
+  counts, averages, quartiles, z-scores and correlations are calculated within the chosen states. A state with no
+  institution in the category gives a plain message instead of an empty chart. `run()` only calls public functions
+  of the 8 engines (nothing else), so the dashboard and the Ask NIRF chat run analyses the same safe way.
 - **`core/stats.py`:** summary statistics, Pearson/Spearman correlation, R², p-value and the least-squares line.
   Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 moderate, < 0.8 strong, otherwise very strong.
 
@@ -144,6 +152,7 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 | Function | Chart drawn | Allowed name (`chart_type`) |
 |---|---|---|
 | `trends.rank_trajectory` | one line with markers per institution, rank axis reversed; band-only years as a faint range bar | `multi-series line chart` (`line chart` for one institution) |
+| `trends.parameter_trends` | one line per parameter of one institution by year, dashed line = overall score | `multi-series line chart` |
 | `trends.biggest_movers` | horizontal bars of improvement, sorted, teal right of zero / coral left | `bar chart` (ranked, horizontal) |
 | `trends.average_score_over_time` | one line with markers per category; `show_spread=True`: point + Q1-Q3 error bar | `multi-series line chart` (`line chart` for one category) / `point plot with error bars` |
 | `trends.consistent_top_n` | institution × year grid of coloured cells, rank written in the cell | `matrix heatmap` |
@@ -157,7 +166,7 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 | `univariate.summary_stats` | horizontal box with every institution as a dot, mean ± SD diamond | `box-and-whisker plot` |
 | `univariate.quartile_shares` | one 100% bar split into four score groups | `stacked bar chart` |
 | `univariate.spread_by_category` | one horizontal box per category | `box-and-whisker plot` |
-| `bivariate.scatter_relation` | one dot per institution (optionally coloured by group) + least-squares line | `scatterplot` |
+| `bivariate.scatter_relation` | one dot per institution (optionally coloured by region, state, rank band or category) + least-squares line | `scatterplot` |
 | `bivariate.correlation_with_overall` | correlation heatmap with r in each cell; `view="bar"`: ranked bars of r | `correlogram` / `bar chart` |
 | `bivariate.correlation_over_time` | two lines (Pearson r, Spearman ρ) by year | `multi-series line chart` |
 | `multivariate.parameter_profile` | parameters on x, one bar per institution; `view="heatmap"`: institution × parameter grid | `grouped bar chart` / `matrix heatmap` |
@@ -340,7 +349,7 @@ of one category-year (default: its latest year).
 - **Filters the user can change:** year.
 
 ### Q4.1 / Q4.2 / Q4.4: How are two numbers related (RPC vs score, PR vs score, TLR vs RPC)?
-- **Engine / function:** `core/engines/bivariate.py :: scatter_relation(x, y, year, category, color_by, trendline)`
+- **Engine / function:** `core/engines/bivariate.py :: scatter_relation(x, y, year, category, color_by, trendline, top_n)`
 - **Definition used:** association across the institutions of one category-year that have both values.
 - **Calculation (plain words):** Pearson r (straight-line strength, −1 to +1); Spearman ρ (Pearson on ranks: any steady
   rise or fall, robust to outliers); R² = r² (share of y's variation explained by the line); p-value (chance of a
@@ -348,12 +357,17 @@ of one category-year (default: its latest year).
   10 more x-points go with on average. If ρ and r differ by 0.15 or more, the insight says the pattern is not a
   straight line or a few outliers matter.
 - **Chart and why:** scatter plot with the trend line, the standard picture of a relationship between two numbers.
-  Optional colouring by region, state (top 7 + Other) or rank band. This is also the statement's
-  "select two variables" feature.
+  Optional colouring by region, state (top 7 + Other), rank band or category. This is also the statement's
+  "select two variables" feature (see "Relationships page" below).
+- **Several categories (colour by category):** the institutions of the chosen categories in that year are pooled
+  into one set of dots (an institution ranked in two categories is two dots); a visible note says that scores of
+  different categories are not on the same scale, and categories not ranked that year are listed as left out.
+- **Rank on an axis:** the rank axis is reversed (1 = best); a negative r then means "higher value, better rank",
+  and the insight says so. `top_n=50` keeps only institutions certainly ranked 1-50 ("among the top 50").
 - **Caveats shown on the chart:** the overall score is a weighted sum of the parameters, so part of a parameter-vs-score
   association is built in; only ranked institutions with scores (the top of each list) are included.
-- **Filters the user can change:** x and y (score, TLR, RPC, GO, OI, PR, QnR, QlR, SFC, rank), year, category, colour,
-  trend line on/off.
+- **Filters the user can change:** x and y (score, TLR, RPC, GO, OI, PR, QnR, QlR, SFC, rank), year, category (or
+  several, with colour by category), colour, trend line on/off, only ranks 1 to N, only states.
 
 ### Q4.3: Which NIRF parameter has the strongest correlation with the overall score?
 - **Engine / function:** `bivariate.py :: correlation_with_overall(year, category, view)`
@@ -642,3 +656,87 @@ lies wholly inside one of these four, so institutions known only by band can be 
   updates the link; Run all 40 shows 40 ticks and 40 previews; an unknown ID does not crash. In addition every
   question was run for every category (and several years) to check that each combination gives a chart or a
   friendly message, never a crash.
+
+## Explore pages (Level 2: every knob of every analysis)
+
+- **Where:** `app/explorer.py` (the shared control system) and the seven topic pages in `app/pages/` (Trends,
+  Geography, Distributions, Relationships, Multi-Parameter, Mobility, Outliers).
+- **Layout:** "What do you want to see?" lists that page's analyses in plain English (one entry per engine function;
+  Trends lists climbers and fallers separately). Under it, a card holds ONLY the controls of the chosen analysis, with
+  one control for EVERY one of its parameters; then the chart card (chart, one-line answer, "How we calculated this",
+  "See the data"). Every public engine function is offered somewhere: 38 as views, the two-variable scatterplot on
+  Relationships, the coverage heatmap on Data & Method.
+- **Two kinds of control:** (1) shared with the sidebar: category, year range, states and institutions. The control
+  above the chart and the sidebar filter are one value: changing either updates both, and the choice follows the user
+  to the next page. (2) local to the analysis: a single year (starts at the end of the sidebar's year range), the
+  parameters to compare, how many institutions (starts at the sidebar's top N), rank cut-offs, the |z| threshold,
+  "at least N years" (bounded by the category's number of years), chart variants (e.g. violin or overlapping
+  histogram) and how many names are printed on the chart. A local choice is kept when the category changes, as long
+  as the new category offers it (e.g. the year 2019); otherwise it starts again from its default.
+- **"Only states":** on every analysis without its own state parameter, the state filter limits the whole analysis to
+  institutions in those states (see "State filter for any analysis" above), and the chart says so. Compare states has
+  its own state picker instead (empty = Karnataka and Tamil Nadu).
+- **Tests:** `tests/test_explorer.py` checks that each view's controls cover exactly its function's parameters, that
+  every view of every page draws a chart in the real app (Streamlit AppTest), that page and sidebar stay in sync, that
+  local choices survive a category change, and that the state filter is applied and shown.
+
+### Extra: How have one institution's parameter scores changed over the years?
+- **Engine / function:** `core/engines/trends.py :: parameter_trends(institution, category, years)` (Trends page,
+  "Parameter scores of one institution, year by year").
+- **Definition used:** the published score of each parameter (TLR, RPC, GO, OI, PR; Research Institutions: QnR, QlR,
+  SFC, OI, PR) and the overall score of one institution in one category, year by year.
+- **Calculation (plain words):** look up the institution's row in each year; change = last published value - first
+  published value; the insight names the parameter that gained the most and the one that fell the most.
+- **Chart and why:** multi-series line chart: change over time for several numbers on the same 0-100 scale (all
+  from one category), so the lines can share one axis; the overall score is the dashed dark line. Years without a
+  score are gaps, never filled in.
+- **Filters the user can change:** category, institution, year range.
+
+### Relationships page: the "select any two variables" interface
+- **Controls:** X and Y (overall score, every parameter the category publishes, rank), colour by (nothing, state,
+  region, category, rank band), category (several categories when colouring by category), year, only ranks 1 to N,
+  only states, trend line on/off.
+- **Metric cards above the chart:** Pearson r, Spearman rho, R², p-value and n, from `scatter_relation()`
+  (`core/stats.py :: correlate()`).
+- **One-line interpretation:** "<strength> <direction> relationship: institutions with a higher X tend to have a
+  higher/lower Y; statistically significant (p < 0.05) / not statistically significant, so it could be chance."
+  Strength words use the same scale as everywhere (|r| < 0.2 very weak ... >= 0.8 very strong). With rank on an axis
+  the sentence is turned round: "a better (smaller) rank". X = Y gives a hint to pick two different numbers.
+
+## Chart Builder (the safety net for unusual questions)
+
+- **Where:** `core/builder.py :: build_chart()` (logic) and `app/pages/chart_builder.py` (controls). The Ask NIRF chat
+  can call the same function for questions no ready-made analysis covers.
+- **Filters:** categories (empty = all), from year, to year, rank cut-off (top 10 ... top 200: rows certainly ranked
+  within it), states, regions, institutions. They start from the sidebar filters when the page opens.
+- **Variables:** groups = year, category, state, region, rank band, institution, new entrant (first year in that
+  category's list; the list's own first year is shown separately, because nobody can be "new" in it); numbers =
+  overall score, the parameters (TLR, RPC, GO, OI, PR, QnR, QlR, SFC) and the exact rank.
+- **Aggregations (plain words):** count = the number of distinct institutions in a group (an institution is counted
+  once per group even if it appears in several years); mean = sum / count; median = the middle value; min / max = the
+  smallest / largest value. Each institution-year-category row is one value.
+- **Chart types (all in `docs/allowed_charts.md`):** bar, grouped bar, stacked bar (`bar chart`, `grouped bar chart`,
+  `stacked bar chart`; with a facet `small-multiple bar charts`), line (`line chart`, `multi-series line chart` with
+  a colour), scatter (`scatterplot`), bubble (`bubble chart`: bubble area = a third number), box
+  (`box-and-whisker plot`), violin (`violin plot`), histogram (`histogram`; `overlapping histogram` with a colour),
+  strip (`jittered strip chart`), heatmap (`matrix heatmap`: X = columns, second group = rows, cell = the
+  aggregated value), pie (`pie chart`: share = group count / total x 100).
+- **Which controls each chart uses:** bar, line, heatmap and pie summarise groups (X = a group, aggregation used);
+  scatter, bubble and histogram need a number on X; box, violin and strip need groups on X and a number on Y. Controls
+  a chart does not use are greyed out.
+- **Friendly hints instead of errors:** a pie needs Count (parts of a whole); stacked bars need Count (adding means
+  makes no sense, use grouped bars); a line chart needs Year on X; grouped/stacked bars and heatmaps need a second
+  group; scatter needs two different numbers; X, colour and facet must be different groups; a number the category
+  does not publish (e.g. TLR for Innovation) or filters with no rows explain what to change.
+- **Handled automatically, and written in the chart note:** more than 8 colour groups -> the 7 largest + "Other";
+  institutions as bars -> the 30 largest (or the chosen "Show groups" top N; for rank, the best); more than 12 facets
+  -> the 12 largest; several categories with a score -> the cross-category note; several years pooled -> a note on
+  how institutions are counted. The title states the answer (largest bar, highest median, share of the largest
+  slice, r for a scatter, the middle half for a histogram, the year with most new entrants).
+- **Tests:** `tests/test_builder.py` (every chart type, numbers against pandas, every hint, the page's quick starts).
+
+## Level 2 rehearsal: 15 new examiner questions
+
+`docs/level2_questions.md` lists 15 questions that are not in Annexure A, the page and controls that answer each, and
+the answer the dashboard gives. `tests/test_level2.py` sets exactly those controls in the real app for each question
+and checks that the chart drawn is the same answer as the analysis those settings stand for.

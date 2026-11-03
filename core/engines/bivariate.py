@@ -1,7 +1,8 @@
 """Bivariate engine: how two numbers move together (Annexure A section 4, Q4.1-Q4.5).
 
 Functions
-  scatter_relation()          any two numeric attributes: scatterplot (optionally grouped by colour) with the
+  scatter_relation()          any two numeric attributes: scatterplot (optionally grouped by colour: region,
+                              state, rank band, or category when several categories are pooled) with the
                               least-squares line; r, rho, R squared, p, n
   correlation_with_overall()  correlation of each parameter with the overall score (correlogram of score and
                               all parameters, or view="bar": ranked bar chart of r)
@@ -26,9 +27,10 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_years
                        filter_df, fmt_years, load_master, parameters_of)
 from core.result import ChartResult
 from core.stats import correlate, p_text, signed, strength
-from core.theme import CATEGORICAL, DIVERGING, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_ramp
+from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, DIVERGING, DOWN, INK_SECONDARY, UP, color_map, finish,
+                        ordinal_ramp)
 
-COLOR_BY = {"region", "state", "rank_band"}
+COLOR_BY = {"region", "state", "rank_band", "category"}
 MAX_STATE_COLORS = 7
 
 
@@ -44,8 +46,21 @@ def _stat_line(c: dict) -> str:
             f"R² = {c['r2']:.2f} · {p_text(c['pearson_p'])} · n = {c['n']}")
 
 
-def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, category: str = "Overall",
-                     color_by: str | None = None, trendline: bool = True) -> ChartResult:
+def _pooled_year(categories: list[str], year: int | None) -> tuple[pd.DataFrame, list[str], int, list[str]]:
+    """Rows of several categories in one year; categories without that year are left out (and listed)."""
+    df = load_master()
+    cats = list(dict.fromkeys(check_category(c, df) for c in categories))
+    if year is None:
+        year = max(category_years(c, df)[-1] for c in cats)
+    year = int(year)
+    have = [c for c in cats if year in category_years(c, df)]
+    if not have:
+        raise NirfInputError(f"None of {', '.join(cats)} has a NIRF ranking in {year}.")
+    return filter_df(df, categories=have, years=year), have, year, [c for c in cats if c not in have]
+
+
+def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, category="Overall",
+                     color_by: str | None = None, trendline: bool = True, top_n: int | None = None) -> ChartResult:
     """Answers questions like: "How strongly are RPC scores associated with overall scores?" (Q4.1, Q4.2, Q4.4)
 
     Definition: the association between two numbers across the institutions of one category-year.
@@ -53,9 +68,19 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
     (same on ranks: any steady rise/fall, robust to outliers), R squared (share of y's variation
     explained by the straight line) and the p-value (chance of a correlation this strong if there
     were none). The least-squares line is the straight line with the smallest sum of squared
-    vertical distances to the dots. color_by: None, "region", "state" or "rank_band".
+    vertical distances to the dots. color_by: None, "region", "state", "rank_band" or "category".
+    category can also be a list: the categories' institutions of that year are pooled into one
+    scatterplot (an institution ranked in two categories is then two dots), coloured by category,
+    with a visible note that scores of different categories are not on the same scale.
+    top_n: keep only institutions certainly ranked 1..top_n (e.g. 50), to ask "among the top 50".
     """
-    cat, category, year = _category_year(category, year)
+    categories = [category] if isinstance(category, str) else list(category)
+    if len(categories) > 1:
+        cat, cats, year, missing = _pooled_year(categories, year)
+        category = " + ".join(cats)
+    else:
+        cat, category, year = _category_year(categories[0], year)
+        cats, missing = [category], []
     x = check_column(x, category, cat)
     y = check_column(y, category, cat)
     if x == y:
@@ -63,9 +88,14 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
     if color_by is not None and color_by not in COLOR_BY:
         raise NirfInputError(f"color_by must be one of: {', '.join(sorted(COLOR_BY))} (or None).")
     d = cat[cat[x].notna() & cat[y].notna()].copy()
+    if top_n:
+        d = d[d["rank_upper"].le(int(top_n)).fillna(False).astype(bool)]
+        category_words = f"{category} top {int(top_n)}"
+    else:
+        category_words = category
     d[x], d[y] = d[x].astype(float), d[y].astype(float)
     if len(d) < 3:
-        raise NirfInputError(f"Only {len(d)} {category} institutions in {year} have both {SHORT[x]} and {SHORT[y]}; "
+        raise NirfInputError(f"Only {len(d)} {category_words} institutions in {year} have both {SHORT[x]} and {SHORT[y]}; "
                              f"at least 3 are needed for a correlation.")
     c = correlate(d[x], d[y])
 
@@ -76,9 +106,10 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
     elif color_by == "rank_band":
         d["group"] = d["rank_band"].fillna("unknown")
         groups = [b for b in BAND_ORDER if b in set(d["group"])]
+        groups += ["unknown"] if d["group"].eq("unknown").any() else []
         colors = dict(zip(groups, ordinal_ramp(len(groups))[::-1]))
     else:
-        d["group"] = d[color_by]
+        d["group"] = d["category_std" if color_by == "category" else color_by]
         groups = d["group"].value_counts().index.tolist()
         if color_by == "state" and len(groups) > MAX_STATE_COLORS:
             keep = groups[:MAX_STATE_COLORS]
@@ -91,9 +122,9 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
         t = d[d["group"].eq(gname)]
         fig.add_trace(go.Scatter(
             x=t[x], y=t[y], mode="markers", name=gname, marker=dict(color=colors[gname], size=9, opacity=0.85),
-            customdata=np.stack([t["canonical_name"], t["state"], t["rank_raw"]], axis=1),
-            hovertemplate=(f"<b>%{{customdata[0]}}</b> (%{{customdata[1]}})<br>Rank %{{customdata[2]}}"
-                           f"<br>{SHORT[x]}: %{{x:.2f}}<br>{SHORT[y]}: %{{y:.2f}}<extra></extra>")))
+            customdata=np.stack([t["canonical_name"], t["state"], t["rank_raw"], t["category_std"]], axis=1),
+            hovertemplate=(f"<b>%{{customdata[0]}}</b> (%{{customdata[1]}})<br>%{{customdata[3]}} rank "
+                           f"%{{customdata[2]}}<br>{SHORT[x]}: %{{x:.2f}}<br>{SHORT[y]}: %{{y:.2f}}<extra></extra>")))
     if trendline and pd.notna(c["slope"]):
         xs = np.array([d[x].min(), d[x].max()])
         fig.add_trace(go.Scatter(
@@ -101,25 +132,36 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
             line=dict(color=INK_SECONDARY, width=2),
             hovertemplate=(f"{SHORT[y]} = {c['intercept']:.2f} + {c['slope']:.3f} × {SHORT[x]}"
                            f"<br>R² = {c['r2']:.2f}<extra></extra>")))
-    fig.update_xaxes(title_text=LABELS[x], showgrid=True, autorange="reversed" if x == "rank" else True)
-    fig.update_yaxes(title_text=LABELS[y], autorange="reversed" if y == "rank" else True)
+    fig.update_xaxes(title_text=LABELS[x] + (" (1 = best, on the right)" if x == "rank" else ""), showgrid=True,
+                     autorange="reversed" if x == "rank" else True)
+    fig.update_yaxes(title_text=LABELS[y] + (" (1 = best, at the top)" if y == "rank" else ""),
+                     autorange="reversed" if y == "rank" else True)
     if color_by is None:
         fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
 
     words = strength(c["pearson_r"])
-    title = f"{SHORT[x]} and {SHORT[y]}: {words} relationship in {category} {year} (r = {c['pearson_r']:.2f})"
-    insight = (f"In {category} {year}, {SHORT[x]} and {SHORT[y]} have a {words} relationship ({_stat_line(c)}); "
+    title = f"{SHORT[x]} and {SHORT[y]}: {words} relationship in {category_words} {year} (r = {c['pearson_r']:.2f})"
+    insight = (f"In {category_words} {year}, {SHORT[x]} and {SHORT[y]} have a {words} relationship ({_stat_line(c)}); "
                f"the straight line explains {100 * c['r2']:.0f}% of the variation in {SHORT[y]}"
                + (f", and 10 more {SHORT[x]} points go with {signed(10 * c['slope'], 1)} {SHORT[y]} points on average."
                   if "rank" not in (x, y) else "."))
+    if "rank" in (x, y):
+        other = SHORT[y] if x == "rank" else SHORT[x]
+        insight += (f" A smaller rank is better, so a negative r means institutions with a higher {other} "
+                    f"tend to be ranked better.")
     if abs(c["spearman_rho"] - c["pearson_r"]) >= 0.15:
         insight += (f" Spearman (ρ = {c['spearman_rho']:.2f}) differs from Pearson, so the pattern is not a "
                     f"straight line or a few outliers matter.")
-    note = None
+    notes = []
+    if len(cats) > 1:
+        notes.append(CROSS_CATEGORY_NOTE + " Pooled here only to compare patterns.")
+    if missing:
+        notes.append(f"Not ranked in {year}, so left out: {', '.join(missing)}.")
     if "score" in (x, y) and "rank" not in (x, y):
-        note = "The overall score is a weighted sum of the parameters, so part of this association is built in."
-    finish(fig, title, _stat_line(c), note=note, legend_title=None if color_by is None else color_by.replace("_", " ").title())
-    method = (f"We take the {c['n']} {category} institutions of {year} with both {SHORT[x]} and {SHORT[y]} published "
+        notes.append("The overall score is a weighted sum of the parameters, so part of this association is built in.")
+    legend = {None: None, "rank_band": "Rank band"}.get(color_by, str(color_by).title())
+    finish(fig, title, _stat_line(c), note="<br>".join(notes) or None, legend_title=legend)
+    method = (f"We take the {c['n']} {category_words} institutions of {year} with both {SHORT[x]} and {SHORT[y]} published "
               f"and compute: Pearson r (how close the dots are to a straight line, −1 to +1), Spearman ρ "
               f"(Pearson on the ranks of the values, so it captures any steadily rising or falling pattern and is "
               f"robust to outliers), R² = r² (share of {SHORT[y]}'s variation explained by the line) and "
@@ -127,9 +169,12 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
               f"significant). The trend line is the least-squares line {SHORT[y]} = {c['intercept']:.2f} + "
               f"{c['slope']:.3f} × {SHORT[x]}. Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 "
               f"moderate, < 0.8 strong, otherwise very strong. Only ranked institutions with published scores are "
-              f"included, i.e. the top of the list, which can make correlations weaker than over all institutions.")
-    table = (d[["canonical_name", "state", "region", "rank_raw", "rank_band", x, y]]
-             .rename(columns={"canonical_name": "institution", "rank_raw": "rank"}).reset_index(drop=True))
+              f"included, i.e. the top of the list, which can make correlations weaker than over all institutions."
+              + (" Several categories are pooled into one set of dots (one dot per institution and category), "
+                 "although each category weighs the parameters differently." if len(cats) > 1 else ""))
+    keep = list(dict.fromkeys(["canonical_name", "category_std", "state", "region", "rank_raw", "rank_band", x, y]))
+    table = (d[keep].rename(columns={"canonical_name": "institution", "category_std": "category",
+                                     "rank_raw": "published_rank"}).reset_index(drop=True))
     table.attrs["stats"] = c
     return ChartResult(fig, table, insight, method, "scatterplot")
 

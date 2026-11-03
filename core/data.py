@@ -9,12 +9,18 @@ Rank conventions used everywhere (same as the cleaning pipeline):
   * `rank` is the exact rank NIRF printed (empty when NIRF published only a band);
   * `rank_upper` (added here) is the worst position a row can have: the exact rank, or the upper
     end of NIRF's own band (a "76-100" row is certainly within the top 100, never within the top 75).
+
+State scope: inside `with only_states(["Kerala"]):` every load_master() call returns only the rows of
+institutions located in those states, so ANY engine analysis can be asked "for Kerala only" without
+each engine needing its own state filter. Ranks stay the national NIRF ranks.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 
@@ -94,12 +100,41 @@ def _master() -> pd.DataFrame:
     return df
 
 
+# The states the current analysis is limited to (None = every state); set only through only_states().
+_STATE_SCOPE: ContextVar[tuple[str, ...] | None] = ContextVar("state_scope", default=None)
+
+
 def load_master() -> pd.DataFrame:
     """The cleaned master table (one row per year x category x institution), plus `rank_upper`.
 
     Read once and cached; every call returns a copy so an engine can never change the shared table.
+    Inside only_states(...), only the rows of institutions in those states are returned.
     """
-    return _master().copy()
+    df = _master()
+    scope = _STATE_SCOPE.get()
+    if scope:
+        df = df[df["state"].isin(scope)]
+    return df.copy()
+
+
+def current_states() -> tuple[str, ...] | None:
+    """The states the running analysis is limited to, or None for all of India."""
+    return _STATE_SCOPE.get()
+
+
+@contextmanager
+def only_states(states) -> Iterator[tuple[str, ...] | None]:
+    """Limit every load_master() inside this block to institutions located in `states`.
+
+    states=None or empty means no limit. Names are checked (and spelling variants mapped) first.
+    The limit is per thread of execution (a ContextVar), so two dashboard users never affect each other.
+    """
+    scope = tuple(check_states(states)) if states else None
+    token = _STATE_SCOPE.set(scope)
+    try:
+        yield scope
+    finally:
+        _STATE_SCOPE.reset(token)
 
 
 # ---------- input checks ----------

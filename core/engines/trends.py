@@ -7,6 +7,8 @@ Functions
                             show_spread=True a point plot with error bars from Q1 to Q3)
   consistent_top_n()        who stayed in the top N in many years (matrix heatmap institution x year)
   top_n_race()              how this year's top N got there (multi-series line chart, top 3 highlighted)
+  parameter_trends()        one institution's parameter scores and overall score year by year (multi-series
+                            line chart)
 
 Every chart type is one of the types listed in docs/allowed_charts.md.
 
@@ -21,8 +23,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from core.data import (NirfInputError, category_years, chart_labels, check_category, check_year,
-                       check_years, filter_df, find_institutions, fmt_years, load_master)
+from core.data import (LABELS, SHORT, NirfInputError, category_years, chart_labels, check_category, check_year,
+                       check_years, filter_df, find_institutions, fmt_years, load_master, parameters_of)
 from core.result import ChartResult
 from core.stats import places, signed
 from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_SECONDARY, OTHER, SURFACE, UP,
@@ -167,6 +169,82 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
               f"The y-axis is reversed so that rank 1 is at the top.")
     return ChartResult(fig, table.drop(columns="institution_key").reset_index(drop=True), insight, method,
                        "line chart" if len(keys) == 1 else "multi-series line chart")
+
+
+def parameter_trends(institution: str = "IIT Madras", category: str = "Overall", years=None) -> ChartResult:
+    """Answers questions like: "How have IIT Madras's five parameter scores changed over the years?"
+
+    Definition: the score NIRF published for each parameter (TLR, RPC, GO, OI, PR; Research
+    Institutions: QnR, QlR, SFC, OI, PR) and the overall score of ONE institution, year by year.
+    Method: one line per parameter through the published values (a year without a score is a gap);
+    the overall score is the dashed dark line. Change = last published value - first published value.
+    All values are out of 100 and come from the same category, so they share one axis.
+    """
+    df = load_master()
+    category = check_category(category, df)
+    years = check_years(years, category, df)
+    key = find_institutions(institution)[0]
+    label = chart_labels([key])[key]
+    rows = filter_df(df, years=years, categories=category)
+    rows = rows[rows["institution_key"].eq(key)].sort_values("year")
+    if rows.empty:
+        raise NirfInputError(f"{label} is not ranked in {category} in {fmt_years(years)}; {_where_ranked(df, key)}.")
+    params = parameters_of(rows)
+    if not params:
+        raise NirfInputError(f"NIRF published no parameter scores for {label} in {category} ({fmt_years(years)}).")
+    cols = ["score"] + params
+    table = rows[["year", "rank_raw"] + cols].rename(columns={"rank_raw": "rank"}).reset_index(drop=True)
+
+    fig = go.Figure()
+    colors = dict(zip(params, CATEGORICAL))
+    for p in params:
+        fig.add_trace(go.Scatter(
+            x=table["year"], y=table[p], name=SHORT[p], mode="lines+markers", connectgaps=False,
+            line=dict(color=colors[p]), marker=dict(color=colors[p]),
+            hovertemplate=f"<b>{LABELS[p]}</b><br>%{{x}}: %{{y:.1f}}<extra></extra>"))
+    fig.add_trace(go.Scatter(
+        x=table["year"], y=table["score"], name="Overall score", mode="lines+markers", connectgaps=False,
+        line=dict(color=INK, width=2.5, dash="dash"), marker=dict(color=INK, symbol="diamond", size=9),
+        customdata=table["rank"],
+        hovertemplate="<b>Overall score</b><br>%{x}: %{y:.1f} (rank %{customdata})<extra></extra>"))
+    fig.update_yaxes(title_text="Score (out of 100)", range=[0, 102])
+    fig.update_xaxes(title_text="Year", dtick=1)
+    fig.update_layout(hovermode="x unified")
+
+    change = {}
+    for c in cols:
+        s = table.set_index("year")[c].dropna()
+        if len(s) > 1:
+            change[c] = (s.iloc[-1] - s.iloc[0], int(s.index[0]), int(s.index[-1]), s.iloc[0], s.iloc[-1])
+    span = fmt_years(table["year"].tolist())
+    if change and any(c in change for c in params):
+        moved = {c: v for c, v in change.items() if c != "score"}
+        up = max(moved, key=lambda c: moved[c][0])
+        down = min(moved, key=lambda c: moved[c][0])
+        g, y0, y1, a, z = moved[up]
+        title = f"{label} in {category}: {SHORT[up]} gained the most ({signed(g, 1)} points, {y0}→{y1})"
+        insight = (f"From {y0} to {y1}, {label}'s {SHORT[up]} went from {a:.1f} to {z:.1f} ({signed(g, 1)}), the "
+                   f"largest gain among its parameters")
+        if moved[down][0] < 0:
+            d0 = moved[down]
+            insight += f"; {SHORT[down]} fell the most, from {d0[3]:.1f} to {d0[4]:.1f} ({signed(d0[0], 1)})"
+        if "score" in change:
+            s0 = change["score"]
+            insight += f". Its overall score went from {s0[3]:.1f} to {s0[4]:.1f} ({signed(s0[0], 1)})."
+        else:
+            insight += "."
+    else:
+        title = f"{label}'s parameter scores in {category} {span}"
+        insight = f"{label} has parameter scores for only one year in {category} ({span}), so there is no change to show."
+    finish(fig, title, f"{category} ranking, {span} · one line per parameter, dashed = overall score",
+           note="Gaps = no published score that year (not ranked, or ranked only in a band).",
+           legend_title="Parameter")
+    method = (f"We take {label}'s rows in the {category} ranking for {span} and draw the published score of each "
+              f"parameter ({', '.join(SHORT[p] for p in params)}) and the overall score, one line each, joined in "
+              f"time order. Every value is out of 100. The overall score is a weighted sum of the parameters, with "
+              f"{category}'s own weights, so a parameter with a large weight moves it more. Change = last published "
+              f"value - first published value; years without a score are gaps, never filled in.")
+    return ChartResult(fig, table, insight, method, "multi-series line chart")
 
 
 def biggest_movers(category: str = "Overall", start_year: int | None = None, end_year: int | None = None,
@@ -474,7 +552,6 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     if not 2 <= n <= 20:
         raise NirfInputError("Choose between 2 and 20 institutions for the rank race.")
     highlight = max(0, min(highlight, n, MAX_LINES))
-    depth = int(depth) if depth else int(np.ceil(2.5 * n / 5) * 5)
     cat = filter_df(df, years=years, categories=category, exact_ranks_only=True)
     last_year = max(years)
     last = cat[cat["year"].eq(last_year)].sort_values(["rank", "canonical_name"]).head(n)
@@ -485,6 +562,9 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     sub = cat[cat["institution_key"].isin(keys)]
     ranks = sub.pivot_table(index="institution_key", columns="year", values="rank", aggfunc="min").reindex(keys)
     ranks = ranks.reindex(columns=years)
+    # Default depth 2.5 x n, but deep enough that every line's last-year rank is on the chart (with a
+    # state filter "today's top 5" can be ranked 20-80 nationally).
+    depth = int(depth) if depth else int(max(np.ceil(2.5 * n / 5), np.ceil(1.2 * last["rank"].max() / 5)) * 5)
 
     colors = {k: (CATEGORICAL[i] if i < highlight else OTHER) for i, k in enumerate(keys)}
     fig = go.Figure()
@@ -509,20 +589,21 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     moves = {k: int(s.iloc[0]) - int(s.iloc[-1]) for k, s in first_rank.items() if len(s) > 1}
     span = f"{min(years)}–{last_year}" if len(years) > 1 else str(last_year)
     leader = keys[0]
-    leader_years = int((ranks.loc[leader] == 1).sum())
+    lead_rank = int(ranks.at[leader, last_year])
+    leader_years = int((ranks.loc[leader] == lead_rank).sum())
     if len(years) > 1 and moves:
         climber = max(moves, key=moves.get)
         s = first_rank[climber]
         climb = (f"; {labels[climber]} climbed the most, from rank {int(s.iloc[0])} in {int(s.index[0])} to "
                  f"{int(s.iloc[-1])} in {last_year} ({places(moves[climber])})" if moves[climber] > 0 else "")
         always = int(sum(ranks.loc[k].le(n).all() for k in keys))
-        insight = (f"{labels[leader]} is rank 1 in {category} {last_year} and was rank 1 in {leader_years} of "
+        insight = (f"{labels[leader]} is rank {lead_rank} in {category} {last_year} and held that rank in {leader_years} of "
                    f"{len(years)} years{climb}. {always} of today's top {n} were in the top {n} in every year "
                    f"{span}.")
         title = (f"{labels[leader]} leads {category} {last_year}; {labels[climber]} made the biggest climb"
                  if moves[climber] > 0 else f"{labels[leader]} leads the {category} top {n} in {last_year}")
     else:
-        insight = f"{labels[leader]} is rank 1 in {category} {last_year}."
+        insight = f"{labels[leader]} is rank {lead_rank} in {category} {last_year}."
         title = f"{labels[leader]} leads the {category} top {n} in {last_year}"
 
     fig.update_yaxes(title_text="Rank (1 = best, shown at the top)", range=[depth + 0.6, 0.4], tickvals=

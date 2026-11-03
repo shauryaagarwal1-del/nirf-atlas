@@ -1,41 +1,41 @@
-"""Trends: how ranks and scores changed over the years (engine: core/engines/trends.py)."""
+"""Trends: how ranks and scores changed over the years (engine: core/engines/trends.py).
 
-import streamlit as st
+Every trends function is one entry of "What do you want to see?", with controls for all of its
+parameters (app/explorer.py).
+"""
 
-from app.components import page_header, show
-from app.filters import category_years_map, current
+from app.components import page_header
+from app.explorer import (CATEGORY, INSTITUTIONS, PERIOD, SCOPE, TOP_ONLY, YEARS_RANGE, C, View, explore, how_many,
+                          top_n)
 
-f = current()
+VIEWS = [
+    View("Rank of chosen institutions, year by year", "trends", "rank_trajectory",
+         (CATEGORY, INSTITUTIONS, YEARS_RANGE, SCOPE),
+         hint="No institutions chosen = the top 5 of the last year (of the chosen states, if any)."),
+    View("Parameter scores of one institution, year by year", "trends", "parameter_trends",
+         (CATEGORY, C("institution"), YEARS_RANGE),
+         why="A multi-series line chart puts each parameter's path over time on one score axis (all are out of "
+             "100), so gains and falls are easy to compare; the dashed line is the overall score."),
+    View("Biggest climbers between two years", "trends", "biggest_movers",
+         (CATEGORY, PERIOD, how_many(), SCOPE), fixed={"direction": "up"}),
+    View("Biggest fallers between two years", "trends", "biggest_movers",
+         (CATEGORY, PERIOD, how_many(), SCOPE), fixed={"direction": "down"}),
+    View("Average or median score per year", "trends", "average_score_over_time",
+         (C("categories"), C("choice", "stat", "Statistic", {"mean": "Mean", "median": "Median"}, "mean",
+                             widget="segmented"),
+          TOP_ONLY, C("choice", "show_spread", "Show Q1–Q3 as error bars", default=False, widget="toggle"), SCOPE),
+         hint="Add categories to compare their averages; scores of different categories are on different scales."),
+    View("Who stayed in the top N for many years", "trends", "consistent_top_n",
+         (CATEGORY, top_n("n", "Top N"),
+          C("choice", "min_years", "In the top N for at least … years", "years", 5), SCOPE)),
+    View("Today's top N, followed back in time", "trends", "top_n_race",
+         (CATEGORY, YEARS_RANGE, how_many("n", "Top N of the last year", (3, 5, 10, 15, 20)),
+          C("choice", "highlight", "Coloured lines", list(range(0, 9)), 3, widget="slider",
+            help="The best this many are coloured; the others are grey context lines."),
+          C("choice", "depth", "Rank axis down to", {None: "Auto", 25: "25", 50: "50", 100: "100", 200: "200"}, None,
+            help="Auto = 2.5 × N (deeper when a state filter is on)."), SCOPE)),
+]
+
 page_header("Trends", "How ranks and scores moved over time: one institution's path, the biggest climbers and "
-            "fallers, the average score each year, and who stayed at the top.", eyebrow="Explore · Time series",
-            filters=f)
-
-view = st.selectbox("What do you want to see?", [
-    "Rank of chosen institutions, year by year",
-    "Biggest climbers between the first and last year",
-    "Biggest fallers between the first and last year",
-    "Average score per year",
-    "Who stayed in the top N",
-    "Today's top N, followed back in time",
-], key="trends-view")
-
-if view.startswith("Rank of"):
-    if not f.institutions:
-        st.caption("No institutions chosen in the sidebar, so the chart shows the top 5 of the last year.")
-    show("trends", "rank_trajectory", key="trends-traj", category=f.category, years=f.years,
-         institutions=list(f.institutions) or None)
-elif view.startswith("Biggest climbers"):
-    show("trends", "biggest_movers", key="trends-up", category=f.category, start_year=f.start, end_year=f.end,
-         direction="up", n=f.top_n)
-elif view.startswith("Biggest fallers"):
-    show("trends", "biggest_movers", key="trends-down", category=f.category, start_year=f.start, end_year=f.end,
-         direction="down", n=f.top_n)
-elif view.startswith("Average"):
-    stat = st.segmented_control("Statistic", ["mean", "median"], default="mean", key="trends-stat") or "mean"
-    show("trends", "average_score_over_time", key="trends-avg", categories=f.category, stat=stat)
-elif view.startswith("Who stayed"):
-    years = len(category_years_map()[f.category])  # this chart always uses every published year
-    min_years = st.slider("At least this many years in the top N", 1, years, min(5, years), key=f"trends-min-{years}")
-    show("trends", "consistent_top_n", key="trends-consistent", category=f.category, n=f.top_n, min_years=min_years)
-else:
-    show("trends", "top_n_race", key="trends-race", category=f.category, years=f.years, n=max(2, min(f.top_n, 20)))
+            "fallers, the average score each year, and who stayed at the top.", eyebrow="Explore · Time series")
+explore("trends", VIEWS)

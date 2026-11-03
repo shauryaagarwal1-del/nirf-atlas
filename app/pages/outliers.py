@@ -1,51 +1,31 @@
-"""Outliers: institutions that break the pattern (engine: core/engines/outliers.py)."""
+"""Outliers: institutions that break the pattern (engine: core/engines/outliers.py).
 
-import streamlit as st
+Every outliers function is one entry of "What do you want to see?", with controls for all of its
+parameters (app/explorer.py).
+"""
 
-from app.components import page_header, show, year_select
-from app.filters import current, parameters_for
-from core.data import LABELS
+from app.components import page_header
+from app.explorer import CATEGORY, SCOPE, YEAR, Z_THRESHOLD, C, View, explore, how_many, param
 
-f = current()
+
+def labels(default: int) -> C:
+    return C("choice", "max_labels", "Names shown on the chart", list(range(0, 21)), default, widget="slider")
+
+
+VIEWS = [
+    View("A parameter unusually high for the overall score", "outliers", "research_vs_overall_outliers",
+         (CATEGORY, YEAR, param("param", "Parameter", "rpc"), Z_THRESHOLD, SCOPE)),
+    View("Research much stronger than teaching", "outliers", "research_over_teaching",
+         (CATEGORY, YEAR, how_many("n", "How many institutions", (5, 10, 15, 20, 25, 30)), SCOPE)),
+    View("Unusually large year-to-year score changes", "outliers", "unusual_score_jumps",
+         (CATEGORY, Z_THRESHOLD, labels(12), SCOPE)),
+    View("Strong parameter, relatively poor rank", "outliers", "strong_param_poor_rank",
+         (CATEGORY, YEAR, param("param", "Parameter", "go"), labels(10), SCOPE)),
+    View("Unusually volatile ranks compared with peers", "outliers", "volatility_vs_peers",
+         (CATEGORY, C("choice", "min_years", "Ranked in at least … years", "years2", 4), SCOPE)),
+]
+
 page_header("Outliers", "Institutions that break the pattern: a parameter far above what the overall score "
             "predicts, unusual year-to-year jumps, strong parameters with weak ranks, and unstable ranks.",
-            eyebrow="Explore · Outliers & gaps", filters=f, show=("category", "years", "top_n"))
-
-view = st.selectbox("What do you want to see?", [
-    "A parameter unusually high for the overall score",
-    "Research much stronger than teaching",
-    "Unusually large year-to-year score changes",
-    "Strong parameter, relatively poor rank",
-    "Unusually volatile ranks compared with peers",
-], key="out-view")
-params = parameters_for(f.category) or ["rpc"]
-
-
-def pick(label, default, key):
-    return st.selectbox(label, params, index=params.index(default) if default in params else 0,
-                        format_func=LABELS.get, key=f"{key}-{f.category}")
-
-
-if view.startswith("A parameter"):
-    c1, c2, _ = st.columns([1, 1, 2])
-    with c1:
-        p = pick("Parameter", "rpc", "out-p1")
-    with c2:
-        year = year_select(f, key="out-year1")
-    show("outliers", "research_vs_overall_outliers", key="out-resid", year=year, category=f.category, param=p)
-elif view.startswith("Research much"):
-    c1, _ = st.columns([1, 3])
-    with c1:
-        year = year_select(f, key="out-year2")
-    show("outliers", "research_over_teaching", key="out-rvt", year=year, category=f.category, n=max(f.top_n, 5))
-elif view.startswith("Unusually large"):
-    show("outliers", "unusual_score_jumps", key="out-jumps", category=f.category)
-elif view.startswith("Strong parameter"):
-    c1, c2, _ = st.columns([1, 1, 2])
-    with c1:
-        p = pick("Parameter", "go", "out-p2")
-    with c2:
-        year = year_select(f, key="out-year3")
-    show("outliers", "strong_param_poor_rank", key="out-strong", param=p, year=year, category=f.category)
-else:
-    show("outliers", "volatility_vs_peers", key="out-vol", category=f.category)
+            eyebrow="Explore · Outliers & gaps")
+explore("outliers", VIEWS)

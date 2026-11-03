@@ -4,8 +4,9 @@ Pages stay short because they only choose WHAT to show; this module decides HOW 
   * page_header()  the title block at the top of each page, with the active global filters as chips;
   * chart_card()   one ChartResult as a card: the chart, the insight in a highlighted callout,
                    "How we calculated this" (the method) and "See the data" (table + CSV download);
-  * show()         runs an engine function (cached) and draws its chart card, or a friendly empty
-                   state when the filters give no rows or the engine explains why it cannot answer;
+  * show()         runs an engine function (cached, optionally for chosen states only) and draws its
+                   chart card, or a friendly empty state when the filters give no rows or the engine
+                   explains why it cannot answer;
   * kpi_cards(), empty_state(), section_title(), nav_cards() for the home and reference pages.
 The look itself is in assets/style.css (+ style-dark.css) and the chart template in core/theme.py.
 """
@@ -13,7 +14,6 @@ The look itself is in assets/style.css (+ style-dark.css) and the chart template
 from __future__ import annotations
 
 import html
-import importlib
 import re
 from pathlib import Path
 
@@ -22,6 +22,7 @@ import streamlit as st
 
 from core.data import NirfInputError, SHORT
 from core.result import ChartResult
+from core.runner import run
 from core.theme import dark_variant
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
@@ -107,15 +108,16 @@ def empty_state(message: str, title: str = "Nothing to show for this selection",
 # ---------- running engines ----------
 
 @st.cache_data(show_spinner=False, max_entries=512)
-def run_engine(engine: str, function: str, params: dict) -> tuple[ChartResult | None, str | None]:
-    """Call core.engines.<engine>.<function>(**params), cached per parameter set.
+def run_engine(engine: str, function: str, params: dict, states: tuple[str, ...] | None = None
+               ) -> tuple[ChartResult | None, str | None]:
+    """Call core.engines.<engine>.<function>(**params), cached per parameter set (core/runner.py).
 
-    Returns (result, None), or (None, message) when the engine explains that the selection cannot be
-    answered (NirfInputError); the message is written for the dashboard user.
+    states: only institutions in these states are analysed. Returns (result, None), or (None, message)
+    when the engine explains that the selection cannot be answered (NirfInputError); the message is
+    written for the dashboard user.
     """
-    fn = getattr(importlib.import_module(f"core.engines.{engine}"), function)
     try:
-        return fn(**params), None
+        return run(engine, function, params, states=list(states) if states else None), None
     except NirfInputError as e:
         return None, str(e)
 
@@ -155,10 +157,14 @@ def _display_table(table: pd.DataFrame) -> pd.DataFrame:
     return table.rename(columns=names)
 
 
-def show(engine: str, function: str, key: str, why: str | None = None, **params) -> ChartResult | None:
-    """Run an engine function with these parameters and draw its chart card (or a friendly empty state)."""
+def show(engine: str, function: str, key: str, why: str | None = None, scope=None,
+         **params) -> ChartResult | None:
+    """Run an engine function with these parameters and draw its chart card (or a friendly empty state).
+
+    scope: limit the analysis to institutions in these states (None = all of India).
+    """
     with st.spinner("Drawing the chart…"):
-        result, error = run_engine(engine, function, params)
+        result, error = run_engine(engine, function, params, tuple(scope) if scope else None)
     if error:
         with st.container(border=True, key=f"card-{key}"):
             empty_state(error, title="This selection has no answer")

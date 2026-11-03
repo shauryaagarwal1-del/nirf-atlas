@@ -63,6 +63,11 @@ VARIANTS = [
     ("distribution.dispersion_by_year(sd)", lambda: distribution.dispersion_by_year(view="sd")),
     ("distribution.parameter_variability(box)", lambda: distribution.parameter_variability(view="box")),
     ("mobility.band_retention(by_band)", lambda: mobility.band_retention(by_band=True)),
+    ("bivariate.scatter_relation(categories pooled)",
+     lambda: bivariate.scatter_relation("tlr", "pr", year=2024, category=["Engineering", "Management"],
+                                        color_by="category")),
+    ("trends.parameter_trends(Research)",
+     lambda: trends.parameter_trends("IISc", category="Research Institutions")),
 ]
 
 
@@ -75,7 +80,7 @@ def test_every_requested_function_exists():
     names = {f"{e}.{n}" for e, n, _ in FUNCTIONS}
     expected = {
         "trends.rank_trajectory", "trends.biggest_movers", "trends.average_score_over_time",
-        "trends.consistent_top_n",
+        "trends.consistent_top_n", "trends.parameter_trends",
         "geography.state_counts", "geography.state_share_over_time", "geography.state_representation_change",
         "geography.compare_states", "geography.new_entrants_by_state",
         "univariate.score_distribution", "univariate.rank_distribution", "univariate.summary_stats",
@@ -516,3 +521,53 @@ def test_volatility_vs_peers_uses_box_plot_rule():
     t = outliers.volatility_vs_peers("Overall").table
     assert (t["unusual"] == (t["rank_sd"] > t["peer_fence_sd"])).all()
     assert (t["years"] >= 4).all()
+
+
+# ---------- Phase 10 additions ----------
+
+def test_parameter_trends_matches_the_master_table(m):
+    r = trends.parameter_trends("IIT Madras", category="Overall")
+    key = find_institution("IIT Madras")
+    rows = m[m["institution_key"].eq(key) & m["category_std"].eq("Overall")].sort_values("year")
+    assert r.table["year"].tolist() == rows["year"].tolist()
+    assert np.allclose(r.table["tlr"], rows["tlr"]) and np.allclose(r.table["score"], rows["score"])
+    assert len(r.fig.data) == 6                                   # five parameters + the overall score
+    gain = rows["pr"].iloc[-1] - rows["pr"].iloc[0]
+    assert f"{abs(gain):.1f}" in r.insight
+
+
+def test_parameter_trends_friendly_errors():
+    with pytest.raises(NirfInputError, match="not ranked in Law"):
+        trends.parameter_trends("IIT Madras", category="Law")
+    with pytest.raises(NirfInputError, match="no parameter scores"):
+        trends.parameter_trends(find_innovation_institution(), category="Innovation")
+
+
+def find_innovation_institution() -> str:
+    df = filter_df(load_master(), categories="Innovation")
+    return df["institution_key"].iloc[0]
+
+
+def test_scatter_rank_axis_keeps_both_rank_columns_apart():
+    r = bivariate.scatter_relation(x="rank", y="score")
+    assert len(set(r.table.columns)) == len(r.table.columns)       # no duplicate 'rank' column
+    assert {"published_rank", "rank"} <= set(r.table.columns)
+    assert r.table.attrs["stats"]["pearson_r"] < 0                  # higher score, better (smaller) rank
+
+
+def test_scatter_top_n_keeps_only_certain_top_ranks(m):
+    r = bivariate.scatter_relation(x="go", y="score", year=2025, category="Overall", top_n=50)
+    expected = filter_df(m, categories="Overall", years=2025, rank_max=50)
+    expected = expected[expected["go"].notna() & expected["score"].notna()]
+    assert r.table.attrs["stats"]["n"] == len(expected)
+    assert "top 50" in r.insight
+
+
+def test_scatter_pooled_categories_note_and_counts(m):
+    r = bivariate.scatter_relation("tlr", "pr", year=2024, category=["Engineering", "Management"],
+                                   color_by="category")
+    rows = filter_df(m, categories=["Engineering", "Management"], years=2024)
+    assert len(r.table) == int((rows["tlr"].notna() & rows["pr"].notna()).sum())
+    assert set(r.table["category"]) == {"Engineering", "Management"}
+    notes = " ".join(a.text for a in r.fig.layout.annotations)
+    assert "comparable only within a category" in notes
