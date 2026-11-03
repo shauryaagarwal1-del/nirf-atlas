@@ -1,11 +1,15 @@
 """Geography engine: where the ranked institutions are and how that changes (Annexure A section 2, Q2.1-Q2.5).
 
 Functions
-  state_counts()                 institutions per state in the top N of one year (horizontal bar)
-  state_share_over_time()        each state's share of the top N, year by year (stacked area)
-  state_representation_change()  change in a state's top-N count between two years (diverging bar)
-  compare_states()               rank distributions of chosen states per year (box + median line)
-  new_entrants_by_state()        institutions appearing for the first time, by state and year (stacked bar)
+  state_counts()                 institutions per state in the top N of one year (ranked horizontal bar chart)
+  state_share_over_time()        each state's share of the top N, year by year (multi-series line chart)
+  state_representation_change()  change in a state's top-N count between two years (ranked horizontal bar
+                                 chart, bars left of zero = lost places)
+  compare_states()               rank distributions of chosen states per year (box-and-whisker plot + a thin
+                                 line through the yearly medians)
+  new_entrants_by_state()        institutions appearing for the first time, by state and year (stacked bar chart)
+
+Every chart type is one of the types listed in docs/allowed_charts.md.
 
 "In the top N" means the rank is certainly N or better: an exact rank <= N, or a NIRF band whose
 worst rank is <= N (a 76-100 row is in the top 100; a 101-150 row is not). States are the official
@@ -24,7 +28,7 @@ from core.result import ChartResult
 from core.stats import signed
 from core.theme import CATEGORICAL, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_blues
 
-MAX_AREAS = 7          # states drawn in their own colour; the rest are summed as "Other states"
+MAX_LINES = 8          # states drawn as their own line; the rest are summed as "Other states"
 MAX_STATES = 8
 
 
@@ -101,7 +105,7 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
               f"better (exact rank ≤ {top_n}, or a NIRF band ending at or before {top_n}). We count them per "
               f"state (official state names after cleaning) and sort from most to fewest. Share = state count / "
               f"{len(top)} × 100.")
-    return ChartResult(fig, table, insight, method, "bar")
+    return ChartResult(fig, table, insight, method, "bar chart")
 
 
 def _join(names) -> str:
@@ -122,8 +126,9 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
 
     Definition: a state's share in a year = its institutions in the top N / all institutions in the
     top N that year x 100 (so the shares of a year add up to 100%).
-    Method: compute every state's share per year; draw the 7 states with the most top-N places over
-    all years in their own colour and add the rest together as "Other states" (stacked area).
+    Method: compute every state's share per year; draw the 8 states with the most top-N places over
+    all years as their own line and add the rest together as one "Other states" line (multi-series
+    line chart: one line with markers per state, so each state's rise or fall can be read directly).
     """
     df = load_master()
     category = check_category(category, df)
@@ -133,21 +138,24 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
     shares = counts.div(counts.sum(axis=1), axis=0) * 100
 
     order = counts.sum().sort_values(ascending=False).index.tolist()
-    main = order[:MAX_AREAS]
+    main = order[:MAX_LINES]
     plot = shares[main].copy()
     plot_counts = counts[main].copy()
-    if len(order) > MAX_AREAS:
-        plot["Other states"] = shares[order[MAX_AREAS:]].sum(axis=1)
-        plot_counts["Other states"] = counts[order[MAX_AREAS:]].sum(axis=1)
+    if len(order) > MAX_LINES:
+        plot["Other states"] = shares[order[MAX_LINES:]].sum(axis=1)
+        plot_counts["Other states"] = counts[order[MAX_LINES:]].sum(axis=1)
     colors = color_map(list(plot.columns), other_label="Other states")
 
     fig = go.Figure()
     for s in plot.columns:
+        other = s == "Other states"
         fig.add_trace(go.Scatter(
-            x=plot.index, y=plot[s], name=s, mode="lines", stackgroup="one", line=dict(width=0.8, color=colors[s]),
-            fillcolor=colors[s], customdata=plot_counts[s],
+            x=plot.index, y=plot[s], name=s, mode="lines+markers",
+            line=dict(color=colors[s], dash="dot" if other else "solid"), marker=dict(color=colors[s]),
+            customdata=plot_counts[s],
             hovertemplate=f"<b>{s}</b> %{{x}}<br>%{{y:.1f}}% of the top {top_n} (%{{customdata}} institutions)<extra></extra>"))
-    fig.update_yaxes(title_text=f"Share of the {category} top {top_n} (%)", range=[0, 100], ticksuffix="%")
+    fig.update_yaxes(title_text=f"Share of the {category} top {top_n} (%)", range=[0, plot.max().max() * 1.08],
+                     ticksuffix="%")
     fig.update_xaxes(title_text="Year", dtick=1)
     fig.update_layout(hovermode="x unified")
 
@@ -161,18 +169,23 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
                f"{shares.at[z, gain]:.0f}% in {z} (the largest gain), while {loss} fell from "
                f"{shares.at[a, loss]:.0f}% to {shares.at[z, loss]:.0f}%; {leader} holds the largest share in {z} "
                f"({shares.at[z, leader]:.0f}%).")
+    hidden = [s for s in dict.fromkeys([gain, loss]) if s not in main]
+    if hidden:
+        title = title[:-1] + "; inside 'Other states')" if gain in hidden else title
+        insight += f" {_join(hidden)} {'is' if len(hidden) == 1 else 'are'} part of the 'Other states' line."
     table = shares.round(1).stack().rename("share_pct").reset_index()
     table["institutions"] = counts.stack().values
     table = table[table["institutions"].gt(0)].sort_values(["year", "share_pct"], ascending=[True, False])
     note = _list_note(cat, top_n, years)
-    finish(fig, title, f"{category} ranking {fmt_years(years)} · top {len(main)} states shown separately",
-           note=note, legend_title="State")
+    finish(fig, title, f"{category} ranking {fmt_years(years)} · one line per state (top {len(main)} states "
+           f"by top-{top_n} places; the rest summed as 'Other states')", note=note, legend_title="State")
     method = (f"For each year we count the institutions of every state that are certainly in the {category} top "
               f"{top_n}, and divide by the total for that year (× 100), so each year's shares add up to 100%. "
-              f"The {len(main)} states with the most top-{top_n} places over all years get their own colour; the "
-              f"other {max(len(order) - MAX_AREAS, 0)} states are added together as 'Other states' so the chart "
-              f"stays readable. A stacked area shows both each state's share and how the whole mix shifts.")
-    return ChartResult(fig, table.reset_index(drop=True), insight, method, "area")
+              f"The {len(main)} states with the most top-{top_n} places over all years get their own line; the "
+              f"other {max(len(order) - MAX_LINES, 0)} states are added together as 'Other states' (dotted grey "
+              f"line) so the chart stays readable. A multi-series line chart puts every state on the same 0% "
+              f"baseline, so each state's rise or fall can be read and compared directly.")
+    return ChartResult(fig, table.reset_index(drop=True), insight, method, "multi-series line chart")
 
 
 def state_representation_change(category: str = "Overall", start_year: int | None = None,
@@ -246,7 +259,7 @@ def state_representation_change(category: str = "Overall", start_year: int | Non
               f"top {top_n}. Change = count in {end_year} − count in {start_year}: positive means the state "
               f"gained places. States with no change are not drawn but are listed in the table. Because the top "
               f"{top_n} always has the same number of places, one state's gain is another state's loss.")
-    return ChartResult(fig, table, insight, method, "bar")
+    return ChartResult(fig, table, insight, method, "bar chart")
 
 
 def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall", years=None) -> ChartResult:
@@ -329,7 +342,7 @@ def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
               f"and the average number of ranked institutions per year, because a state with many institutions "
               f"naturally also has more of them further down the list. Band-only positions "
               f"({int(pooled['band_only_rows'].sum())} rows) have no exact rank and are left out.")
-    return ChartResult(fig, table, insight, method, "box")
+    return ChartResult(fig, table, insight, method, "box-and-whisker plot")
 
 
 def new_entrants_by_state(category: str = "Overall", years=None) -> ChartResult:
@@ -392,4 +405,4 @@ def new_entrants_by_state(category: str = "Overall", years=None) -> ChartResult:
               f"'new' in {available[0]}, the category's first year. We count new entrants per state and year, "
               f"sort states by their total, and split each bar by year. Years in which NIRF lengthened the list "
               f"(e.g. more ranks or bands published) naturally bring more new entrants.")
-    return ChartResult(fig, table, insight, method, "bar")
+    return ChartResult(fig, table, insight, method, "stacked bar chart")

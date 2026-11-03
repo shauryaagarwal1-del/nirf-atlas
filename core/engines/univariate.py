@@ -1,11 +1,14 @@
 """Univariate engine: one variable at a time (Annexure A section 3, Q3.1-Q3.5).
 
 Functions
-  score_distribution()  shape of the overall scores in one year (histogram + mean and median lines)
-  rank_distribution()   how many institutions sit in each rank band (bar, exact vs band-only)
-  summary_stats()       mean, median, min, max, SD, quartiles of the scores (table + box plot)
-  quartile_shares()     % of institutions in each score quartile, two definitions (100% bar)
-  spread_by_category()  score spread of every category in one year (box plot per category)
+  score_distribution()  shape of the overall scores in one year (histogram with density curve (KDE),
+                        mean and median lines)
+  rank_distribution()   how many institutions sit in each rank band (stacked bar chart, exact vs band-only)
+  summary_stats()       mean, median, min, max, SD, quartiles of the scores (table + box-and-whisker plot)
+  quartile_shares()     % of institutions in each score quartile, two definitions (100% stacked bar chart)
+  spread_by_category()  score spread of every category in one year (box-and-whisker plot per category)
+
+Every chart type is one of the types listed in docs/allowed_charts.md.
 
 Scores exist only for institutions with an exact rank: NIRF does not publish scores for positions
 it shows only as bands (e.g. 101-150), and publishes no scores at all for Innovation, SDG, Open
@@ -17,6 +20,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from scipy import stats
 
 from core.data import (BAND_ORDER, NirfInputError, category_years, check_category, check_year, filter_df,
                        load_master, short_name)
@@ -42,9 +46,12 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
     """Answers questions like: "What is the distribution of NIRF scores for 2025?" (Q3.1)
 
     Definition: the overall scores of all institutions with a published score in that category-year.
-    Method: histogram (bars = how many institutions fall in each score interval), with vertical lines
-    at the mean (sum / count) and the median (middle value). If the mean is clearly above the
-    median, a few very high scores pull it up: the distribution is right-skewed.
+    Method: histogram (bars = how many institutions fall in each equal-width score interval) with a
+    density curve on top: a kernel density estimate (KDE), i.e. a smooth version of the histogram
+    made by placing a small bell curve on every score and adding them up (bell width by Scott's
+    rule), scaled to the same "institutions per interval" units as the bars. Vertical lines mark the
+    mean (sum / count) and the median (middle value). If the mean is clearly above the median, a few
+    very high scores pull it up: the distribution is right-skewed.
     """
     scored, category, year = _scored(category, year)
     s = describe(scored["score"])
@@ -53,14 +60,23 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
 
     fig = go.Figure(go.Histogram(
         x=scored["score"], xbins=dict(start=start, end=s["max"] + width, size=width), marker_color=CATEGORICAL[0],
-        name="Institutions", hovertemplate="Score %{x}<br>%{y} institutions<extra></extra>"))
+        opacity=0.75, name="Institutions per interval",
+        hovertemplate="Score %{x}<br>%{y} institutions<extra></extra>"))
+    if s["n"] >= 3 and s["std"] > 0:
+        kde = stats.gaussian_kde(scored["score"].astype(float))           # bandwidth: Scott's rule
+        bw = float(np.sqrt(kde.covariance[0, 0]))                         # width (SD) of each bell curve
+        grid = np.linspace(s["min"] - 3 * bw, s["max"] + 3 * bw, 300)     # 3 bell widths: curve fades to ~0
+        fig.add_trace(go.Scatter(
+            x=grid, y=kde(grid) * s["n"] * width, mode="lines", name="Density curve (KDE)",
+            line=dict(color=INK_SECONDARY, width=2.5),
+            hovertemplate="Score %{x:.1f}<br>Smoothed: %{y:.1f} institutions per interval<extra></extra>"))
     for value, label, color, pos in ((s["mean"], "Mean", INK, "top right"),
                                      (s["median"], "Median", CATEGORICAL[1], "top left")):
         fig.add_vline(x=value, line=dict(color=color, width=2), annotation_text=f"{label} {value:.1f}",
                       annotation_position=pos, annotation_font=dict(color=color, size=12))
     fig.update_xaxes(title_text="Overall score (0-100)")
     fig.update_yaxes(title_text="Number of institutions")
-    fig.update_layout(bargap=0.04, showlegend=False)
+    fig.update_layout(bargap=0.04, legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
 
     gap = s["mean"] - s["median"]
     shape = ("right-skewed: a few high scorers pull the mean above the median" if gap > 0.5 and s["skew"] > 0.3 else
@@ -71,15 +87,20 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
                f"is {s['mean']:.1f} and the median {s['median']:.1f}, so the distribution is {shape} "
                f"(skewness {s['skew']:.2f}).")
     finish(fig, title, f"{category} ranking {year} · {s['n']} institutions with a published score · "
-           f"bars {width:g} points wide")
+           f"bars {width:g} points wide · curve = smoothed shape (KDE)", legend_title="")
     method = (f"We take every {category} institution with a published overall score in {year} ({s['n']}) and count "
-              f"how many fall into each {width:g}-point score interval (histogram). The black line is the mean (sum of "
-              f"scores / count), the orange line the median (the middle score after sorting). Skewness measures "
-              f"lopsidedness: positive = a long tail of high scores. NIRF publishes scores only for exact ranks, so "
-              f"band-only institutions are not included.")
+              f"how many fall into each {width:g}-point score interval (histogram). The grey curve is a kernel "
+              f"density estimate (KDE): a small bell curve is placed on every institution's score and they are added "
+              f"up, giving a smooth outline of the histogram that does not depend on where the bar edges fall (bell "
+              f"width chosen by Scott's rule; the curve is multiplied by {s['n']} × {width:g} so it is in the same "
+              f"'institutions per interval' units as the bars). Because each bell has a width, the curve runs a "
+              f"little beyond the lowest and highest score; it shows shape, not extra institutions. The black line is the mean (sum of scores / count), "
+              f"the orange line the median (the middle score after sorting). Skewness measures lopsidedness: "
+              f"positive = a long tail of high scores. NIRF publishes scores only for exact ranks, so band-only "
+              f"institutions are not included.")
     table = (scored[["canonical_name", "state", "rank_raw", "score"]].sort_values("score", ascending=False)
              .rename(columns={"canonical_name": "institution", "rank_raw": "rank"}).reset_index(drop=True))
-    return ChartResult(fig, table, insight, method, "histogram")
+    return ChartResult(fig, table, insight, method, "histogram with density curve")
 
 
 def rank_distribution(year: int | None = None, category: str = "Overall") -> ChartResult:
@@ -138,7 +159,7 @@ def rank_distribution(year: int | None = None, category: str = "Overall") -> Cha
               f"reflects the band's width and the length of the list; the hover gives institutions per 10 positions.")
     table = counts.assign(total=total, band_width=width).reset_index().rename(columns={"rank_band": "rank_band"})
     table.columns.name = None
-    return ChartResult(fig, table, insight, method, "bar")
+    return ChartResult(fig, table, insight, method, "stacked bar chart")
 
 
 def summary_stats(year: int | None = None, category: str = "Overall") -> ChartResult:
@@ -189,7 +210,7 @@ def summary_stats(year: int | None = None, category: str = "Overall") -> ChartRe
               f"deviation (sample, divide by n−1) = typical distance from the mean; Q1 and Q3 = the scores below "
               f"which 25% and 75% of institutions lie; IQR = Q3 − Q1. The box plot shows the same numbers: "
               f"the box spans Q1-Q3, the line inside is the median, the diamond marks the mean ± 1 SD.")
-    return ChartResult(fig, table, insight, method, "box")
+    return ChartResult(fig, table, insight, method, "box-and-whisker plot")
 
 
 def quartile_shares(year: int | None = None, category: str = "Overall", mode: str = "score_range") -> ChartResult:
@@ -258,7 +279,7 @@ def quartile_shares(year: int | None = None, category: str = "Overall", mode: st
               f"so the useful information is the cut-point scores. This chart uses the "
               f"{'score-range' if mode == 'score_range' else 'statistical'} definition; share = group count / "
               f"{s['n']} × 100.")
-    return ChartResult(fig, table, insight, method, "bar")
+    return ChartResult(fig, table, insight, method, "stacked bar chart")
 
 
 def spread_by_category(year: int | None = None) -> ChartResult:
@@ -311,4 +332,4 @@ def spread_by_category(year: int | None = None) -> ChartResult:
               f"(Q3 − Q1) and the standard deviation. Each category has its own parameter weights, so we compare "
               f"how spread out scores are, not which category is 'better'. Categories without published scores: "
               f"{', '.join(no_scores) if no_scores else 'none'}.")
-    return ChartResult(fig, table.reset_index(), insight, method, "box")
+    return ChartResult(fig, table.reset_index(), insight, method, "box-and-whisker plot")

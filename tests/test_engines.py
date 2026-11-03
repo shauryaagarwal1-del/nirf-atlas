@@ -1,16 +1,20 @@
 """Engine tests (Phase 6): every analysis function runs on the real master table and answers correctly.
 
-Two kinds of checks:
+Three kinds of checks:
   1. Every public engine function, called with its defaults, returns a complete ChartResult: a Plotly
      figure with data, a title and the NIRF source note, a non-empty table, an insight, a method
      and a chart type.
-  2. Spot checks of the numbers against an independent calculation on the master table (counts,
+  2. Every chart type an engine returns (defaults and other views) is one of the names listed in
+     docs/allowed_charts.md, the chart types taught in the course.
+  3. Spot checks of the numbers against an independent calculation on the master table (counts,
      means, correlations, improvement = old rank - new rank) and of the friendly error messages.
 
     python -m pytest tests/test_engines.py -v
 """
 
 import inspect
+import re
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -32,7 +36,27 @@ FUNCTIONS = [
     for name, fn in inspect.getmembers(module, inspect.isfunction)
     if fn.__module__ == module.__name__ and not name.startswith("_")
 ]
-CHART_TYPES = {"line", "bar", "area", "box", "heatmap", "histogram", "scatter"}
+ALLOWED_CHARTS_PATH = Path(__file__).resolve().parents[1] / "docs" / "allowed_charts.md"
+
+
+def allowed_chart_types() -> set[str]:
+    """The chart-type names in docs/allowed_charts.md: the backticked name at the start of each list item."""
+    text = ALLOWED_CHARTS_PATH.read_text(encoding="utf-8")
+    return set(re.findall(r"^- `([^`]+)`", text, flags=re.MULTILINE))
+
+
+CHART_TYPES = allowed_chart_types()
+
+# Non-default views, so the allowed-chart check also covers every chart type an engine can draw.
+VARIANTS = [
+    ("trends.rank_trajectory(one institution)", lambda: trends.rank_trajectory("IIT Madras")),
+    ("trends.average_score_over_time(show_spread)", lambda: trends.average_score_over_time(show_spread=True)),
+    ("trends.average_score_over_time(two categories)",
+     lambda: trends.average_score_over_time(["Engineering", "Management"], stat="median")),
+    ("bivariate.correlation_with_overall(bar)", lambda: bivariate.correlation_with_overall(view="bar")),
+    ("bivariate.scatter_relation(color_by)", lambda: bivariate.scatter_relation(color_by="region")),
+    ("univariate.quartile_shares(statistical)", lambda: univariate.quartile_shares(mode="statistical")),
+]
 
 
 @pytest.fixture(scope="module")
@@ -66,6 +90,42 @@ def test_defaults_return_complete_chart_result(engine, name, fn):
     assert isinstance(r.insight, str) and len(r.insight) > 20
     assert isinstance(r.method, str) and len(r.method) > 40
     assert r.chart_type in CHART_TYPES
+
+
+# ---------- allowed chart types (docs/allowed_charts.md) ----------
+
+def test_allowed_charts_file_lists_the_taught_types():
+    assert len(CHART_TYPES) == 38
+    for name in ("bar chart", "multi-series line chart", "correlogram", "histogram with density curve",
+                 "point plot with error bars", "box-and-whisker plot", "matrix heatmap", "choropleth map"):
+        assert name in CHART_TYPES
+    for banned in ("sankey", "radar", "spider", "treemap", "sunburst", "waterfall", "funnel", "slope", "dumbbell",
+                   "parallel"):
+        assert not any(banned in t.lower() for t in CHART_TYPES)
+
+
+@pytest.mark.parametrize("engine,name,fn", FUNCTIONS, ids=[f"{e}.{n}" for e, n, _ in FUNCTIONS])
+def test_default_chart_type_is_allowed(engine, name, fn):
+    r = fn()
+    assert r.chart_type in CHART_TYPES, (f"{engine}.{name} returns chart_type {r.chart_type!r}, which is not "
+                                         f"listed in docs/allowed_charts.md")
+
+
+@pytest.mark.parametrize("label,call", VARIANTS, ids=[v[0] for v in VARIANTS])
+def test_variant_chart_type_is_allowed(label, call):
+    r = call()
+    assert r.chart_type in CHART_TYPES, (f"{label} returns chart_type {r.chart_type!r}, which is not listed in "
+                                         f"docs/allowed_charts.md")
+
+
+def test_no_banned_plotly_trace_types():
+    """No engine draws a trace type that only exists for charts outside the allowed list."""
+    banned = {"sankey", "scatterpolar", "parcoords", "parcats", "treemap", "sunburst", "waterfall",
+              "funnel", "funnelarea", "icicle"}
+    for _, _, fn in FUNCTIONS:
+        assert not {t.type for t in fn().fig.data} & banned
+    for _, call in VARIANTS:
+        assert not {t.type for t in call().fig.data} & banned
 
 
 # ---------- data helpers ----------
@@ -122,6 +182,18 @@ def test_average_score_matches_direct_mean(m):
     direct = m[(m["category_std"] == "Overall") & (m["year"] == 2025)]["score"].mean()
     got = r.table.set_index("year").loc[2025, "mean"]
     assert got == pytest.approx(direct, abs=0.01)
+    # A plain line with markers: no shaded band (no fill), Q1/Q3 only in the hover.
+    assert all(t.mode == "lines+markers" and not t.fill for t in r.fig.data)
+    assert "Q1 to Q3" in r.fig.data[0].hovertemplate
+
+
+def test_average_score_point_plot_error_bars_run_from_q1_to_q3():
+    r = trends.average_score_over_time("Overall", stat="median", show_spread=True)
+    assert r.chart_type == "point plot with error bars"
+    tr, t = r.fig.data[0], r.table
+    assert tr.mode == "markers"
+    assert np.allclose(np.array(tr.y) + np.array(tr.error_y.array), t["q3"])
+    assert np.allclose(np.array(tr.y) - np.array(tr.error_y.arrayminus), t["q1"])
 
 
 def test_consistent_top_10_includes_iit_madras_every_year():
@@ -140,8 +212,13 @@ def test_state_counts_agree_with_pipeline_top100_flag(m):
 
 
 def test_state_shares_add_up_to_100():
-    t = geography.state_share_over_time("Overall", 100).table
+    r = geography.state_share_over_time("Overall", 100)
+    t = r.table
     assert np.allclose(t.groupby("year")["share_pct"].sum(), 100, atol=0.6)
+    # Multi-series line chart: top 8 states + "Other states", no stacking.
+    names = [tr.name for tr in r.fig.data]
+    assert len(names) == 9 and names[-1] == "Other states"
+    assert all(tr.mode == "lines+markers" and not tr.stackgroup for tr in r.fig.data)
 
 
 def test_representation_change_is_end_minus_start():
@@ -184,6 +261,18 @@ def test_rank_distribution_counts_every_ranked_row(m):
     assert t["total"].sum() == direct
 
 
+def test_score_distribution_has_density_curve_in_count_units(m):
+    r = univariate.score_distribution(2025, "Overall")
+    assert r.chart_type == "histogram with density curve"
+    hist, kde = r.fig.data[0], r.fig.data[1]
+    assert hist.type == "histogram" and kde.type == "scatter" and "KDE" in kde.name
+    # The scaled curve's area equals the area of the bars: n institutions x bar width.
+    n = m[(m["category_std"] == "Overall") & (m["year"] == 2025)]["score"].notna().sum()
+    area = np.trapezoid(kde.y, kde.x)
+    assert area == pytest.approx(n * hist.xbins.size, rel=0.03)
+    assert {a.text.split()[0] for a in r.fig.layout.annotations if a.text} >= {"Mean", "Median"}
+
+
 def test_categories_without_scores_are_explained():
     with pytest.raises(NirfInputError, match="no overall scores"):
         univariate.score_distribution(2025, "Innovation")
@@ -204,10 +293,35 @@ def test_scatter_rejects_parameter_not_published():
         bivariate.scatter_relation("tlr", "score", 2025, "Research Institutions")
 
 
-def test_correlation_with_overall_is_sorted():
-    t = bivariate.correlation_with_overall(2025, "Overall").table
+def test_correlation_with_overall_bar_view_is_sorted():
+    r = bivariate.correlation_with_overall(2025, "Overall", view="bar")
+    assert r.chart_type == "bar chart"
+    t = r.table
     assert t["pearson_r"].is_monotonic_decreasing
     assert set(t["parameter"]) == {"TLR", "RPC", "GO", "OI", "PR"}
+
+
+def test_correlogram_is_a_symmetric_matrix_matching_the_bars(m):
+    r = bivariate.correlation_with_overall(2025, "Overall")
+    assert r.chart_type == "correlogram"
+    t = r.table.set_index("variable")
+    names = ["Overall score", "TLR", "RPC", "GO", "OI", "PR"]
+    assert list(t.index) == names and list(t.columns) == names
+    assert np.allclose(np.diag(t.values), 1) and np.allclose(t.values, t.values.T)
+    heat = r.fig.data[0]
+    assert heat.type == "heatmap" and heat.texttemplate and heat.zmin == -1 and heat.zmax == 1
+    bars = bivariate.correlation_with_overall(2025, "Overall", view="bar").table.set_index("parameter")["pearson_r"]
+    for p in ["TLR", "RPC", "GO", "OI", "PR"]:
+        assert t.at["Overall score", p] == pytest.approx(bars[p], abs=1e-3)
+    d = m[(m["category_std"] == "Overall") & (m["year"] == 2025)][["tlr", "pr"]].dropna()
+    assert t.at["TLR", "PR"] == pytest.approx(np.corrcoef(d["tlr"], d["pr"])[0, 1], abs=1e-3)
+    with pytest.raises(NirfInputError, match="view must be"):
+        bivariate.correlation_with_overall(view="pie")
+
+
+def test_correlogram_uses_research_parameters():
+    t = bivariate.correlation_with_overall(2025, "Research Institutions").table
+    assert set(t["variable"]) == {"Overall score", "QnR", "QlR", "SFC", "OI", "PR"}
 
 
 def test_correlation_over_time_covers_every_year():

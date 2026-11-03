@@ -1,10 +1,13 @@
 """Trends engine: how ranks and scores change over the years (Annexure A section 1, Q1.1-Q1.5).
 
 Functions
-  rank_trajectory()         rank of chosen institutions year by year (line, rank 1 on top)
-  biggest_movers()          largest climbs / falls between two years (diverging bar)
-  average_score_over_time() mean or median score per year with the middle-50% band (line + band)
-  consistent_top_n()        who stayed in the top N in many years (heatmap institution x year)
+  rank_trajectory()         rank of chosen institutions year by year (multi-series line chart, rank 1 on top)
+  biggest_movers()          largest climbs / falls between two years (ranked horizontal bar chart)
+  average_score_over_time() mean or median score per year (multi-series line chart with markers, or with
+                            show_spread=True a point plot with error bars from Q1 to Q3)
+  consistent_top_n()        who stayed in the top N in many years (matrix heatmap institution x year)
+
+Every chart type is one of the types listed in docs/allowed_charts.md.
 
 Conventions: a smaller rank is better; improvement = old_rank - new_rank (positive = moved up).
 Calculations that need a rank as a number use exact ranks only (NIRF publishes some positions only
@@ -160,7 +163,8 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
               f"as a bar covering the band (we never invent a number inside it); a year without a rank is a gap. "
               f"The change in the insight is first exact rank minus last exact rank (positive = moved up). "
               f"The y-axis is reversed so that rank 1 is at the top.")
-    return ChartResult(fig, table.drop(columns="institution_key").reset_index(drop=True), insight, method, "line")
+    return ChartResult(fig, table.drop(columns="institution_key").reset_index(drop=True), insight, method,
+                       "line chart" if len(keys) == 1 else "multi-series line chart")
 
 
 def biggest_movers(category: str = "Overall", start_year: int | None = None, end_year: int | None = None,
@@ -251,16 +255,19 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
     finish(fig, title, f"{category} ranking · labels show rank {start_year} → {end_year}",
            height=max(380, 150 + 30 * len(pick)), legend_title="")
     table = pick.drop(columns="institution_key").rename(columns={"canonical_name": "full_name"})
-    return ChartResult(fig, table.iloc[::-1].reset_index(drop=True), insight, method, "bar")
+    return ChartResult(fig, table.iloc[::-1].reset_index(drop=True), insight, method, "bar chart")
 
 
-def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int | None = None) -> ChartResult:
+def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int | None = None,
+                            show_spread: bool = False) -> ChartResult:
     """Answers questions like: "How has the average NIRF score changed over time?" (Q1.4, Q6.4)
 
     Definition: for each category and year, the mean (or median) of the overall scores NIRF
-    published, and the interquartile range (IQR: from the 25th to the 75th percentile, i.e. where
-    the middle 50% of institutions lie).
-    Method: line = mean or median per year; shaded band = Q1 to Q3. Only institutions with a
+    published, and the interquartile range (IQR: from the 25th to the 75th percentile Q1-Q3, i.e.
+    where the middle 50% of institutions lie).
+    Method: one line with markers per category through the yearly mean or median (a multi-series
+    line chart; Q1, Q3 and n are in the hover). show_spread=True draws a point plot with error bars
+    instead: the point is the mean or median, the bar runs from Q1 to Q3. Only institutions with a
     published score are used (NIRF does not publish scores for band-only positions). top_n (e.g.
     100) keeps only exact ranks 1..top_n so that every year compares the same number of places.
     """
@@ -293,20 +300,26 @@ def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int
 
     colors = color_map(cats)
     fig = go.Figure()
-    for c in cats:
+    # Point plot: shift categories a little sideways so their error bars do not hide each other.
+    dodge = 0.12 if len(cats) > 1 else 0.0
+    for i, c in enumerate(cats):
         t = table[table["category"].eq(c)]
         col = colors[c]
-        rgba = f"rgba({int(col[1:3], 16)},{int(col[3:5], 16)},{int(col[5:7], 16)},0.14)"
-        fig.add_trace(go.Scatter(x=t["year"], y=t["q3"], mode="lines", line=dict(width=0), legendgroup=c,
-                                 showlegend=False, hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=t["year"], y=t["q1"], mode="lines", line=dict(width=0), fill="tonexty",
-                                 fillcolor=rgba, legendgroup=c, showlegend=False, hoverinfo="skip"))
-        fig.add_trace(go.Scatter(
-            x=t["year"], y=t[stat], name=c, mode="lines+markers", line=dict(color=col), marker=dict(color=col),
-            legendgroup=c, customdata=np.stack([t["q1"], t["q3"], t["n"], t["mean"], t["median"]], axis=1),
-            hovertemplate=(f"<b>{c}</b> %{{x}}<br>Mean %{{customdata[3]:.2f}} · median %{{customdata[4]:.2f}}"
-                           f"<br>Middle 50%: %{{customdata[0]:.2f}} to %{{customdata[1]:.2f}}"
-                           f"<br>Institutions with a score: %{{customdata[2]}}<extra></extra>")))
+        common = dict(
+            name=c, marker=dict(color=col), customdata=np.stack([t["q1"], t["q3"], t["n"], t["mean"], t["median"],
+                                                                 t["year"]], axis=1),
+            hovertemplate=(f"<b>{c}</b> %{{customdata[5]}}<br>Mean %{{customdata[3]:.2f}} · median "
+                           f"%{{customdata[4]:.2f}}<br>Middle 50% (Q1 to Q3): %{{customdata[0]:.2f}} to "
+                           f"%{{customdata[1]:.2f}}<br>Institutions with a score: %{{customdata[2]}}<extra></extra>"))
+        if show_spread:
+            offset = (i - (len(cats) - 1) / 2) * dodge
+            fig.add_trace(go.Scatter(
+                x=t["year"] + offset, y=t[stat], mode="markers",
+                error_y=dict(type="data", symmetric=False, array=(t["q3"] - t[stat]).clip(lower=0),
+                             arrayminus=(t[stat] - t["q1"]).clip(lower=0), color=col, thickness=1.5, width=5),
+                **common))
+        else:
+            fig.add_trace(go.Scatter(x=t["year"], y=t[stat], mode="lines+markers", line=dict(color=col), **common))
 
     first = cats[0]
     t = table[table["category"].eq(first)].sort_values("year")
@@ -332,18 +345,27 @@ def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int
                     "); set top_n=100 for a like-for-like comparison.")
 
     fig.update_yaxes(title_text=f"{stat.capitalize()} overall score (0-100)")
-    fig.update_xaxes(title_text="Year", dtick=1)
-    subtitle = (f"Line = {stat} score; shaded band = middle 50% of institutions (Q1 to Q3)"
-                + (f" · exact ranks 1-{top_n} only" if top_n else ""))
+    fig.update_xaxes(title_text="Year", tickmode="array", tickvals=sorted(table["year"].unique()))
+    if show_spread:
+        subtitle = f"Point = {stat} score; error bar = middle 50% of institutions (Q1 to Q3)"
+        chart = "point plot with error bars"
+    else:
+        subtitle = f"Line = {stat} score per year; hover for Q1, Q3 and the number of institutions"
+        chart = "line chart" if len(cats) == 1 else "multi-series line chart"
+    subtitle += f" · exact ranks 1-{top_n} only" if top_n else ""
     finish(fig, title, subtitle, note=CROSS_CATEGORY_NOTE if len(cats) > 1 else None, legend_title="Category")
+    shown = (f"Each point shows the {stat}; its error bar runs from Q1 to Q3 and holds the middle half of "
+             f"institutions, so a longer bar means scores are more spread out."
+             if show_spread else
+             f"One line with markers per category joins the yearly {stat}s; Q1, Q3 and the number of "
+             f"institutions are in the hover (set show_spread=True to draw Q1-Q3 as error bars).")
     method = (f"For every category and year we take all institutions with a published overall score"
               f"{f' and an exact rank of {top_n} or better' if top_n else ''}, and compute the {stat} "
               f"(mean = sum / count; median = middle value after sorting), the 25th percentile Q1 and the 75th "
-              f"percentile Q3. The line shows the {stat}; the shaded band from Q1 to Q3 holds the middle half of "
-              f"institutions, so a wider band means scores are more spread out. Scores of band-only positions are "
-              f"not published by NIRF, so they cannot be included. NIRF has adjusted some sub-metrics over the "
-              f"years, so part of a change can come from the method rather than the institutions.")
-    return ChartResult(fig, table, insight, method, "line")
+              f"percentile Q3. {shown} Scores of band-only positions are not published by NIRF, so they cannot "
+              f"be included. NIRF has adjusted some sub-metrics over the years, so part of a change can come from "
+              f"the method rather than the institutions.")
+    return ChartResult(fig, table, insight, method, chart)
 
 
 def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5) -> ChartResult:
@@ -427,5 +449,5 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     ranks = sub.reset_index().pivot(index="institution_key", columns="year", values="rank_raw").reindex(order)
     for y in years:
         table[str(y)] = ranks[y].tolist() if y in ranks else None
-    return ChartResult(fig, table, insight, method, "heatmap")
+    return ChartResult(fig, table, insight, method, "matrix heatmap")
 

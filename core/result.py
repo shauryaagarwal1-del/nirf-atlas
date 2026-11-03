@@ -19,4 +19,4 @@ class ChartResult:
     table: pd.DataFrame     # the exact rows/numbers the chart is drawn from
     insight: str            # 1-2 sentence plain-English answer, computed from the data
     method: str             # how it was calculated, in plain words (viva material)
-    chart_type: str         # e.g. "line", "bar", "box", "scatter", "heatmap"
+    chart_type: str         # a name exactly as listed in docs/allowed_charts.md, e.g. "multi-series line chart"

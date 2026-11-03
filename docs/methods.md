@@ -128,6 +128,35 @@ scores are only compared within the same category unless a visible note says oth
 - **`core/stats.py`:** summary statistics, Pearson/Spearman correlation, R², p-value and the least-squares line.
   Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 moderate, < 0.8 strong, otherwise very strong.
 
+### Chart types used (all from `docs/allowed_charts.md`)
+Every chart is one of the chart types taught in the course (`docs/allowed_charts.md`); `ChartResult.chart_type` holds
+that exact name and `tests/test_engines.py` fails if an engine returns anything else.
+
+| Function | Chart drawn | Allowed name (`chart_type`) |
+|---|---|---|
+| `trends.rank_trajectory` | one line with markers per institution, rank axis reversed; band-only years as a faint range bar | `multi-series line chart` (`line chart` for one institution) |
+| `trends.biggest_movers` | horizontal bars of improvement, sorted, blue right of zero / red left | `bar chart` (ranked, horizontal) |
+| `trends.average_score_over_time` | one line with markers per category; `show_spread=True`: point + Q1-Q3 error bar | `multi-series line chart` (`line chart` for one category) / `point plot with error bars` |
+| `trends.consistent_top_n` | institution × year grid of coloured cells, rank written in the cell | `matrix heatmap` |
+| `geography.state_counts` | horizontal bars, most to fewest | `bar chart` (ranked, horizontal) |
+| `geography.state_share_over_time` | one line per state (top 8 + "Other states") | `multi-series line chart` |
+| `geography.state_representation_change` | horizontal bars of change, sorted, blue right of zero / red left | `bar chart` (ranked, horizontal) |
+| `geography.compare_states` | box per state and year, dots = institutions, thin line through the yearly medians | `box-and-whisker plot` |
+| `geography.new_entrants_by_state` | one horizontal bar per state split by year | `stacked bar chart` |
+| `univariate.score_distribution` | histogram + KDE curve + mean/median lines | `histogram with density curve` |
+| `univariate.rank_distribution` | bar per rank band split into exact / band-only | `stacked bar chart` |
+| `univariate.summary_stats` | horizontal box with every institution as a dot, mean ± SD diamond | `box-and-whisker plot` |
+| `univariate.quartile_shares` | one 100% bar split into four score groups | `stacked bar chart` |
+| `univariate.spread_by_category` | one horizontal box per category | `box-and-whisker plot` |
+| `bivariate.scatter_relation` | one dot per institution (optionally coloured by group) + least-squares line | `scatterplot` |
+| `bivariate.correlation_with_overall` | correlation heatmap with r in each cell; `view="bar"`: ranked bars of r | `correlogram` / `bar chart` |
+| `bivariate.correlation_over_time` | two lines (Pearson r, Spearman ρ) by year | `multi-series line chart` |
+
+Notes on closest-allowed choices: the "diverging" bars of `biggest_movers` and `state_representation_change` are
+ordinary ranked horizontal bar charts whose values can be negative (bars left of zero), so no separate chart type is
+needed. The faint vertical bars in `rank_trajectory` (years where NIRF published only a band such as 101-150) are
+range marks inside the line chart, read like an error bar ("the rank is somewhere in here").
+
 ### Q1.1: How has the overall NIRF ranking of a selected institution changed from 2017 to 2025?
 - **Engine / function:** `core/engines/trends.py :: rank_trajectory()`
 - **Definition used:** the rank NIRF published for the institution in the chosen category, each year.
@@ -150,14 +179,20 @@ scores are only compared within the same category unless a visible note says oth
 - **Caveat:** the length of the exact-rank list changes (Engineering ranked 200 exactly in 2019–2022, 100 otherwise).
 
 ### Q1.4 / Q6.4: How has the average score (and its median and IQR) changed over time?
-- **Engine / function:** `trends.py :: average_score_over_time(categories, stat, top_n)`
+- **Engine / function:** `trends.py :: average_score_over_time(categories, stat, top_n, show_spread)`
 - **Definition used:** per category and year, the mean or median of the published overall scores, and Q1 to Q3.
 - **Calculation (plain words):** mean = sum / count, median = middle value; Q1 and Q3 = 25th and 75th percentiles.
   `top_n=100` keeps only exact ranks 1–100, so years with longer lists (Engineering 2019–22: 200) are comparable;
   the insight warns when the number of scored institutions changes.
-- **Chart and why:** line for the mean/median with a shaded band from Q1 to Q3: the line shows the level, the band the
-  spread of the middle half. With several categories a visible "not comparable across categories" note is added.
-- **Filters the user can change:** one or more categories, mean/median, top_n.
+- **Chart and why:** **multi-series line chart with markers**, one line per category through the yearly mean/median
+  (a single line when one category is chosen): the question is change over time, and a line is the taught chart for
+  that. Q1, Q3 and the number of institutions are in the hover. With `show_spread=True` it becomes a **point plot with
+  error bars**: the point is the mean/median and the error bar runs from Q1 to Q3 (the middle 50% of institutions),
+  so a longer bar = scores more spread out. When several categories are drawn their points are shifted slightly
+  sideways so the bars do not overlap. (Earlier version: a line with a shaded Q1-Q3 band, replaced because a shaded
+  band is not one of the taught chart types; the error bar shows the same Q1-Q3 range.) With several categories a
+  visible "not comparable across categories" note is added.
+- **Filters the user can change:** one or more categories, mean/median, top_n, show_spread.
 
 ### Q1.5: Which institutions have remained consistently in the top 10 across multiple years?
 - **Engine / function:** `trends.py :: consistent_top_n(category, n, min_years)`
@@ -179,9 +214,14 @@ scores are only compared within the same category unless a visible note says oth
 ### Q2.2: How is the geographical distribution of top-ranked institutions changing from 2017 to 2025?
 - **Engine / function:** `geography.py :: state_share_over_time(category, top_n)`
 - **Definition used:** a state's share = its top-N institutions / all top-N institutions that year × 100.
-- **Calculation (plain words):** shares per state and year (each year adds up to 100%); the 7 states with the most
-  top-N places overall get their own colour, the rest are added together as "Other states".
-- **Chart and why:** 100% stacked area: shows each state's share and how the whole mix shifts over time.
+- **Calculation (plain words):** shares per state and year (each year adds up to 100%); the 8 states with the most
+  top-N places overall get their own line, the rest are added together as one "Other states" line (dotted grey). If
+  the state with the biggest gain or loss is inside "Other states", the title/insight says so.
+- **Chart and why:** **multi-series line chart** (one line with markers per state): the question is how each state's
+  share changes over time, and with every line starting from the same 0% baseline each state's rise or fall can be
+  read and compared directly. (Earlier version: a 100% stacked area, replaced because in a stacked area only the
+  bottom layer has a flat baseline, so the middle states' changes are hard to read, and we want a chart taught by
+  name.)
 - **Filters the user can change:** category, top_n.
 
 ### Q2.3: Which states have improved their representation in the top 100 over time?
@@ -218,7 +258,14 @@ scores are only compared within the same category unless a visible note says oth
   positions, nor for Innovation, SDG, Open University and Skill University).
 - **Calculation (plain words):** count institutions per 2.5-point score interval (5 points for lists under 50); mark
   the mean and the median; skewness says whether a long tail pulls the mean away from the median.
-- **Chart and why:** histogram with mean and median lines: the classic picture of one variable's shape.
+  **Density curve (KDE, kernel density estimate):** put a small bell curve (normal curve) on every institution's
+  score and add them all up; the result is a smooth outline of the histogram. The bell width (bandwidth) follows
+  Scott's rule (≈ SD × n^(−1/5)), a standard automatic choice. The curve is multiplied by n × bar width so it is in
+  the same "institutions per interval" units as the bars (its area equals the bars' area). It runs a little beyond
+  the lowest/highest score because each bell has a width.
+- **Chart and why:** **histogram with density curve**, plus mean and median lines. The histogram is the classic picture
+  of one variable's shape; its look depends on where the bar edges fall, so the KDE curve adds the smooth shape
+  (here: one peak in the low 50s and a long right tail = right-skewed).
 - **Filters the user can change:** year, category.
 
 ### Q3.2: What is the distribution of overall ranks across all institutions?
@@ -274,12 +321,18 @@ scores are only compared within the same category unless a visible note says oth
   trend line on/off.
 
 ### Q4.3: Which NIRF parameter has the strongest correlation with the overall score?
-- **Engine / function:** `bivariate.py :: correlation_with_overall(year, category)`
-- **Calculation (plain words):** Pearson r of each published parameter with the overall score (Spearman ρ, R² and the
-  p-value in the table), sorted from strongest to weakest.
-- **Chart and why:** sorted horizontal bar of r (blue positive, red negative): ranking a handful of numbers. A high r
+- **Engine / function:** `bivariate.py :: correlation_with_overall(year, category, view)`
+- **Calculation (plain words):** Pearson r for every pair of the overall score and the published parameters (score,
+  TLR, RPC, GO, OI, PR), each pair using the institutions that have both values. For the ranked view: Pearson r of each
+  parameter with the overall score (Spearman ρ, R² and the p-value in the table), sorted from strongest to weakest.
+  The insight also names the two parameters that move together the most.
+- **Chart and why:** main view (`view="correlogram"`): **correlogram** (correlation heatmap), one cell per pair with r
+  printed in it, blue = positive, red = negative, darker = stronger, diagonal = 1, mirror image across the diagonal.
+  The "Overall score" row answers the question, and the rest of the grid adds what a bar chart cannot show: which
+  parameters rise and fall together (e.g. RPC and PR, r = 0.78 in Overall 2025). Alternative view (`view="bar"`):
+  **ranked horizontal bar chart** of r with the overall score: the quickest way to rank a handful of numbers. A high r
   means the parameter has a large weight and/or institutions differ a lot on it.
-- **Filters the user can change:** year, category (Research Institutions use QnR, QlR, SFC, OI, PR).
+- **Filters the user can change:** year, category (Research Institutions use QnR, QlR, SFC, OI, PR), view.
 
 ### Q4.5: Has the correlation between research scores and overall scores changed from 2017 to 2025?
 - **Engine / function:** `bivariate.py :: correlation_over_time(param, category)`

@@ -1,9 +1,14 @@
 """Bivariate engine: how two numbers move together (Annexure A section 4, Q4.1-Q4.5).
 
 Functions
-  scatter_relation()          any two numeric attributes: scatter, least-squares line, r, rho, R squared, p, n
-  correlation_with_overall()  correlation of each parameter with the overall score (sorted bar)
-  correlation_over_time()     correlation of one parameter with the overall score, year by year (line)
+  scatter_relation()          any two numeric attributes: scatterplot (optionally grouped by colour) with the
+                              least-squares line; r, rho, R squared, p, n
+  correlation_with_overall()  correlation of each parameter with the overall score (correlogram of score and
+                              all parameters, or view="bar": ranked bar chart of r)
+  correlation_over_time()     correlation of one parameter with the overall score, year by year (multi-series
+                              line chart: Pearson and Spearman)
+
+Every chart type is one of the types listed in docs/allowed_charts.md.
 
 Numbers available: score, the five parameters (TLR, RPC, GO, OI, PR; Research Institutions use
 QnR, QlR, SFC, OI, PR instead) and the exact rank. Only institutions with both values published
@@ -21,7 +26,7 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_years
                        filter_df, fmt_years, load_master, parameters_of)
 from core.result import ChartResult
 from core.stats import correlate, p_text, signed, strength
-from core.theme import CATEGORICAL, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_blues
+from core.theme import CATEGORICAL, DIVERGING, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_blues
 
 COLOR_BY = {"region", "state", "rank_band"}
 MAX_STATE_COLORS = 7
@@ -126,16 +131,25 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
     table = (d[["canonical_name", "state", "region", "rank_raw", "rank_band", x, y]]
              .rename(columns={"canonical_name": "institution", "rank_raw": "rank"}).reset_index(drop=True))
     table.attrs["stats"] = c
-    return ChartResult(fig, table, insight, method, "scatter")
+    return ChartResult(fig, table, insight, method, "scatterplot")
 
 
-def correlation_with_overall(year: int | None = None, category: str = "Overall") -> ChartResult:
+def correlation_with_overall(year: int | None = None, category: str = "Overall",
+                             view: str = "correlogram") -> ChartResult:
     """Answers questions like: "Which NIRF parameter has the strongest correlation with the overall score?" (Q4.3)
 
     Definition: Pearson r between each parameter and the overall score across institutions of one
-    category-year (Spearman rho and p-values in the table).
-    Method: compute r for every parameter the category publishes, sort, and draw a bar per parameter.
+    category-year (Spearman rho and p-values in the ranked table).
+    Method: compute r for every pair of the overall score and the parameters the category publishes
+    (score, TLR, RPC, GO, OI, PR; Research Institutions: QnR, QlR, SFC, OI, PR).
+      view="correlogram" (default): correlation heatmap, one cell per pair with r printed in it
+        (blue = positive, red = negative, darker = stronger). The "Overall score" row answers the
+        question; the other cells show how the parameters move with each other.
+      view="bar": ranked horizontal bar chart of each parameter's r with the overall score.
     """
+    view = str(view).lower()
+    if view not in {"correlogram", "bar"}:
+        raise NirfInputError("view must be 'correlogram' (correlation heatmap) or 'bar' (ranked bar chart of r).")
     cat, category, year = _category_year(category, year)
     if cat["score"].notna().sum() < 3:
         raise NirfInputError(f"NIRF published no overall scores for {category} {year}.")
@@ -148,6 +162,16 @@ def correlation_with_overall(year: int | None = None, category: str = "Overall")
         rows.append({"parameter": SHORT[p], "name": LABELS[p], "pearson_r": c["pearson_r"], "p_value": c["pearson_p"],
                      "spearman_rho": c["spearman_rho"], "r2": c["r2"], "n": c["n"]})
     table = pd.DataFrame(rows).sort_values("pearson_r", ascending=False).reset_index(drop=True)
+
+    top, low = table.iloc[0], table.iloc[-1]
+    title = f"{top['parameter']} tracks the overall score most closely in {category} {year} (r = {top['pearson_r']:.2f})"
+    insight = (f"In {category} {year}, {top['name']} has the strongest correlation with the overall score "
+               f"(r = {top['pearson_r']:.2f}, {p_text(top['p_value'])}), followed by {table.iloc[1]['parameter']} "
+               f"(r = {table.iloc[1]['pearson_r']:.2f}); the weakest is {low['parameter']} (r = {low['pearson_r']:.2f}).")
+    weight_note = ("Each parameter is a weighted part of the overall score; r reflects both its weight and how much "
+                   "institutions differ on it.")
+    if view == "correlogram":
+        return _correlogram(cat, params, category, year, title, insight, weight_note)
     plot = table.iloc[::-1]
 
     fig = go.Figure(go.Bar(
@@ -162,21 +186,62 @@ def correlation_with_overall(year: int | None = None, category: str = "Overall")
                      range=[lo - 0.12 if lo < 0 else 0, 1.08], zeroline=True, zerolinecolor=INK_SECONDARY)
     fig.update_yaxes(title_text=None, showgrid=False)
 
-    top, low = table.iloc[0], table.iloc[-1]
-    title = f"{top['parameter']} tracks the overall score most closely in {category} {year} (r = {top['pearson_r']:.2f})"
-    insight = (f"In {category} {year}, {top['name']} has the strongest correlation with the overall score "
-               f"(r = {top['pearson_r']:.2f}, {p_text(top['p_value'])}), followed by {table.iloc[1]['parameter']} "
-               f"(r = {table.iloc[1]['pearson_r']:.2f}); the weakest is {low['parameter']} (r = {low['pearson_r']:.2f}).")
-    finish(fig, title, f"{category} ranking {year} · {int(table['n'].max())} institutions with published scores",
-           note="Each parameter is a weighted part of the overall score; r reflects both its weight and how much "
-                "institutions differ on it.", height=420)
+    finish(fig, title, f"{category} ranking {year} · {int(table['n'].max())} institutions with published scores · "
+           f"ranked bar chart of r", note=weight_note, height=420)
     method = (f"For each parameter published for {category} in {year}, we compute the Pearson correlation r with the "
               f"overall score across all institutions that have both values. r runs from −1 to +1; the closer to "
               f"+1, the more institutions that score high on the parameter also score high overall. We also report "
               f"Spearman ρ (correlation of ranks) and the p-value. Because the overall score is a weighted sum "
               f"of the parameters, a parameter correlates strongly when it has a large weight and/or institutions "
-              f"differ a lot on it.")
-    return ChartResult(fig, table.round(4), insight, method, "bar")
+              f"differ a lot on it. The bars are sorted from the strongest to the weakest r.")
+    return ChartResult(fig, table.round(4), insight, method, "bar chart")
+
+
+def _correlogram(cat: pd.DataFrame, params: list[str], category: str, year: int, title: str, insight: str,
+                 note: str) -> ChartResult:
+    """Correlation heatmap of the overall score and every published parameter (r printed in each cell).
+
+    r for each pair uses the institutions that have both values (pairwise), exactly as correlate() does,
+    so the "Overall score" row equals the bars of the ranked view.
+    """
+    cols = ["score"] + params
+    d = cat[cols].astype("float64")
+    corr = d.corr(method="pearson")                       # pairwise: rows missing either value are skipped
+    has = d.notna().astype(int)
+    n = has.T @ has                                       # institutions with both values, per pair
+    names = [SHORT[c] for c in cols]
+
+    fig = go.Figure(go.Heatmap(
+        z=corr.values, x=names, y=names, zmin=-1, zmax=1, colorscale=DIVERGING,
+        text=corr.round(2).values, texttemplate="%{text:.2f}", textfont=dict(size=13),
+        customdata=n.values, xgap=2, ygap=2,
+        colorbar=dict(title=dict(text="Pearson r", side="right"), tickvals=[-1, -0.5, 0, 0.5, 1]),
+        hovertemplate="<b>%{y} and %{x}</b><br>Pearson r = %{z:.3f}<br>n = %{customdata} institutions<extra></extra>"))
+    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text=None)
+    fig.update_yaxes(showgrid=False, showline=False, ticks="", autorange="reversed", title_text=None)
+    fig.update_layout(margin=dict(t=130))
+
+    pairs = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1)).stack()
+    pp = pairs.drop(index=[("score", p) for p in params], errors="ignore")    # parameter-parameter pairs only
+    if len(pp):
+        (a, b), r = pp.abs().idxmax(), pp.loc[pp.abs().idxmax()]
+        insight += (f" Among the parameters themselves, {SHORT[a]} and {SHORT[b]} move together the most "
+                    f"(r = {r:.2f}).")
+    size = 140 + 62 * len(cols)
+    finish(fig, title, f"{category} ranking {year} · correlogram: Pearson r for every pair, read the "
+           f"'Overall score' row for the answer", note=note, height=max(460, size))
+    method = (f"We take the {category} institutions of {year} and compute the Pearson correlation r for every pair of "
+              f"the overall score and the {len(params)} parameters ({', '.join(SHORT[p] for p in params)}), each pair "
+              f"using the institutions that have both values. The correlogram (correlation heatmap) shows one cell per "
+              f"pair with r printed in it: blue = positive, red = negative, darker = stronger; the diagonal is 1 "
+              f"(every variable with itself) and the matrix is a mirror image across it. The 'Overall score' row "
+              f"answers the question; the other cells show which parameters rise and fall together. r runs from −1 "
+              f"to +1. Because the overall score is a weighted sum of the parameters, a parameter correlates "
+              f"strongly when it has a large weight and/or institutions differ a lot on it. view='bar' draws the "
+              f"same 'Overall score' row as a ranked bar chart.")
+    table = corr.round(4).rename(index=dict(zip(cols, names)), columns=dict(zip(cols, names)))
+    table.index.name = "variable"
+    return ChartResult(fig, table.reset_index(), insight, method, "correlogram")
 
 
 def correlation_over_time(param: str = "rpc", category: str = "Overall") -> ChartResult:
@@ -237,4 +302,4 @@ def correlation_over_time(param: str = "rpc", category: str = "Overall") -> Char
               f"ranks). One point per year; a rising line means {SHORT[param]} and the overall score move together "
               f"more closely. Differences of a few hundredths between years are within normal year-to-year "
               f"variation; NIRF also adjusts sub-metrics and the number of scored institutions over time.")
-    return ChartResult(fig, table.round(4), insight, method, "line")
+    return ChartResult(fig, table.round(4), insight, method, "multi-series line chart")
