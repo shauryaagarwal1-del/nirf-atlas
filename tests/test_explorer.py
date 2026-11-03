@@ -4,7 +4,8 @@ Checked:
   * every public engine function is offered on a page (the two-variable scatter on Relationships, the coverage
     heatmap on Data & Method, every other one as a "What do you want to see?" view);
   * each view has a control for every parameter of its engine function, and no control for anything else;
-  * in the real app (AppTest, headless), every view of every page draws one chart with no error;
+  * in the real app (AppTest, headless), every view of every page draws one chart with no error, and every
+    Geography tab (map, State vs State, new entrants) draws its charts;
   * the controls shared with the sidebar stay in sync both ways, and the state filter shows on the chart;
   * the Relationships two-variable interface shows Pearson r, Spearman rho, R squared, p and n with a
     one-line interpretation, and colour-by-category pools several categories.
@@ -19,7 +20,7 @@ import pytest
 
 from core.data import MASTER_PATH
 from core.runner import ENGINES, engine_function
-from tests.app_helpers import chart_notes, chart_titles, html_text, open_page, set_widget, widget
+from tests.app_helpers import PICKER_TAB, chart_notes, chart_titles, html_text, open_page, set_widget, widget
 
 if not MASTER_PATH.exists():
     pytest.skip("run `python -m pipeline.clean` first", allow_module_level=True)
@@ -70,7 +71,7 @@ def test_view_has_a_control_for_every_parameter(page, view):
 @pytest.mark.parametrize("page", list(PAGES))
 def test_every_view_draws_a_chart_in_the_app(page):
     prefix = PAGES[page]
-    at = open_page(f"pages/{page}.py")
+    at = open_page(f"pages/{page}.py", PICKER_TAB.get(f"pages/{page}.py"))
     picker = widget(at, "selectbox", f"x-{prefix}-view")
     for option in picker.options:
         at = set_widget(at, "selectbox", f"x-{prefix}-view", option)
@@ -133,3 +134,31 @@ def test_relationships_two_variable_interface():
     at = set_widget(at, "selectbox", "x-relationships-x", "score")
     at = set_widget(at, "selectbox", "x-relationships-y", "score")
     assert "Choose two different numbers" in html_text(at)
+
+
+@pytest.mark.parametrize("tab,charts", [("India map", 1), ("State vs State", 2), ("New entrants", 1)])
+def test_geography_tabs_draw_their_charts(tab, charts):
+    at = open_page("pages/geography.py", {"geography-tab": tab})
+    assert not at.exception, [e.value for e in at.exception]
+    assert len(at.get("plotly_chart")) == charts
+    assert "nirf-empty" not in html_text(at)
+
+
+def test_geography_map_has_a_play_button_and_a_year_slider():
+    import json
+    at = open_page("pages/geography.py", {"geography-tab": "India map"})
+    spec = json.loads(at.get("plotly_chart")[0].proto.spec)
+    assert spec["data"][0]["type"] == "choropleth"
+    assert [b["label"] for b in spec["layout"]["updatemenus"][0]["buttons"]] == ["▶ Play", "❚❚ Pause"]
+    assert [s["label"] for s in spec["layout"]["sliders"][0]["steps"]] == [str(y) for y in range(2017, 2026)]
+
+
+def test_state_vs_state_defaults_and_state_pickers():
+    at = open_page("pages/geography.py", {"geography-tab": "State vs State"})
+    assert widget(at, "selectbox", "x-geography-state_vs_state-state_a").value == "Karnataka"
+    assert widget(at, "selectbox", "x-geography-state_vs_state-state_b").value == "Tamil Nadu"
+    assert "Karnataka" in chart_titles(at)[0] and "TAMIL NADU" in html_text(at).upper()
+    at = set_widget(at, "selectbox", "x-geography-state_vs_state-state_a", "Kerala")
+    assert not at.exception and "Kerala" in " ".join(chart_titles(at))
+    at = set_widget(at, "selectbox", "x-geography-state_vs_state-state_a", "Tamil Nadu")
+    assert "two different states" in html_text(at)

@@ -259,7 +259,7 @@ def padded_range(values, pad: float = 0.06) -> tuple[float, float]:
     return lo - pad * span, hi + pad * span
 
 
-def _wrap(text: str, width: int) -> tuple[str, int]:
+def wrap_text(text: str, width: int) -> tuple[str, int]:
     """Break plain text over lines of at most `width` characters with <br>; returns (text, extra lines).
 
     The lines are balanced (about equal length), so a title never ends with a stray word on its own line.
@@ -276,8 +276,8 @@ def _wrap(text: str, width: int) -> tuple[str, int]:
 def finish(fig: go.Figure, title: str, subtitle: str | None = None, note: str | None = None,
            height: int = 520, legend_title: str | None = None) -> go.Figure:
     """Apply the template, the answer-style title (+ subtitle), legend title and the source note."""
-    title, extra = _wrap(title, TITLE_WRAP)
-    subtitle, extra_sub = _wrap(subtitle or "", SUBTITLE_WRAP)
+    title, extra = wrap_text(title, TITLE_WRAP)
+    subtitle, extra_sub = wrap_text(subtitle or "", SUBTITLE_WRAP)
     top = (fig.layout.margin.t if fig.layout.margin.t is not None else _MARGIN_TOP) + TITLE_LINE * extra         + 18 * extra_sub
     fig.update_layout(
         template="nirf", height=height + TITLE_LINE * extra + 18 * extra_sub, margin=dict(t=top),
@@ -308,9 +308,15 @@ def _dark_color(value: str) -> str:
     return value
 
 
+def for_theme(color: str, dark: bool) -> str:
+    """A palette colour as drawn in the current theme (its dark step when `dark`)."""
+    return _dark_color(color) if dark else color
+
+
 def _swap(node):
     if isinstance(node, dict):
-        return {k: _swap(v) for k, v in node.items()}
+        # A map's boundaries hold only coordinates (no colours): passed through as they are.
+        return {k: v if k == "geojson" else _swap(v) for k, v in node.items()}
     if isinstance(node, (list, tuple)):
         return [_swap(v) for v in node]
     if isinstance(node, np.ndarray) and node.dtype.kind in "OU":

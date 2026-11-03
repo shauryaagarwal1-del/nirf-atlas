@@ -23,12 +23,13 @@ import streamlit as st
 from core.data import NirfInputError, SHORT
 from core.result import ChartResult
 from core.runner import run
-from core.theme import dark_variant
+from core.theme import dark_variant, for_theme
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 
 PLOTLY_CONFIG = {
     "displaylogo": False,
+    "scrollZoom": False,          # the mouse wheel scrolls the page, never zooms a map (use the +/- buttons)
     "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d"],
     "toImageButtonOptions": {"format": "png", "scale": 2, "filename": "nirf_atlas_chart"},
 }
@@ -175,10 +176,13 @@ def show(engine: str, function: str, key: str, why: str | None = None, scope=Non
 
 # ---------- home & reference blocks ----------
 
-def kpi_cards(items: list[tuple[str, str, str]]) -> None:
-    """A row of KPI cards: (label, value, footnote)."""
-    cards = "".join(f"<div class='nirf-kpi'><div class='label'>{_esc(l)}</div><div class='value'>{_esc(v)}</div>"
-                    f"<div class='foot'>{_esc(n)}</div></div>" for l, v, n in items)
+def kpi_cards(items: list[tuple[str, str, str]], accents: list[str] | None = None) -> None:
+    """A row of KPI cards: (label, value, footnote). `accents`: one colour per card for its top bar
+    (e.g. the colour of that state's line in the chart below), switched to its dark step in dark mode."""
+    opens = ([f"<div class='nirf-kpi accent' style='--accent:{for_theme(a, is_dark())}'>" for a in accents]
+             if accents else ["<div class='nirf-kpi'>"] * len(items))
+    cards = "".join(f"{o}<div class='label'>{_esc(l)}</div><div class='value'>{_esc(v)}</div>"
+                    f"<div class='foot'>{_esc(n)}</div></div>" for (l, v, n), o in zip(items, opens))
     st.html(f"<div class='nirf-kpis'>{cards}</div>")
 
 

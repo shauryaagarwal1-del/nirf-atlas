@@ -10,11 +10,16 @@ from streamlit.testing.v1 import AppTest
 from core.data import find_institution
 
 HOME = Path(__file__).resolve().parents[1] / "app" / "Home.py"
+# Pages whose "What do you want to see?" picker sits in a tab: the session state that opens that tab.
+PICKER_TAB = {"pages/geography.py": {"geography-tab": "More views"}}
 
 
-def open_page(page: str) -> AppTest:
+def open_page(page: str, state: dict | None = None) -> AppTest:
+    """Open a page headless; `state` presets session-state values first (e.g. which tab is open)."""
     at = AppTest.from_file(str(HOME), default_timeout=180)
     at.switch_page(page)
+    for k, v in (state or {}).items():
+        at.session_state[k] = v
     return at.run()
 
 

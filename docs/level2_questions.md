@@ -6,7 +6,7 @@ the dashboard gives. Controls not listed stay at their defaults (sidebar: Overal
 `tests/test_level2.py` sets exactly these controls in the real app and checks the chart it draws.
 
 ### E01. Which states have the most Engineering institutions in the top 50 in 2019?
-- **Where:** Geography → *States with the most institutions in the top list*
+- **Where:** Geography → tab *More views* → *States with the most institutions in the top list*
 - **Controls:** Category = Engineering; Year = 2019; Top list (rank cut-off) = 50
 - **Chart:** bar chart
 - **Answer:** In 2019, Tamil Nadu has the most institutions in the Engineering top 50 (9); the top three states (Tamil Nadu 9, Uttar Pradesh 5, Maharashtra 4) hold 36% of the 50 places, spread over 19 states/UTs.

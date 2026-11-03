@@ -12,7 +12,7 @@ import pytest
 from core.builder import build_chart
 from core.data import MASTER_PATH
 from core.runner import run
-from tests.app_helpers import chart_titles, html_text, open_page, set_widget, widget
+from tests.app_helpers import PICKER_TAB, chart_titles, html_text, open_page, set_widget, widget
 from tests.level2_questions import LEVEL2
 
 if not MASTER_PATH.exists():
@@ -36,7 +36,7 @@ def test_fifteen_new_questions():
 
 @pytest.mark.parametrize("q", LEVEL2, ids=[q.id for q in LEVEL2])
 def test_question_is_answered_through_the_ui(q):
-    at = open_page(q.page)
+    at = open_page(q.page, PICKER_TAB.get(q.page))
     if q.view:
         at = set_widget(at, "selectbox", f"x-{PREFIX[q.page]}-view", q.view)
     for kind, key, value in q.widgets:

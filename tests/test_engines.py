@@ -63,6 +63,10 @@ VARIANTS = [
     ("distribution.dispersion_by_year(sd)", lambda: distribution.dispersion_by_year(view="sd")),
     ("distribution.parameter_variability(box)", lambda: distribution.parameter_variability(view="box")),
     ("mobility.band_retention(by_band)", lambda: mobility.band_retention(by_band=True)),
+    ("geography.new_entrants_by_state(stacked)", lambda: geography.new_entrants_by_state(by_year=True)),
+    ("geography.new_entrants_by_state(bars)", lambda: geography.new_entrants_by_state(by_year=False)),
+    ("geography.state_vs_state(three states, top 100)",
+     lambda: geography.state_vs_state(["Kerala", "Delhi", "Maharashtra"], "Engineering", top_n=100)),
     ("bivariate.scatter_relation(categories pooled)",
      lambda: bivariate.scatter_relation("tlr", "pr", year=2024, category=["Engineering", "Management"],
                                         color_by="category")),
@@ -82,7 +86,8 @@ def test_every_requested_function_exists():
         "trends.rank_trajectory", "trends.biggest_movers", "trends.average_score_over_time",
         "trends.consistent_top_n", "trends.parameter_trends",
         "geography.state_counts", "geography.state_share_over_time", "geography.state_representation_change",
-        "geography.compare_states", "geography.new_entrants_by_state",
+        "geography.compare_states", "geography.new_entrants_by_state", "geography.state_map",
+        "geography.state_vs_state", "geography.state_rank_boxes",
         "univariate.score_distribution", "univariate.rank_distribution", "univariate.summary_stats",
         "univariate.quartile_shares", "univariate.spread_by_category",
         "bivariate.scatter_relation", "bivariate.correlation_with_overall", "bivariate.correlation_over_time",
@@ -255,6 +260,73 @@ def test_new_entrants_total_matches_flag(m):
 def test_compare_states_rejects_unknown_state():
     with pytest.raises(NirfInputError, match="not a state"):
         geography.compare_states(["Karnataka", "Atlantis"])
+
+
+def test_state_map_counts_match_state_counts_and_zero_states_are_grey():
+    r = geography.state_map(2025, "Overall", 100)
+    bars = geography.state_counts(2025, "Overall", 100).table.set_index("state")["institutions"]
+    t = r.table[r.table["year"].eq(2025)].set_index("state")["institutions"]
+    assert t.sort_index().equals(bars.sort_index().astype(t.dtype))
+    tr = r.fig.data[0]
+    z = dict(zip(tr.locations, tr.z))
+    assert z["Tamil Nadu"] == bars["Tamil Nadu"] and z["Ladakh"] == 0 and z["Lakshadweep"] == 0
+    assert tr.colorscale[0][1] == tr.colorscale[1][1]                   # 0 has its own (grey) colour
+    assert tr.zmin == 0 and tr.zmax == r.table["institutions"].max()    # one fixed scale for every year
+
+
+def test_state_map_animates_every_year_and_opens_on_the_chosen_one():
+    r = geography.state_map(2020, "Overall", 50)
+    years = list(range(2017, 2026))
+    assert [f.name for f in r.fig.frames] == [str(y) for y in years]
+    slider = r.fig.layout.sliders[0]
+    assert slider.active == years.index(2020) and [s.label for s in slider.steps] == [str(y) for y in years]
+    assert [b.label for b in r.fig.layout.updatemenus[0].buttons] == ["▶ Play", "❚❚ Pause"]
+    assert "2020" in r.fig.layout.title.text and all(str(y) in f.layout.title.text for y, f in zip(years, r.fig.frames))
+    one = r.fig.frames[years.index(2017)].data[0]
+    direct = geography.state_counts(2017, "Overall", 50).table.set_index("state")["institutions"]
+    assert dict(zip(r.fig.data[0].locations, one.z))["Tamil Nadu"] == direct["Tamil Nadu"]
+
+
+def test_state_map_single_year_category_has_no_slider():
+    r = geography.state_map(category="SDG", top_n=10)
+    assert not r.fig.frames and not r.fig.layout.sliders
+
+
+def test_state_map_paints_both_polygons_of_the_merged_ut():
+    tr = geography.state_map(2025, "Overall", 100).fig.data[0]
+    assert {"Dadra & Nagar Haveli", "Daman & Diu"} <= set(tr.locations)
+
+
+def test_state_vs_state_matches_direct_counts_and_medians(m):
+    r = geography.state_vs_state(["Karnataka", "Tamil Nadu"], "Overall")
+    rows = m[(m["category_std"] == "Overall") & m["state"].isin(["Karnataka", "Tamil Nadu"])]
+    direct = rows.groupby(["year", "state"]).size()
+    med = rows.groupby(["year", "state"])["rank"].median()
+    t = r.table.set_index(["year", "state"])
+    assert t["institutions"].equals(direct.reindex(t.index).astype(t["institutions"].dtype))
+    assert np.allclose(t["median_rank"], med.reindex(t.index).astype(float))
+    assert r.chart_type == "vertically aligned time-series charts"
+    assert r.fig.layout.yaxis2.autorange == "reversed"                    # median rank: 1 at the top
+
+
+def test_state_vs_state_needs_two_different_states():
+    with pytest.raises(NirfInputError, match="two different states"):
+        geography.state_vs_state(["Kerala", "Kerala"])
+
+
+def test_state_rank_boxes_quartiles_match_pandas(m):
+    t = geography.state_rank_boxes(["Karnataka", "Tamil Nadu"], "Overall").table.set_index("state")
+    ranks = m[(m["category_std"] == "Overall") & m["state"].eq("Karnataka")]["rank"].dropna().astype(float)
+    assert t.at["Karnataka", "median_rank"] == round(ranks.median(), 1)
+    assert t.at["Karnataka", "q1"] == round(ranks.quantile(0.25), 1)
+    assert t.at["Karnataka", "institution_years"] == len(ranks)
+
+
+def test_new_entrants_plain_bars_match_the_stacked_totals():
+    stacked = geography.new_entrants_by_state("Overall").table.set_index("state")["total"]
+    bars = geography.new_entrants_by_state("Overall", by_year=False)
+    assert bars.chart_type == "bar chart" and len(bars.fig.data) == 1
+    assert dict(zip(bars.fig.data[0].y, bars.fig.data[0].x)) == stacked.to_dict()
 
 
 # ---------- univariate ----------

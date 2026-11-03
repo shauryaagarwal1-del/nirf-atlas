@@ -41,8 +41,9 @@ class C:
     """One control. `kind` says which widget; `name` is the engine parameter it sets.
 
     kinds: category, categories, years, period, year, institutions, institution (exactly one), states,
-    scope (state filter for the whole analysis), param (a parameter picker), choice (any other value:
-    top N, threshold, variant ...).
+    state_pair (two single-state pickers, "State A" and "State B", that together set `states`), scope (state
+    filter for the whole analysis), param (a parameter picker), choice (any other value: top N, threshold,
+    variant ...).
     """
     kind: str
     name: str | None = None
@@ -215,6 +216,14 @@ def draw(c: C, ctx: Ctx) -> dict:
                         options=state_options(), max_selections=8, placeholder="Empty = Karnataka and Tamil Nadu")
         return {"states": value or list(c.default)}
 
+    if c.kind == "state":                                 # one half of a state_pair
+        opts = state_options()
+        key = ctx.key(c.name)
+        keep_valid(key, opts)
+        value = st.selectbox(c.label, opts, index=opts.index(c.default) if c.default in opts else 0, key=key,
+                             help=c.help)
+        return {"__pair": value}
+
     if c.kind == "scope":
         value = _synced(st.multiselect, f"x-{ctx.page}-states", "f_states", list(f.states), default=list(f.states),
                         label="Only states",
@@ -253,16 +262,35 @@ def _leader(category: str) -> str:
     return rows[rows["year"].eq(rows["year"].max())].sort_values("rank")["institution_key"].iloc[0]
 
 
-def controls(page: str, view: View) -> tuple[dict, list[str] | None]:
-    """Draw a view's controls in rows of four; returns (engine parameters, state filter or None)."""
+def _expand(controls_: tuple[C, ...]) -> list[C]:
+    """A state_pair becomes its two single-state pickers (each takes one column)."""
+    out = []
+    for c in controls_:
+        if c.kind == "state_pair":
+            a, b = c.default or ("Karnataka", "Tamil Nadu")
+            out += [C("state", "state_a", "State A", default=a, help=c.help),
+                    C("state", "state_b", "State B", default=b, help=c.help)]
+        else:
+            out.append(c)
+    return out
+
+
+def controls(page: str, view: View, per_row: int = PER_ROW) -> tuple[dict, list[str] | None]:
+    """Draw a view's controls in rows of `per_row`; returns (engine parameters, state filter or None)."""
     ctx = Ctx(page, view)
     params: dict = dict(view.fixed)
-    items = list(view.controls)
-    for row in [items[i:i + PER_ROW] for i in range(0, len(items), PER_ROW)]:
-        cols = st.columns(PER_ROW, gap="small")
+    pair: list[str] = []
+    items = _expand(view.controls)
+    for row in [items[i:i + per_row] for i in range(0, len(items), per_row)]:
+        cols = st.columns(per_row, gap="small")
         for col, c in zip(cols, row):
             with col:
-                params.update(draw(c, ctx))
+                out = draw(c, ctx)
+                if "__pair" in out:
+                    pair.append(out.pop("__pair"))
+                params.update(out)
+    if pair:
+        params["states"] = pair
     states = params.pop("__states", None)
     return params, states
 
@@ -293,6 +321,8 @@ SCOPE = C("scope")
 PERIOD = C("period")
 PERIOD_AB = C("period", params=("year_a", "year_b"))
 INSTITUTIONS = C("institutions")
+STATE_PAIR = C("state_pair", "states", default=("Karnataka", "Tamil Nadu"),
+               help="Choose any two states or UTs; the same state twice cannot be compared.")
 TOP_CUT = C("choice", "top_n", "Top list (rank cut-off)", [10, 25, 50, 100, 150, 200], 100,
             help="Count institutions certainly ranked within this many places (a 101-150 band is not in the top 100).")
 TOP_ONLY = C("choice", "top_n", "Only ranks 1 to …", {None: "All", 10: "10", 25: "25", 50: "50", 100: "100"}, None,

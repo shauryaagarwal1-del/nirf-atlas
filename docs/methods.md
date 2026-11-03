@@ -59,7 +59,9 @@ scores are only compared within the same category unless a visible note says oth
      ("Research" 2021–23 and "Research Institutions" 2024–25 → Research Institutions). The published
      label stays in `category_original`.
   5. *State:* `data/mappings/state_map.csv` maps all 49 raw spellings to the 34 official states/UTs
-     (Pondicherry → Puducherry) and adds a region (MHA zonal councils + North-East).
+     (Pondicherry → Puducherry) and adds a region (MHA zonal councils + North-East). Its `geo_name` column
+     names the map polygon of each state (e.g. Jammu and Kashmir → "Jammu & Kashmir"), so maps match names
+     through this table and the GeoJSON is never edited (`tests/test_geo.py` checks every state has a polygon).
   6. *Text tidy:* spaces, commas, hyphens, broken apostrophes (`` ` `` → '), PIN codes, UPPER CASE.
   7. *Institution identity* (`pipeline/identity.py`): a matching key per name (lower case, & → and,
      no punctuation, "Govt" → "government", "Bangalore" → "bengaluru"); same key + same state = same
@@ -160,7 +162,10 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 | `geography.state_share_over_time` | one line per state (top 8 + "Other states") | `multi-series line chart` |
 | `geography.state_representation_change` | horizontal bars of change, sorted, teal right of zero / coral left | `bar chart` (ranked, horizontal) |
 | `geography.compare_states` | box per state and year, dots = institutions, thin line through the yearly medians | `box-and-whisker plot` |
-| `geography.new_entrants_by_state` | one horizontal bar per state split by year | `stacked bar chart` |
+| `geography.new_entrants_by_state` | one horizontal bar per state split by year; `by_year=False`: one plain bar per state | `stacked bar chart` / `bar chart` |
+| `geography.state_map` | map of India, each state coloured by its top-N count (grey = none), year slider + play button | `choropleth map` |
+| `geography.state_vs_state` | two panels on one year axis: institutions per year (top), median exact rank per year (bottom, reversed) | `vertically aligned time-series charts` |
+| `geography.state_rank_boxes` | one box per state, all chosen years pooled, every institution-year as a dot | `box-and-whisker plot` |
 | `univariate.score_distribution` | histogram + KDE curve + mean/median lines | `histogram with density curve` |
 | `univariate.rank_distribution` | bar per rank band split into exact / band-only | `stacked bar chart` |
 | `univariate.summary_stats` | horizontal box with every institution as a dot, mean ± SD diamond | `box-and-whisker plot` |
@@ -293,8 +298,47 @@ of one category-year (default: its latest year).
 - **Calculation (plain words):** count new entrants per state and year; sort states by their total.
 - **Chart and why:** horizontal stacked bar, one bar per state split by year (darker teal = later), total at the bar
   end: shows who produced the most and when.
-- **Filters the user can change:** category, years. Years in which NIRF lengthened a list bring more entrants (noted
-  on the chart).
+- **Filters the user can change:** category, years, split by year on/off (`by_year`), state filter. Years in which
+  NIRF lengthened a list bring more entrants (noted on the chart). The category's first year is left out of the span
+  because nobody can be "new" in it.
+- **Geography page, "New entrants" tab:** `by_year=False` by default: one plain **bar chart** of totals (ranked,
+  horizontal), with the split by year and the best-placed new institutions in the hover text; the toggle switches to
+  the stacked version.
+
+### Geography page: the map of India (Q2.1 / Q2.2 on a map)
+- **Engine / function:** `geography.py :: state_map(year, category, top_n)`
+- **Definition used:** per state/UT, the number of institutions certainly in the top N of that category-year (same
+  rule as Q2.1). Hover also shows the share of the list (count / all top-N places × 100), the best-ranked institution
+  and the **median** of the state's exact ranks (middle value when sorted; band-only rows have no exact rank).
+- **Calculation (plain words):** count per state for every year of the category. Colour = count: grey = 0, light to
+  dark teal = few to many (in dark mode: dark to light teal, so "more" always stands out). The colour scale runs from
+  0 to the highest count of ANY year and stays fixed while the map plays, so a colour means the same number in every
+  year.
+- **Chart and why:** **choropleth map** (allowed list, "Maps"): where the top institutions are concentrated is a
+  geographic question, and a map shows it at a glance. A year slider and a ▶ Play button step through every year of
+  the category (2017 → 2025 for Overall); the title changes with the year. Small UTs (Delhi, Chandigarh, Puducherry)
+  are tiny on any map, so the table and the Q2.1 bar chart give the same numbers as a ranked list.
+- **Boundaries:** `assets/india_states.geojson` (source and licence in `docs/sources.md`). State names are matched
+  through the `geo_name` column of `state_map.csv`. Dadra and Nagar Haveli and Daman and Diu (one UT since 2020) is
+  drawn by its two old polygons, both painted with the merged UT's value.
+- **Filters the user can change:** category, year (the map opens on it), top N.
+
+### Geography page: State vs State (Q2.4 head to head)
+- **Engine / functions:** `geography.py :: state_vs_state(states, category, years, top_n)` and
+  `state_rank_boxes(states, category, years, top_n)`. Default: Karnataka vs Tamil Nadu (up to 4 states).
+- **Definition used:** per state and year, (1) the number of its institutions in the ranked list (exact rank or band;
+  with top N, only those certainly in the top N) and (2) the median of their exact ranks (lower = better).
+- **Calculation (plain words):** counts and medians per year; the answer counts in how many years each state had
+  more institutions and in how many it had the lower median, and pools all years (mean institutions per year, median
+  of all exact ranks). Both are shown because a state with many institutions naturally also has more of them further
+  down the list. The box plot pools all chosen years: one rank per institution per year (institution-years); median,
+  Q1–Q3 box, whiskers to 1.5 × IQR, every rank as a dot. One card per state (in its chart colour) shows institutions
+  per year, the pooled median rank and the best institution.
+- **Charts and why:** **vertically aligned time-series charts** (counts on top, median rank below, one shared year
+  axis, rank axis reversed so up = better) to read quantity and quality year by year; **box-and-whisker plot** to
+  compare whole rank distributions. (`compare_states`, Q2.4 in the Question Bank, keeps the per-year boxes for up to 8
+  states under "More views".)
+- **Filters the user can change:** State A, State B, category, years, "count only the top …".
 
 ### Q3.1: What is the distribution of NIRF scores for a selected year?
 - **Engine / function:** `core/engines/univariate.py :: score_distribution(year, category)`
