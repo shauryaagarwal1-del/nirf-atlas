@@ -27,6 +27,25 @@ scores are only compared within the same category unless a visible note says oth
 - **Checks:** `data/raw/scrape_log.csv` lists rows, status and notes per page. Full explanation:
   `docs/explanations/scraper.md`.
 
+### Step 2: data audit (`pipeline/audit.py` → `docs/data_audit.md`)
+- **What:** a read-only check of all 290 raw CSVs before any cleaning. It counts rows per year × category,
+  compares column names and category labels across years, lists every State spelling, every rank format
+  (plain, tied, `21A`, `Rank Withdrawn`, bands), missing values, duplicates and name variants, and ends
+  with a ranked list of cleaning problems and proposed fixes.
+- **How (plain words):**
+  - *Missing values* are counted only in files that have the column, so "not published" (Research has no
+    TLR) is kept apart from "blank cell".
+  - *Rank sequence:* NIRF uses competition ranking (1, 2, 2, 4), so a rank number may only be missing right
+    after a tie. Any other missing number is reported.
+  - *Name variants:* names are normalised (lower case, `&` → `and`, punctuation removed) and every pair is
+    compared with rapidfuzz `token_sort_ratio`: sort the words of each name, then measure how many
+    character edits turn one into the other, as a 0–100 similarity. Pairs ≥ 88, in the same state, in
+    different years and never in the same list are candidates. The NIRF ID code (stable from 2018,
+    e.g. `U-0456` = IIT Madras) is used as ground truth to confirm or reject them.
+- **Why this way:** every cleaning rule must rest on evidence we can show. The ID-code check shows that fuzzy
+  matching alone both misses real renames (UPES, Krea) and wrongly merges different campuses, which is why
+  the alias table will be hand-checked.
+
 _Cleaning and standardising: to be filled in during the cleaning phase._
 
 ## Analyses
