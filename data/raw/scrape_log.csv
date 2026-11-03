@@ -1,0 +1,291 @@
+year,category,page,url,rows,status,notes
+2017,Overall,overall,https://www.nirfindia.org/Rankings/2017/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2017,Overall,overall__participants,https://www.nirfindia.org/Rankings/2017/OverallRankingAll.html,724,ok,html from cache
+2017,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2017/OverallRanking150.html,50,ok,html from cache
+2017,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2017/OverallRanking200.html,50,ok,html from cache
+2017,Engineering,engineering,https://www.nirfindia.org/Rankings/2017/EngineeringRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2017,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2017/EngineeringRankingAll.html,1007,ok,html from cache
+2017,Engineering,engineering__band_101-150,https://www.nirfindia.org/Rankings/2017/EngineeringRanking150.html,51,ok,html from cache
+2017,Engineering,engineering__band_151-200,https://www.nirfindia.org/Rankings/2017/EngineeringRanking200.html,49,ok,html from cache
+2017,Management,management,https://www.nirfindia.org/Rankings/2017/ManagementRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 50/50 rows"
+2017,Management,management__participants,https://www.nirfindia.org/Rankings/2017/ManagementRankingAll.html,542,ok,html from cache
+2017,Management,management__band_51-75,https://www.nirfindia.org/Rankings/2017/ManagementRanking150.html,25,ok,html from cache
+2017,Management,management__band_76-100,https://www.nirfindia.org/Rankings/2017/ManagementRanking200.html,25,ok,html from cache
+2017,University,university,https://www.nirfindia.org/Rankings/2017/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2017,University,university__band_101-150,https://www.nirfindia.org/Rankings/2017/UniversityRanking150.html,50,ok,html from cache
+2017,University,university__band_151-200,https://www.nirfindia.org/Rankings/2017/UniversityRanking200.html,50,ok,html from cache
+2017,College,college,https://www.nirfindia.org/Rankings/2017/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2017,College,college__participants,https://www.nirfindia.org/Rankings/2017/CollegeRankingAll.html,535,ok,html from cache
+2017,College,college__band_101-150,https://www.nirfindia.org/Rankings/2017/CollegeRanking150.html,51,ok,html from cache
+2017,College,college__band_151-200,https://www.nirfindia.org/Rankings/2017/CollegeRanking200.html,49,ok,html from cache
+2017,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2017/PharmacyRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 50/50 rows"
+2017,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2017/PharmacyRankingAll.html,316,ok,html from cache
+2017,Pharmacy,pharmacy__band_51-75,https://www.nirfindia.org/Rankings/2017/PharmacyRanking150.html,25,ok,html from cache
+2017,Pharmacy,pharmacy__band_76-100,https://www.nirfindia.org/Rankings/2017/PharmacyRanking200.html,25,ok,html from cache
+2018,Overall,overall,https://www.nirfindia.org/Rankings/2018/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2018,Overall,overall__participants,https://www.nirfindia.org/Rankings/2018/OverallRankingALL.html,957,ok,html from cache
+2018,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2018/OverallRanking150.html,50,ok,html from cache
+2018,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2018/OverallRanking200.html,50,ok,html from cache
+2018,University,university,https://www.nirfindia.org/Rankings/2018/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2018,University,university__band_101-150,https://www.nirfindia.org/Rankings/2018/UniversityRanking150.html,50,ok,html from cache
+2018,University,university__band_151-200,https://www.nirfindia.org/Rankings/2018/UniversityRanking200.html,50,ok,html from cache
+2018,Engineering,engineering,https://www.nirfindia.org/Rankings/2018/EngineeringRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows; non-numeric Rank values: 21A, 26A"
+2018,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2018/EngineeringRankingALL.html,906,ok,html from cache
+2018,Engineering,engineering__band_101-150,https://www.nirfindia.org/Rankings/2018/EngineeringRanking150.html,50,ok,html from cache
+2018,Engineering,engineering__band_151-200,https://www.nirfindia.org/Rankings/2018/EngineeringRanking200.html,51,ok,html from cache
+2018,College,college,https://www.nirfindia.org/Rankings/2018/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows; non-numeric Rank values: Rank Withdrawn"
+2018,College,college__participants,https://www.nirfindia.org/Rankings/2018/CollegeRankingALL.html,1087,ok,html from cache
+2018,College,college__band_101-150,https://www.nirfindia.org/Rankings/2018/CollegeRanking150.html,50,ok,html from cache
+2018,College,college__band_151-200,https://www.nirfindia.org/Rankings/2018/CollegeRanking200.html,50,ok,html from cache
+2018,Management,management,https://www.nirfindia.org/Rankings/2018/ManagementRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 50/50 rows"
+2018,Management,management__participants,https://www.nirfindia.org/Rankings/2018/ManagementRankingALL.html,487,ok,html from cache
+2018,Management,management__band_51-75,https://www.nirfindia.org/Rankings/2018/ManagementRanking150.html,25,ok,html from cache
+2018,Management,management__band_76-100,https://www.nirfindia.org/Rankings/2018/ManagementRanking200.html,25,ok,html from cache
+2018,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2018/PharmacyRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 50/50 rows; non-numeric Rank values: 16A"
+2018,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2018/PharmacyRankingALL.html,286,ok,html from cache
+2018,Pharmacy,pharmacy__band_51-75,https://www.nirfindia.org/Rankings/2018/PharmacyRanking150.html,25,ok,html from cache
+2018,Pharmacy,pharmacy__band_76-100,https://www.nirfindia.org/Rankings/2018/PharmacyRanking200.html,25,ok,html from cache
+2018,Medical,medical,https://www.nirfindia.org/Rankings/2018/MedicalRanking.html,25,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 25/25 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 25/25 rows"
+2018,Medical,medical__participants,https://www.nirfindia.org/Rankings/2018/MedicalRankingALL.html,101,ok,html from cache
+2018,Architecture,architecture,https://www.nirfindia.org/Rankings/2018/ArchitectureRanking.html,10,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 10/10 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 10/10 rows"
+2018,Architecture,architecture__participants,https://www.nirfindia.org/Rankings/2018/ArchitectureRankingALL.html,59,ok,html from cache
+2018,Law,law,https://www.nirfindia.org/Rankings/2018/LawRanking.html,10,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 10/10 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 10/10 rows"
+2018,Law,law__participants,https://www.nirfindia.org/Rankings/2018/LawRankingALL.html,71,ok,html from cache
+2018,Special Mention Institutions,special_mention,https://www.nirfindia.org/Rankings/2018/SpecialRank.html,4,ok,html from cache
+2019,Overall,overall,https://www.nirfindia.org/Rankings/2019/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2019,Overall,overall__participants,https://www.nirfindia.org/Rankings/2019/OverallRankingALL.html,1479,ok,html from cache
+2019,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2019/OverallRanking150.html,50,ok,html from cache
+2019,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2019/OverallRanking200.html,50,ok,html from cache
+2019,University,university,https://www.nirfindia.org/Rankings/2019/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2019,University,university__band_101-150,https://www.nirfindia.org/Rankings/2019/UniversityRanking150.html,50,ok,html from cache
+2019,University,university__band_151-200,https://www.nirfindia.org/Rankings/2019/UniversityRanking200.html,50,ok,html from cache
+2019,Engineering,engineering,https://www.nirfindia.org/Rankings/2019/EngineeringRanking.html,200,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 200/200 rows"
+2019,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2019/EngineeringRankingALL.html,969,ok,html from cache
+2019,College,college,https://www.nirfindia.org/Rankings/2019/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2019,College,college__participants,https://www.nirfindia.org/Rankings/2019/CollegeRankingALL.html,1304,ok,html from cache
+2019,College,college__band_101-150,https://www.nirfindia.org/Rankings/2019/CollegeRanking150.html,50,ok,html from cache
+2019,College,college__band_151-200,https://www.nirfindia.org/Rankings/2019/CollegeRanking200.html,50,ok,html from cache
+2019,Management,management,https://www.nirfindia.org/Rankings/2019/ManagementRanking.html,75,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 75/75 rows"
+2019,Management,management__participants,https://www.nirfindia.org/Rankings/2019/ManagementRankingALL.html,555,ok,html from cache
+2019,Management,management__band_76-100,https://www.nirfindia.org/Rankings/2019/ManagementRanking150.html,25,ok,html from cache
+2019,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2019/PharmacyRanking.html,75,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 75/75 rows"
+2019,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2019/PharmacyRankingALL.html,301,ok,html from cache
+2019,Pharmacy,pharmacy__band_76-100,https://www.nirfindia.org/Rankings/2019/PharmacyRanking150.html,25,ok,html from cache
+2019,Law,law,https://www.nirfindia.org/Rankings/2019/LawRanking.html,15,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 15/15 rows"
+2019,Law,law__participants,https://www.nirfindia.org/Rankings/2019/LawRankingALL.html,80,ok,html from cache
+2019,Architecture,architecture,https://www.nirfindia.org/Rankings/2019/ArchitectureRanking.html,15,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 15/15 rows"
+2019,Architecture,architecture__participants,https://www.nirfindia.org/Rankings/2019/ArchitectureRankingALL.html,65,ok,html from cache
+2019,Medical,medical,https://www.nirfindia.org/Rankings/2019/MedicalRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2019,Medical,medical__participants,https://www.nirfindia.org/Rankings/2019/MedicalRankingALL.html,113,ok,html from cache
+2020,Overall,overall,https://www.nirfindia.org/Rankings/2020/OverallRanking.html,101,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 101/101 rows"
+2020,Overall,overall__participants,https://www.nirfindia.org/Rankings/2020/OverallRankingALL.html,1667,ok,html from cache
+2020,Overall,overall__band_102-150,https://www.nirfindia.org/Rankings/2020/OverallRanking150.html,49,ok,html from cache
+2020,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2020/OverallRanking200.html,50,ok,html from cache
+2020,University,university,https://www.nirfindia.org/Rankings/2020/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2020,University,university__band_101-150,https://www.nirfindia.org/Rankings/2020/UniversityRanking150.html,50,ok,html from cache
+2020,University,university__band_151-200,https://www.nirfindia.org/Rankings/2020/UniversityRanking200.html,50,ok,html from cache
+2020,Engineering,engineering,https://www.nirfindia.org/Rankings/2020/EngineeringRanking.html,200,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 200/200 rows"
+2020,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2020/EngineeringRankingALL.html,1071,ok,html from cache
+2020,Engineering,engineering__band_201-250,https://www.nirfindia.org/Rankings/2020/EngineeringRanking150.html,51,ok,html from cache
+2020,Engineering,engineering__band_251-300,https://www.nirfindia.org/Rankings/2020/EngineeringRanking200.html,49,ok,html from cache
+2020,Management,management,https://www.nirfindia.org/Rankings/2020/ManagementRanking.html,75,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 75/75 rows"
+2020,Management,management__participants,https://www.nirfindia.org/Rankings/2020/ManagementRankingALL.html,630,ok,html from cache
+2020,Management,management__band_76-100,https://www.nirfindia.org/Rankings/2020/ManagementRanking150.html,25,ok,html from cache
+2020,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2020/PharmacyRanking.html,75,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 75/75 rows"
+2020,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2020/PharmacyRankingALL.html,334,ok,html from cache
+2020,Pharmacy,pharmacy__band_76-100,https://www.nirfindia.org/Rankings/2020/PharmacyRanking150.html,26,ok,html from cache
+2020,College,college,https://www.nirfindia.org/Rankings/2020/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2020,College,college__participants,https://www.nirfindia.org/Rankings/2020/CollegeRankingALL.html,1659,ok,html from cache
+2020,College,college__band_101-150,https://www.nirfindia.org/Rankings/2020/CollegeRanking150.html,50,ok,html from cache
+2020,College,college__band_151-200,https://www.nirfindia.org/Rankings/2020/CollegeRanking200.html,50,ok,html from cache
+2020,Medical,medical,https://www.nirfindia.org/Rankings/2020/MedicalRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2020,Medical,medical__participants,https://www.nirfindia.org/Rankings/2020/MedicalRankingALL.html,118,ok,html from cache
+2020,Law,law,https://www.nirfindia.org/Rankings/2020/LawRanking.html,20,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 20/20 rows"
+2020,Law,law__participants,https://www.nirfindia.org/Rankings/2020/LawRankingALL.html,97,ok,html from cache
+2020,Architecture,architecture,https://www.nirfindia.org/Rankings/2020/ArchitectureRanking.html,20,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 20/20 rows"
+2020,Architecture,architecture__participants,https://www.nirfindia.org/Rankings/2020/ArchitectureRankingALL.html,66,ok,html from cache
+2020,Dental,dental,https://www.nirfindia.org/Rankings/2020/DentalRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2020,Dental,dental__participants,https://www.nirfindia.org/Rankings/2020/DentalRankingALL.html,115,ok,html from cache
+2021,Overall,overall,https://www.nirfindia.org/Rankings/2021/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2021,Overall,overall__participants,https://www.nirfindia.org/Rankings/2021/OverallRankingALL.html,1657,ok,html from cache
+2021,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2021/OverallRanking150.html,50,ok,html from cache
+2021,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2021/OverallRanking200.html,50,ok,html from cache
+2021,University,university,https://www.nirfindia.org/Rankings/2021/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2021,University,university__band_101-150,https://www.nirfindia.org/Rankings/2021/UniversityRanking150.html,50,ok,html from cache
+2021,University,university__band_151-200,https://www.nirfindia.org/Rankings/2021/UniversityRanking200.html,50,ok,html from cache
+2021,Engineering,engineering,https://www.nirfindia.org/Rankings/2021/EngineeringRanking.html,200,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 200/200 rows"
+2021,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2021/EngineeringRankingALL.html,1143,ok,html from cache
+2021,Engineering,engineering__band_201-250,https://www.nirfindia.org/Rankings/2021/EngineeringRanking150.html,50,ok,html from cache
+2021,Engineering,engineering__band_251-300,https://www.nirfindia.org/Rankings/2021/EngineeringRanking200.html,50,ok,html from cache
+2021,Management,management,https://www.nirfindia.org/Rankings/2021/ManagementRanking.html,75,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 75/75 rows"
+2021,Management,management__participants,https://www.nirfindia.org/Rankings/2021/ManagementRankingALL.html,659,ok,html from cache
+2021,Management,management__band_76-100,https://www.nirfindia.org/Rankings/2021/ManagementRanking150.html,25,ok,html from cache
+2021,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2021/PharmacyRanking.html,75,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 75/75 rows"
+2021,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2021/PharmacyRankingALL.html,351,ok,html from cache
+2021,Pharmacy,pharmacy__band_76-100,https://www.nirfindia.org/Rankings/2021/PharmacyRanking150.html,25,ok,html from cache
+2021,College,college,https://www.nirfindia.org/Rankings/2021/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2021,College,college__participants,https://www.nirfindia.org/Rankings/2021/CollegeRankingALL.html,1802,ok,html from cache
+2021,College,college__band_101-150,https://www.nirfindia.org/Rankings/2021/CollegeRanking150.html,50,ok,html from cache
+2021,College,college__band_151-200,https://www.nirfindia.org/Rankings/2021/CollegeRanking200.html,50,ok,html from cache
+2021,Medical,medical,https://www.nirfindia.org/Rankings/2021/MedicalRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2021,Medical,medical__participants,https://www.nirfindia.org/Rankings/2021/MedicalRankingALL.html,111,ok,html from cache
+2021,Law,law,https://www.nirfindia.org/Rankings/2021/LawRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2021,Law,law__participants,https://www.nirfindia.org/Rankings/2021/LawRankingALL.html,120,ok,html from cache
+2021,Architecture,architecture,https://www.nirfindia.org/Rankings/2021/ArchitectureRanking.html,25,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 25/25 rows"
+2021,Architecture,architecture__participants,https://www.nirfindia.org/Rankings/2021/ArchitectureRankingALL.html,78,ok,html from cache
+2021,Dental,dental,https://www.nirfindia.org/Rankings/2021/DentalRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2021,Dental,dental__participants,https://www.nirfindia.org/Rankings/2021/DentalRankingALL.html,117,ok,html from cache
+2021,Research,research,https://www.nirfindia.org/Rankings/2021/ResearchRanking.html,50,ok,"html from cache; parameters QNR, QLR, SFC, OI, PR on 50/50 rows"
+2022,Overall,overall,https://www.nirfindia.org/Rankings/2022/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2022,Overall,overall__participants,https://www.nirfindia.org/Rankings/2022/OverallRankingALL.html,1875,ok,html from cache
+2022,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2022/OverallRanking150.html,50,ok,html from cache
+2022,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2022/OverallRanking200.html,50,ok,html from cache
+2022,University,university,https://www.nirfindia.org/Rankings/2022/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2022,University,university__band_101-150,https://www.nirfindia.org/Rankings/2022/UniversityRanking150.html,50,ok,html from cache
+2022,University,university__band_151-200,https://www.nirfindia.org/Rankings/2022/UniversityRanking200.html,50,ok,html from cache
+2022,College,college,https://www.nirfindia.org/Rankings/2022/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2022,College,college__participants,https://www.nirfindia.org/Rankings/2022/CollegeRankingALL.html,2270,ok,html from cache
+2022,College,college__band_101-150,https://www.nirfindia.org/Rankings/2022/CollegeRanking150.html,50,ok,html from cache
+2022,College,college__band_151-200,https://www.nirfindia.org/Rankings/2022/CollegeRanking200.html,50,ok,html from cache
+2022,Research,research,https://www.nirfindia.org/Rankings/2022/ResearchRanking.html,50,ok,"html from cache; parameters QNR, QLR, SFC, OI, PR on 50/50 rows"
+2022,Engineering,engineering,https://www.nirfindia.org/Rankings/2022/EngineeringRanking.html,200,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 200/200 rows"
+2022,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2022/EngineeringRankingALL.html,1249,ok,html from cache
+2022,Engineering,engineering__band_201-250,https://www.nirfindia.org/Rankings/2022/EngineeringRanking150.html,50,ok,html from cache
+2022,Engineering,engineering__band_251-300,https://www.nirfindia.org/Rankings/2022/EngineeringRanking200.html,50,ok,html from cache
+2022,Management,management,https://www.nirfindia.org/Rankings/2022/ManagementRanking.html,101,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 101/101 rows"
+2022,Management,management__participants,https://www.nirfindia.org/Rankings/2022/ManagementRankingALL.html,751,ok,html from cache
+2022,Management,management__band_102-125,https://www.nirfindia.org/Rankings/2022/ManagementRanking150.html,24,ok,html from cache
+2022,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2022/PharmacyRanking.html,101,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 101/101 rows"
+2022,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2022/PharmacyRankingALL.html,400,ok,html from cache
+2022,Pharmacy,pharmacy__band_102-125,https://www.nirfindia.org/Rankings/2022/PharmacyRanking150.html,24,ok,html from cache
+2022,Medical,medical,https://www.nirfindia.org/Rankings/2022/MedicalRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2022,Medical,medical__participants,https://www.nirfindia.org/Rankings/2022/MedicalRankingALL.html,151,ok,html from cache
+2022,Dental,dental,https://www.nirfindia.org/Rankings/2022/DentalRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2022,Dental,dental__participants,https://www.nirfindia.org/Rankings/2022/DentalRankingALL.html,142,ok,html from cache
+2022,Law,law,https://www.nirfindia.org/Rankings/2022/LawRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2022,Law,law__participants,https://www.nirfindia.org/Rankings/2022/LawRankingALL.html,147,ok,html from cache
+2022,Architecture,architecture,https://www.nirfindia.org/Rankings/2022/ArchitectureRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2022,Architecture,architecture__participants,https://www.nirfindia.org/Rankings/2022/ArchitectureRankingALL.html,91,ok,html from cache
+2023,Overall,overall,https://www.nirfindia.org/Rankings/2023/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2023,Overall,overall__participants,https://www.nirfindia.org/Rankings/2023/OverallRankingALL.html,2478,ok,html from cache
+2023,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2023/OverallRanking150.html,50,ok,html from cache
+2023,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2023/OverallRanking200.html,50,ok,html from cache
+2023,University,university,https://www.nirfindia.org/Rankings/2023/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2023,University,university__band_101-150,https://www.nirfindia.org/Rankings/2023/UniversityRanking150.html,50,ok,html from cache
+2023,University,university__band_151-200,https://www.nirfindia.org/Rankings/2023/UniversityRanking200.html,51,ok,html from cache
+2023,College,college,https://www.nirfindia.org/Rankings/2023/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2023,College,college__participants,https://www.nirfindia.org/Rankings/2023/CollegeRankingALL.html,2746,ok,html from cache
+2023,College,college__band_101-150,https://www.nirfindia.org/Rankings/2023/CollegeRanking150.html,50,ok,html from cache
+2023,College,college__band_151-200,https://www.nirfindia.org/Rankings/2023/CollegeRanking200.html,50,ok,html from cache
+2023,Research,research,https://www.nirfindia.org/Rankings/2023/ResearchRanking.html,50,ok,"html from cache; parameters QNR, QLR, SFC, OI, PR on 50/50 rows"
+2023,Engineering,engineering,https://www.nirfindia.org/Rankings/2023/EngineeringRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2023,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2023/EngineeringRankingALL.html,1314,ok,html from cache
+2023,Engineering,engineering__band_101-150,https://www.nirfindia.org/Rankings/2023/EngineeringRanking150.html,50,ok,html from cache
+2023,Engineering,engineering__band_151-200,https://www.nirfindia.org/Rankings/2023/EngineeringRanking200.html,51,ok,html from cache
+2023,Management,management,https://www.nirfindia.org/Rankings/2023/ManagementRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2023,Management,management__participants,https://www.nirfindia.org/Rankings/2023/ManagementRankingALL.html,776,ok,html from cache
+2023,Management,management__band_101-125,https://www.nirfindia.org/Rankings/2023/ManagementRanking150.html,25,ok,html from cache
+2023,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2023/PharmacyRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2023,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2023/PharmacyRankingALL.html,435,ok,html from cache
+2023,Pharmacy,pharmacy__band_101-125,https://www.nirfindia.org/Rankings/2023/PharmacyRanking150.html,25,ok,html from cache
+2023,Medical,medical,https://www.nirfindia.org/Rankings/2023/MedicalRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2023,Medical,medical__participants,https://www.nirfindia.org/Rankings/2023/MedicalRankingALL.html,176,ok,html from cache
+2023,Dental,dental,https://www.nirfindia.org/Rankings/2023/DentalRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2023,Dental,dental__participants,https://www.nirfindia.org/Rankings/2023/DentalRankingALL.html,155,ok,html from cache
+2023,Law,law,https://www.nirfindia.org/Rankings/2023/LawRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2023,Law,law__participants,https://www.nirfindia.org/Rankings/2023/LawRankingALL.html,162,ok,html from cache
+2023,Architecture,architecture,https://www.nirfindia.org/Rankings/2023/ArchitectureRanking.html,30,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 30/30 rows"
+2023,Architecture,architecture__participants,https://www.nirfindia.org/Rankings/2023/ArchitectureRankingALL.html,105,ok,html from cache
+2023,Agriculture and Allied Sectors,agriculture,https://www.nirfindia.org/Rankings/2023/AgricultureRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2023,Agriculture and Allied Sectors,agriculture__participants,https://www.nirfindia.org/Rankings/2023/AgricultureRankingALL.html,152,ok,html from cache
+2023,Innovation,innovation,https://www.nirfindia.org/Rankings/2023/InnovationRanking.html,10,ok,html from cache; no parameter scores published on this page
+2024,Overall,overall,https://www.nirfindia.org/Rankings/2024/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2024,Overall,overall__participants,https://www.nirfindia.org/Rankings/2024/OverallRankingALL.html,2781,ok,html from cache
+2024,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2024/OverallRanking150.html,50,ok,html from cache
+2024,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2024/OverallRanking200.html,50,ok,html from cache
+2024,University,university,https://www.nirfindia.org/Rankings/2024/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2024,University,university__band_101-150,https://www.nirfindia.org/Rankings/2024/UniversityRanking150.html,50,ok,html from cache
+2024,University,university__band_151-200,https://www.nirfindia.org/Rankings/2024/UniversityRanking200.html,50,ok,html from cache
+2024,College,college,https://www.nirfindia.org/Rankings/2024/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2024,College,college__participants,https://www.nirfindia.org/Rankings/2024/CollegeRankingALL.html,3371,ok,html from cache
+2024,College,college__band_101-150,https://www.nirfindia.org/Rankings/2024/CollegeRanking150.html,51,ok,html from cache
+2024,College,college__band_151-200,https://www.nirfindia.org/Rankings/2024/CollegeRanking200.html,49,ok,html from cache
+2024,College,college__band_201-300,https://www.nirfindia.org/Rankings/2024/CollegeRanking300.html,100,ok,html from cache
+2024,Research Institutions,research,https://www.nirfindia.org/Rankings/2024/ResearchRanking.html,50,ok,"html from cache; parameters QNR, QLR, SFC, OI, PR on 50/50 rows"
+2024,Engineering,engineering,https://www.nirfindia.org/Rankings/2024/EngineeringRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2024,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2024/EngineeringRankingALL.html,1463,ok,html from cache
+2024,Engineering,engineering__band_101-150,https://www.nirfindia.org/Rankings/2024/EngineeringRanking150.html,50,ok,html from cache
+2024,Engineering,engineering__band_151-200,https://www.nirfindia.org/Rankings/2024/EngineeringRanking200.html,50,ok,html from cache
+2024,Engineering,engineering__band_201-300,https://www.nirfindia.org/Rankings/2024/EngineeringRanking300.html,100,ok,html from cache
+2024,Management,management,https://www.nirfindia.org/Rankings/2024/ManagementRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2024,Management,management__participants,https://www.nirfindia.org/Rankings/2024/ManagementRankingALL.html,876,ok,html from cache
+2024,Management,management__band_101-125,https://www.nirfindia.org/Rankings/2024/ManagementRanking150.html,25,ok,html from cache
+2024,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2024/PharmacyRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2024,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2024/PharmacyRankingALL.html,467,ok,html from cache
+2024,Pharmacy,pharmacy__band_101-125,https://www.nirfindia.org/Rankings/2024/PharmacyRanking150.html,25,ok,html from cache
+2024,Medical,medical,https://www.nirfindia.org/Rankings/2024/MedicalRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2024,Medical,medical__participants,https://www.nirfindia.org/Rankings/2024/MedicalRankingALL.html,182,ok,html from cache
+2024,Dental,dental,https://www.nirfindia.org/Rankings/2024/DentalRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2024,Dental,dental__participants,https://www.nirfindia.org/Rankings/2024/DentalRankingALL.html,184,ok,html from cache
+2024,Law,law,https://www.nirfindia.org/Rankings/2024/LawRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2024,Law,law__participants,https://www.nirfindia.org/Rankings/2024/LawRankingALL.html,195,ok,html from cache
+2024,Architecture and Planning,architecture,https://www.nirfindia.org/Rankings/2024/ArchitectureRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2024,Architecture and Planning,architecture__participants,https://www.nirfindia.org/Rankings/2024/ArchitectureRankingALL.html,115,ok,html from cache
+2024,Agriculture and Allied Sectors,agriculture,https://www.nirfindia.org/Rankings/2024/AgricultureRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2024,Agriculture and Allied Sectors,agriculture__participants,https://www.nirfindia.org/Rankings/2024/AgricultureRankingALL.html,145,ok,html from cache
+2024,Innovation,innovation,https://www.nirfindia.org/Rankings/2024/InnovationRanking.html,10,ok,html from cache; no parameter scores published on this page
+2024,Innovation,innovation__participants,https://www.nirfindia.org/Rankings/2024/InnovationRankingALL.html,808,ok,html from cache
+2024,Innovation,innovation__band_11-50,https://www.nirfindia.org/Rankings/2024/InnovationRanking50.html,40,ok,html from cache
+2024,Open University,open_university,https://www.nirfindia.org/Rankings/2024/OPENUNIVERSITYRanking.html,3,ok,html from cache; no parameter scores published on this page
+2024,Open University,open_university__participants,https://www.nirfindia.org/Rankings/2024/OPENUNIVERSITYRankingALL.html,12,ok,html from cache
+2024,Skill University,skill_university,https://www.nirfindia.org/Rankings/2024/SKILLUNIVERSITYRanking.html,3,ok,html from cache; no parameter scores published on this page
+2024,Skill University,skill_university__participants,https://www.nirfindia.org/Rankings/2024/SKILLUNIVERSTIYRankingAll.html,4,ok,html from cache
+2024,State Public University,state_public_university,https://www.nirfindia.org/Rankings/2024/STATEPUBLICUNIVERSITYRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2024,State Public University,state_public_university__participants,https://www.nirfindia.org/Rankings/2024/STATEPUBLICUNIVERSITYRankingALL.html,168,ok,html from cache
+2024,State Public University,state_public_university__band_51-100,https://www.nirfindia.org/Rankings/2024/STATEPUBLICUNIVERSITYRanking100.html,50,ok,html from cache; page heading says 'India Rankings 2024: State Public Universities (Rank -band: 51-100)'
+2025,Overall,overall,https://www.nirfindia.org/Rankings/2025/OverallRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2025,Overall,overall__participants,https://www.nirfindia.org/Rankings/2025/OverallRankingALL.html,4045,ok,html from cache
+2025,Overall,overall__band_101-150,https://www.nirfindia.org/Rankings/2025/OverallRanking150.html,50,ok,html from cache
+2025,Overall,overall__band_151-200,https://www.nirfindia.org/Rankings/2025/OverallRanking200.html,50,ok,html from cache
+2025,University,university,https://www.nirfindia.org/Rankings/2025/UniversityRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows; parameter tabs tlr, rpc, go, oi, pr merged on Institute ID for 100/100 rows"
+2025,University,university__band_101-150,https://www.nirfindia.org/Rankings/2025/UniversityRanking150.html,50,ok,html from cache
+2025,University,university__band_151-200,https://www.nirfindia.org/Rankings/2025/UniversityRanking200.html,50,ok,html from cache
+2025,College,college,https://www.nirfindia.org/Rankings/2025/CollegeRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2025,College,college__participants,https://www.nirfindia.org/Rankings/2025/CollegeRankingALL.html,4030,ok,html from cache
+2025,College,college__band_101-150,https://www.nirfindia.org/Rankings/2025/CollegeRanking150.html,50,ok,html from cache
+2025,College,college__band_151-200,https://www.nirfindia.org/Rankings/2025/CollegeRanking200.html,50,ok,html from cache
+2025,College,college__band_201-300,https://www.nirfindia.org/Rankings/2025/CollegeRanking300.html,100,ok,html from cache
+2025,Research Institutions,research,https://www.nirfindia.org/Rankings/2025/ResearchRanking.html,50,ok,"html from cache; parameters QNR, QLR, SFC, OI, PR on 50/50 rows"
+2025,Engineering,engineering,https://www.nirfindia.org/Rankings/2025/EngineeringRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2025,Engineering,engineering__participants,https://www.nirfindia.org/Rankings/2025/EngineeringRankingALL.html,1584,ok,html from cache
+2025,Engineering,engineering__band_101-150,https://www.nirfindia.org/Rankings/2025/EngineeringRanking150.html,50,ok,html from cache
+2025,Engineering,engineering__band_151-200,https://www.nirfindia.org/Rankings/2025/EngineeringRanking200.html,51,ok,html from cache
+2025,Engineering,engineering__band_201-300,https://www.nirfindia.org/Rankings/2025/EngineeringRanking300.html,99,ok,html from cache
+2025,Management,management,https://www.nirfindia.org/Rankings/2025/ManagementRanking.html,100,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 100/100 rows"
+2025,Management,management__participants,https://www.nirfindia.org/Rankings/2025/ManagementRankingALL.html,1026,ok,html from cache
+2025,Management,management__band_101-125,https://www.nirfindia.org/Rankings/2025/ManagementRanking150.html,25,ok,html from cache
+2025,Pharmacy,pharmacy,https://www.nirfindia.org/Rankings/2025/PharmacyRanking.html,101,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 101/101 rows"
+2025,Pharmacy,pharmacy__participants,https://www.nirfindia.org/Rankings/2025/PharmacyRankingALL.html,594,ok,html from cache
+2025,Pharmacy,pharmacy__band_102-125,https://www.nirfindia.org/Rankings/2025/PharmacyRanking150.html,24,ok,html from cache
+2025,Medical,medical,https://www.nirfindia.org/Rankings/2025/MedicalRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2025,Medical,medical__participants,https://www.nirfindia.org/Rankings/2025/MedicalRankingALL.html,223,ok,html from cache
+2025,Dental,dental,https://www.nirfindia.org/Rankings/2025/DentalRanking.html,40,ok,"html from cache; 1 row(s) with a row_note; parameters TLR, RPC, GO, OI, PR on 39/40 rows; non-numeric Rank values: Rank Withdrawn*; footnote: *The Faculty of Dental Sciences, Institute of Medical Sciences, is a constituent unit of the Banaras Hindu University (BHU). BHU and the Faculty of Dental Sciences, Institute of Medical Sciences, have submitted the data independently with different placement data."
+2025,Dental,dental__participants,https://www.nirfindia.org/Rankings/2025/DentalRankingALL.html,223,ok,html from cache
+2025,Law,law,https://www.nirfindia.org/Rankings/2025/LawRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2025,Law,law__participants,https://www.nirfindia.org/Rankings/2025/LawRankingALL.html,267,ok,html from cache
+2025,Architecture and Planning,architecture,https://www.nirfindia.org/Rankings/2025/ArchitectureRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2025,Architecture and Planning,architecture__participants,https://www.nirfindia.org/Rankings/2025/ArchitectureRankingALL.html,131,ok,html from cache
+2025,Agriculture and Allied Sectors,agriculture,https://www.nirfindia.org/Rankings/2025/AgricultureRanking.html,40,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 40/40 rows"
+2025,Agriculture and Allied Sectors,agriculture__participants,https://www.nirfindia.org/Rankings/2025/AgricultureRankingALL.html,173,ok,html from cache
+2025,Innovation,innovation,https://www.nirfindia.org/Rankings/2025/InnovationRanking.html,10,ok,html from cache; no parameter scores published on this page
+2025,Innovation,innovation__participants,https://www.nirfindia.org/Rankings/2025/InnovationRankingALL.html,777,ok,html from cache
+2025,Innovation,innovation__band_11-50,https://www.nirfindia.org/Rankings/2025/InnovationRanking50.html,40,ok,html from cache
+2025,Open University,open_university,https://www.nirfindia.org/Rankings/2025/OPENUNIVERSITYRanking.html,3,ok,html from cache; no parameter scores published on this page
+2025,Open University,open_university__participants,https://www.nirfindia.org/Rankings/2025/OPENUNIVERSITYRankingALL.html,15,ok,html from cache
+2025,Skill University,skill_university,https://www.nirfindia.org/Rankings/2025/SKILLUNIVERSITYRanking.html,3,ok,html from cache; no parameter scores published on this page
+2025,Skill University,skill_university__participants,https://www.nirfindia.org/Rankings/2025/SKILLUNIVERSITYRankingALL.html,11,ok,html from cache
+2025,State Public Universities,state_public_university,https://www.nirfindia.org/Rankings/2025/STATEPUBLICUNIVERSITYRanking.html,50,ok,"html from cache; parameters TLR, RPC, GO, OI, PR on 50/50 rows"
+2025,State Public Universities,state_public_university__band_51-100,https://www.nirfindia.org/Rankings/2025/STATEPUBLICUNIVERSITYRanking100.html,50,ok,html from cache
+2025,SDG Institutions,sdg_institutions,https://www.nirfindia.org/Rankings/2025/SDGInstitutionsRanking.html,10,ok,html from cache; no parameter scores published on this page
+2025,SDG Institutions,sdg_institutions__participants,https://www.nirfindia.org/Rankings/2025/SDGInstitutionsRankingALL.html,791,ok,html from cache
+2025,SDG Institutions,sdg_institutions__band_11-50,https://www.nirfindia.org/Rankings/2025/SDGInstitutionsRanking50.html,41,ok,html from cache
