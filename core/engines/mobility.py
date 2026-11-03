@@ -30,7 +30,7 @@ from core.engines import trends
 from core.result import ChartResult
 from core.stats import places
 from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, NEUTRAL, SEQUENTIAL, SURFACE, UP, add_lollipops,
-                        finish, ordinal_blues)
+                        finish, ordinal_ramp)
 
 BANDS = ["1-10", "11-50", "51-100", "101+"]
 NOT_RANKED = "Not ranked"
@@ -169,7 +169,7 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
     Definition: "in the top 10" = rank certainly 10 or better. Entered in year Y = in the top 10 in Y
     but not in the previous published year; exited in Y = in the top 10 the previous year but not in Y.
     Method: a time-series dot plot with one row per institution that was ever in the top 10 and a
-    dot in every year it was there; a blue triangle marks the year it entered and a red cross the
+    dot in every year it was there; a teal triangle marks the year it entered and a coral cross the
     year it was no longer there. The table lists every entry and exit with the ranks before and after.
     """
     df = load_master()
@@ -297,7 +297,7 @@ def band_retention(category: str = "Overall", by_band: bool = False) -> ChartRes
     hover = np.stack([table["pair"], table["stayed"], table["ranked_both"]] + [table[f"{b}_pct"] for b in BANDS], axis=1)
     band_hover = "".join(f"<br>{b}: %{{customdata[{i + 3}]}}%" for i, b in enumerate(BANDS))
     if by_band:
-        colors = dict(zip(BANDS, ordinal_blues(len(BANDS))[::-1]))
+        colors = dict(zip(BANDS, ordinal_ramp(len(BANDS))[::-1]))
         for i, b in enumerate(BANDS):
             fig.add_trace(go.Scatter(
                 x=table["year_to"], y=table[f"{b}_pct"], mode="lines+markers", name=b,
@@ -347,7 +347,7 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
     Definition: improvement = rank in year A - rank in year B (positive = moved up).
     Method: the same calculation as trends.biggest_movers (institutions with an exact rank in both
     years; the n largest climbs and the n largest falls), drawn as a lollipop chart: a stem from
-    zero to the change and a dot at its end, blue for climbs (right of zero) and red for falls (left).
+    zero to the change and a dot at its end, teal for climbs (right of zero) and coral for falls (left).
     Defaults: the first and last year of the category.
     """
     df = load_master()
@@ -394,8 +394,8 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
     insight = f"Between {year_a} and {year_b} in {category}, " + " and ".join(parts) + "." + base.insight.split(".", 2)[-1]
     finish(fig, title, f"{category} ranking · the {len(ups)} largest climbs and {len(downs)} largest falls · labels "
            f"show rank {year_a} → {year_b}", height=max(420, 170 + 28 * len(t)), legend_title="")
-    method = base.method + (" Drawn as a lollipop chart (a bar chart with a thin stem and a dot), blue to the right of "
-                            "zero for climbs and red to the left for falls.")
+    method = base.method + (" Drawn as a lollipop chart (a bar chart with a thin stem and a dot), teal to the right of "
+                            "zero for climbs and coral to the left for falls.")
     return ChartResult(fig, base.table, insight, method, "lollipop chart")
 
 

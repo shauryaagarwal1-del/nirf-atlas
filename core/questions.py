@@ -14,9 +14,18 @@ is about a single year.
 from __future__ import annotations
 
 import importlib
+import re
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
+
+import pandas as pd
+import plotly.graph_objects as go
 
 from core.result import ChartResult
+from core.theme import SOURCE_NOTE
+
+ALLOWED_CHARTS = Path(__file__).resolve().parents[1] / "docs" / "allowed_charts.md"
 
 ENGINES = ("trends", "geography", "univariate", "bivariate", "multivariate", "distribution", "mobility", "outliers")
 SECTIONS = {
@@ -209,3 +218,38 @@ def run_question(qid: str, **overrides) -> ChartResult:
     """Run a question with its default parameters; keyword arguments replace any default (Level 2 changes)."""
     q = get_question(qid)
     return engine_function(q)(**{**q.default_params, **overrides})
+
+
+@lru_cache(maxsize=1)
+def allowed_chart_types() -> frozenset[str]:
+    """The chart-type names in docs/allowed_charts.md (the backticked name at the start of each list item)."""
+    return frozenset(re.findall(r"^- `([^`]+)`", ALLOWED_CHARTS.read_text(encoding="utf-8"), flags=re.MULTILINE))
+
+
+def check_result(result, q: Question) -> list[str]:
+    """Everything that is wrong with one answer to question `q` (empty list = pass).
+
+    A complete answer has a Plotly figure with data and a title, the NIRF source note, a non-empty
+    table, an insight, a method text, and a chart type listed in docs/allowed_charts.md that matches
+    the registry. Used by the "Run all 40" grid and scripts/run_all_questions.py.
+    """
+    problems = []
+    if not isinstance(result, ChartResult):
+        return [f"returned {type(result).__name__}, not ChartResult"]
+    if not isinstance(result.fig, go.Figure) or not result.fig.data:
+        problems.append("figure has no data")
+    if not result.fig.layout.title.text:
+        problems.append("no title")
+    if not any(SOURCE_NOTE in (a.text or "") for a in result.fig.layout.annotations):
+        problems.append("no source note")
+    if not isinstance(result.table, pd.DataFrame) or result.table.empty:
+        problems.append("empty table")
+    if not result.insight or len(result.insight) < 20:
+        problems.append("no insight")
+    if not result.method or len(result.method) < 40:
+        problems.append("no method")
+    if result.chart_type not in allowed_chart_types():
+        problems.append(f"chart type '{result.chart_type}' not in docs/allowed_charts.md")
+    elif result.chart_type != q.chart_type:
+        problems.append(f"chart type '{result.chart_type}' differs from registry '{q.chart_type}'")
+    return problems

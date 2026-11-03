@@ -210,7 +210,8 @@ def check_column(column: str, category: str, df: pd.DataFrame) -> str:
 
 def parameters_of(df: pd.DataFrame) -> list[str]:
     """The parameter columns that have values in `df` (TLR..PR, or QnR/QlR/SFC/OI/PR for Research)."""
-    return [p for p in dict.fromkeys(PARAMETERS + RESEARCH_PARAMETERS) if df[p].notna().any()]
+    order = PARAMETERS[:3] + RESEARCH_PARAMETERS          # NIRF's order: TLR RPC GO / QnR QlR SFC, then OI PR
+    return [p for p in dict.fromkeys(order) if df[p].notna().any()]
 
 
 # ---------- institution names ----------

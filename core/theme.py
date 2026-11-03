@@ -1,63 +1,103 @@
 """The one Plotly look used by every NIRF Atlas chart: the "nirf" template, palettes and the source note.
 
 Importing this module registers the template and makes it Plotly's default, so a chart looks the
-same whichever engine drew it. Design choices (kept deliberately quiet so the data stands out):
-  * a light surface, hairline grid on the value axis only, thin 2 px lines, 8 px markers;
-  * a colour-blind-safe categorical palette in a FIXED order (slot 1 is always blue, slot 2 orange ...);
-    the order was checked so neighbouring colours stay distinguishable for the common forms of colour
-    blindness. Charts with more than 8 groups fold the rest into "Other" instead of inventing colours;
-  * one blue light-to-dark scale for amounts (maps, heatmaps) and a blue-grey-red scale for +/- values
-    (blue = moved up / gained, red = moved down / lost);
-  * every chart ends with the note "Source: NIRF, Ministry of Education, Govt. of India".
+same whichever engine drew it. The look matches the dashboard's "National Observatory" style
+(.streamlit/config.toml and assets/style.css): deep navy ink, teal for data, marigold for highlights,
+a serif display font for titles (Fraunces) and a clean sans-serif (Inter) for everything else.
+
+Design choices (kept deliberately quiet so the data stands out):
+  * a white card surface, hairline grid on the value axis only, thin 2 px lines, 8 px markers;
+  * a colour-blind-safe categorical palette in a FIXED order (slot 1 is always teal, slot 2 marigold,
+    slot 3 indigo ...). The order was checked with a colour-vision simulation so neighbouring colours
+    stay distinguishable for the common forms of colour blindness, in light and in dark mode.
+    Charts with more than 8 groups fold the rest into "Other" instead of inventing colours;
+  * one teal light-to-dark scale for amounts (maps, heatmaps) and a coral-grey-teal scale for +/- values
+    (teal = moved up / gained, coral = moved down / lost);
+  * every chart ends with the note "Source: NIRF, Ministry of Education, Govt. of India";
+  * dark mode is not an automatic colour flip: dark_variant() swaps every light colour for its own
+    dark step (chosen and checked against the dark surface), so the same chart reads well on both.
 """
 
 from __future__ import annotations
+
+import re
+import textwrap
 
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 
 FONT = "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+DISPLAY_FONT = "Fraunces, Georgia, 'Times New Roman', serif"
+MONO_FONT = "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace"
 
-# Surfaces and ink.
-SURFACE = "#fcfcfb"
-INK = "#0b0b0b"
-INK_SECONDARY = "#52514e"
-INK_MUTED = "#898781"
-GRID = "#e1e0d9"
-AXIS = "#c3c2b7"
-BORDER = "rgba(11,11,11,0.10)"
+# Surfaces and ink (light mode). The chart surface is the white of the dashboard's cards.
+SURFACE = "#ffffff"
+INK = "#141b3d"             # deep navy
+INK_SECONDARY = "#4a5274"
+INK_MUTED = "#848aa6"
+GRID = "#e9ebf2"
+AXIS = "#c8ccda"
 
-# Categorical palette, fixed order (blue, orange, aqua, yellow, magenta, green, violet, red).
-CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
-OTHER = "#b5b3ab"           # "Other" groups and context marks (e.g. institutions outside the top N)
-CONTEXT = "#e1e0d9"         # very light: "ranked but not highlighted" cells
+# Brand colours: teal carries data, marigold highlights, indigo is the third voice.
+TEAL = "#0e9c8c"
+MARIGOLD = "#e39a12"
+INDIGO = "#4a50c8"
+CORAL = "#e0564f"
 
-# Sequential blue ramp (light = little, dark = a lot) and the diverging pair.
-BLUES = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5",
-         "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"]
-SEQUENTIAL = [[i / (len(BLUES) - 1), c] for i, c in enumerate(BLUES)]
-UP = "#2a78d6"              # moved up / gained / positive
-DOWN = "#e34948"            # moved down / lost / negative
-NEUTRAL = "#d4d2ca"         # no change
-DIVERGING = [[0.0, "#b3261e"], [0.25, "#e88a84"], [0.5, "#f0efec"], [0.75, "#86b6ef"], [1.0, "#184f95"]]
+# Categorical palette, fixed order (teal, marigold, indigo, coral, sky, olive, orchid, brown).
+CATEGORICAL = [TEAL, MARIGOLD, INDIGO, CORAL, "#2f8fd8", "#7f8c1f", "#b35bc4", "#a8642a"]
+OTHER = "#b4b8c8"           # "Other" groups and context marks (e.g. institutions outside the top N)
+CONTEXT = "#e6e8f0"         # very light: "ranked but not highlighted" cells
+
+# Sequential teal ramp (light = little, dark = a lot) and the diverging pair.
+RAMP = ["#d3f1ec", "#b9e3db", "#9ed4cb", "#83c6bb", "#66b8ab", "#45aa9b", "#0e9c8c",
+        "#0d897b", "#0c776b", "#0a655b", "#08544c", "#07433d", "#05332f"]
+SEQUENTIAL = [[i / (len(RAMP) - 1), c] for i, c in enumerate(RAMP)]
+UP = TEAL                   # moved up / gained / positive
+DOWN = CORAL                # moved down / lost / negative
+NEUTRAL = "#cfd3e0"         # no change
+DIVERGING = [[0.0, "#e0565b"], [0.25, "#f0a8a7"], [0.5, "#f2f3f7"], [0.75, "#94c8c0"], [1.0, "#0e9c8c"]]
+
+# The same roles, stepped for the dark surface (navy cards). Same hues, same order.
+DARK_SURFACE = "#151b34"
+_DARK = {
+    SURFACE: DARK_SURFACE, INK: "#eef0fa", INK_SECONDARY: "#b6bbd6", INK_MUTED: "#7e85a8",
+    GRID: "#242b4b", AXIS: "#3b4369", OTHER: "#5d6488", CONTEXT: "#2a3254", NEUTRAL: "#4a5276",
+    **dict(zip(CATEGORICAL, ["#14a090", "#c4860a", "#7479e6", "#de5850", "#3a92d8", "#8a9726", "#b468c7",
+                             "#c97a3d"])),
+    **dict(zip(RAMP, ["#1b3a4a", "#1d4a55", "#1e5a61", "#1e6b6c", "#1d7c78", "#1a8e84", "#14a090",
+                      "#42ae9e", "#60bbad", "#7ac9bc", "#92d7cb", "#aae5da", "#c2f3ea"])),
+    **dict(zip([c for _, c in DIVERGING], ["#de5850", "#824a56", "#2a3152", "#2d6771", "#14a090"])),
+}
+_DARK = {k.lower(): v for k, v in _DARK.items()}
 
 SOURCE_NOTE = "Source: NIRF, Ministry of Education, Govt. of India"
 CROSS_CATEGORY_NOTE = ("Note: each category has its own parameter weights, so scores are comparable "
                        "only within a category.")
 
 _MARGIN_BOTTOM = 96
+_MARGIN_TOP = 104
+# Plotly never wraps a title, so a long answer-title would run off the right edge on a laptop screen.
+# Titles longer than this many characters are broken over lines; each extra line gets more top margin.
+TITLE_WRAP, SUBTITLE_WRAP, TITLE_LINE = 90, 130, 26
 
 
-def ordinal_blues(n: int) -> list[str]:
-    """n ordered shades of blue (for ordered groups such as years or quartiles), light to dark.
+def ordinal_ramp(n: int) -> list[str]:
+    """n ordered shades of teal (for ordered groups such as years or quartiles), light to dark.
 
-    Starts at a mid-light step so even the lightest shade stays visible on the white surface.
+    Starts at a mid step so even the lightest shade keeps at least 2:1 contrast on the white surface.
     """
-    steps = BLUES[2:]
+    steps = RAMP[4:]
     if n <= 1:
         return [steps[len(steps) // 2]]
     return [steps[round(i * (len(steps) - 1) / (n - 1))] for i in range(n)]
+
+
+def tint(color: str, alpha: float) -> str:
+    """A see-through version of a hex colour, e.g. a light fill behind a box plot."""
+    r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({r},{g},{b},{alpha})"
 
 
 def color_map(names, other_label: str = "Other") -> dict[str, str]:
@@ -85,16 +125,17 @@ pio.templates["nirf"] = go.layout.Template(
         plot_bgcolor=SURFACE,
         colorway=CATEGORICAL,
         title=dict(x=0, xref="container", xanchor="left", pad=dict(l=20), y=0.97, yref="container", yanchor="top",
-                   font=dict(size=17, color=INK), subtitle=dict(font=dict(size=13, color=INK_SECONDARY))),
+                   font=dict(family=DISPLAY_FONT, size=19, color=INK, weight=600),
+                   subtitle=dict(font=dict(family=FONT, size=13, color=INK_SECONDARY))),
         xaxis=dict(_axis, showgrid=False),
         yaxis=dict(_axis, showgrid=True),
         legend=dict(title=dict(font=dict(size=12, color=INK_SECONDARY)), font=dict(size=12, color=INK),
                     bgcolor="rgba(0,0,0,0)", itemsizing="constant", tracegroupgap=4,
                     traceorder="normal"),
-        hoverlabel=dict(bgcolor="white", bordercolor=AXIS, align="left",
+        hoverlabel=dict(bgcolor=SURFACE, bordercolor=AXIS, align="left",
                         font=dict(family=FONT, size=12, color=INK)),
         hovermode="closest",
-        margin=dict(l=72, r=32, t=96, b=_MARGIN_BOTTOM),
+        margin=dict(l=72, r=32, t=_MARGIN_TOP, b=_MARGIN_BOTTOM),
         bargap=0.28,
         barcornerradius=4,
         colorscale=dict(sequential=SEQUENTIAL, diverging=DIVERGING),
@@ -157,13 +198,131 @@ def jitter(n: int, width: float = 0.28, seed: int = 0):
     return np.random.default_rng(seed).uniform(-width, width, n)
 
 
+def label_points(fig: go.Figure, x, y, labels, x_range, y_range, avoid_x=(), avoid_y=(),
+                 plot_size: tuple[int, int] = (780, 320), y_reversed: bool = False) -> go.Figure:
+    """Name chosen points with labels that do not overlap each other, the marked points or the plot edge.
+
+    Plotly places point labels blindly, so in a cluster they print on top of each other or run off the
+    chart. Here each label (in the order given, most important first) tries a set of spots around its
+    point (right, left, above, below, the diagonals, then a little further out) and takes the first-best
+    spot: inside the plot, not on another label, covering as few points as possible, closest to its point.
+    A thin leader line joins a label to its point. Positions are worked out in pixels for a plot area of
+    about `plot_size` (width, height); `x_range`/`y_range` are fixed on the axes so the mapping holds.
+    `avoid_x`/`avoid_y` are other points that labels should not cover.
+    """
+    (x0, x1), (y0, y1) = x_range, y_range
+    width, height = plot_size
+
+    def px(xv, yv):
+        fy = (yv - y0) / (y1 - y0)
+        return (xv - x0) / (x1 - x0) * width, (1 - fy if y_reversed else fy) * height
+
+    points = [px(a, b) for a, b in zip(avoid_x, avoid_y)]
+    placed: list[tuple[float, float, float, float]] = []
+    char_w, box_h, gap = 5.7, 14, 7
+
+    def hits(box, others):
+        l, b, r, t = box
+        return sum(not (r < ol or l > or_ or t < ob or b > ot) for ol, ob, or_, ot in others)
+
+    for xv, yv, text in zip(x, y, labels):
+        cx, cy = px(xv, yv)
+        w = len(str(text)) * char_w + 6
+        side, up = w / 2 + gap, box_h / 2 + gap
+        # Candidate centres: right/left/above/below first, then further out (nearest first).
+        spots = sorted(((dx, dy) for dx in (0, side, -side, side + 45, -side - 45, side + 110, -side - 110)
+                        for dy in (0, up, -up, 2.3 * up, -2.3 * up, 3.6 * up, -3.6 * up, 5 * up, -5 * up)
+                        if (dx, dy) != (0, 0) and (dx or abs(dy) >= up)),
+                       key=lambda d: (abs(d[0]) - side if d[0] else 0) + abs(d[1]))
+        best = None
+        for order, (dx, dy) in enumerate(spots):
+            box = (cx + dx - w / 2, cy + dy - box_h / 2, cx + dx + w / 2, cy + dy + box_h / 2)
+            outside = box[0] < 0 or box[2] > width or box[1] < 0 or box[3] > height
+            cover = sum(box[0] - 4 <= qx <= box[2] + 4 and box[1] - 4 <= qy <= box[3] + 4
+                        for qx, qy in points if (qx, qy) != (cx, cy))
+            cost = 1000 * hits(box, placed) + 1000 * outside + 25 * cover + order / 4
+            if best is None or cost < best[0]:
+                best = (cost, dx, dy, box)
+        _, dx, dy, box = best
+        placed.append(box)
+        fig.add_annotation(x=xv, y=yv, text=str(text), showarrow=True, ax=dx, ay=-dy, arrowhead=0, arrowwidth=0.8,
+                           arrowcolor=INK_MUTED, standoff=5, font=dict(size=10, color=INK_SECONDARY), bgcolor=tint(SURFACE, 0.75))
+    fig.update_xaxes(range=list(x_range))
+    fig.update_yaxes(range=[y1, y0] if y_reversed else [y0, y1])
+    return fig
+
+
+def padded_range(values, pad: float = 0.06) -> tuple[float, float]:
+    """(min, max) of the values with a margin of `pad` x the span on both sides (like Plotly's autorange)."""
+    lo, hi = float(np.nanmin(values)), float(np.nanmax(values))
+    span = (hi - lo) or 1.0
+    return lo - pad * span, hi + pad * span
+
+
+def _wrap(text: str, width: int) -> tuple[str, int]:
+    """Break plain text over lines of at most `width` characters with <br>; returns (text, extra lines).
+
+    The lines are balanced (about equal length), so a title never ends with a stray word on its own line.
+    """
+    if len(text) <= width or "<" in text:
+        return text, 0
+    n = -(-len(text) // width)                                   # lines needed (ceiling division)
+    w = -(-len(text) // n)
+    while len(lines := textwrap.wrap(text, w, break_on_hyphens=False)) > n:
+        w += 1
+    return "<br>".join(lines), len(lines) - 1
+
+
 def finish(fig: go.Figure, title: str, subtitle: str | None = None, note: str | None = None,
            height: int = 520, legend_title: str | None = None) -> go.Figure:
     """Apply the template, the answer-style title (+ subtitle), legend title and the source note."""
+    title, extra = _wrap(title, TITLE_WRAP)
+    subtitle, extra_sub = _wrap(subtitle or "", SUBTITLE_WRAP)
+    top = (fig.layout.margin.t if fig.layout.margin.t is not None else _MARGIN_TOP) + TITLE_LINE * extra         + 18 * extra_sub
     fig.update_layout(
-        template="nirf", height=height,
-        title=dict(text=title, subtitle=dict(text=subtitle or "")),
+        template="nirf", height=height + TITLE_LINE * extra + 18 * extra_sub, margin=dict(t=top),
+        title=dict(text=title, subtitle=dict(text=subtitle)),
     )
     if legend_title is not None:
         fig.update_layout(legend_title_text=legend_title)
     return add_source_note(fig, note)
+
+
+# ---------- dark mode ----------
+
+_RGBA = re.compile(r"^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$")
+
+
+def _dark_color(value: str) -> str:
+    """The dark-mode step of one light colour (hex or rgba tint); unknown colours stay as they are."""
+    v = value.strip().lower()
+    if v in _DARK:
+        return _DARK[v]
+    m = _RGBA.match(v)
+    if m:
+        key = "#" + "".join(f"{int(x):02x}" for x in m.groups()[:3])
+        if key in _DARK:
+            alpha = m.group(4) or "1"
+            dark = _DARK[key]
+            return f"rgba({int(dark[1:3], 16)},{int(dark[3:5], 16)},{int(dark[5:7], 16)},{alpha})"
+    return value
+
+
+def _swap(node):
+    if isinstance(node, dict):
+        return {k: _swap(v) for k, v in node.items()}
+    if isinstance(node, (list, tuple)):
+        return [_swap(v) for v in node]
+    if isinstance(node, np.ndarray) and node.dtype.kind in "OU":
+        return [_swap(v) for v in node.tolist()]
+    if isinstance(node, str) and (node.startswith("#") or node.startswith("rgb")):
+        return _dark_color(node)
+    return node
+
+
+def dark_variant(fig: go.Figure) -> dict:
+    """The same chart for the dark theme: every palette colour replaced by its dark-mode step.
+
+    Returns a plain figure dict (what st.plotly_chart accepts), so the original figure is untouched.
+    """
+    return _swap(fig.to_plotly_json())

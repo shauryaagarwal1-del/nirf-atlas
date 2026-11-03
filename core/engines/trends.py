@@ -6,6 +6,7 @@ Functions
   average_score_over_time() mean or median score per year (multi-series line chart with markers, or with
                             show_spread=True a point plot with error bars from Q1 to Q3)
   consistent_top_n()        who stayed in the top N in many years (matrix heatmap institution x year)
+  top_n_race()              how this year's top N got there (multi-series line chart, top 3 highlighted)
 
 Every chart type is one of the types listed in docs/allowed_charts.md.
 
@@ -24,7 +25,8 @@ from core.data import (NirfInputError, category_years, chart_labels, check_categ
                        check_years, filter_df, find_institutions, fmt_years, load_master)
 from core.result import ChartResult
 from core.stats import places, signed
-from core.theme import (CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK_SECONDARY, SURFACE, UP, color_map, finish)
+from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_SECONDARY, OTHER, SURFACE, UP,
+                        color_map, finish)
 
 MAX_LINES = 8
 
@@ -208,7 +210,8 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
     if pick.empty:
         word = "improved" if direction == "up" else "declined"
         raise NirfInputError(f"No institution {word} its exact {category} rank between {start_year} and {end_year}.")
-    pick = pick.sort_values("improvement")
+    # Plotly draws the first row at the bottom, so sort to put the biggest climb (or fall) at the top.
+    pick = pick.sort_values("improvement", ascending=direction != "down")
     labels = chart_labels(pick["institution_key"])
     pick.insert(0, "institution", pick["institution_key"].map(labels))
 
@@ -451,3 +454,92 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
         table[str(y)] = ranks[y].tolist() if y in ranks else None
     return ChartResult(fig, table, insight, method, "matrix heatmap")
 
+
+
+def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: int = 3,
+               depth: int | None = None) -> ChartResult:
+    """Answers questions like: "How did this year's top 10 get there?" (the home page overview chart)
+
+    Definition: the n institutions with the best exact ranks in the last chosen year, followed back
+    through their exact rank in every earlier year.
+    Method: one line per institution through its exact ranks; a year with only a band or no rank is
+    a gap. The y-axis is reversed (rank 1 at the top) and shows ranks 1 to `depth` (default 2.5 x n);
+    a line that leaves the bottom was ranked below that (the hover still gives the real rank). The
+    best `highlight` institutions are coloured and the rest drawn in grey, each named at the line end.
+    """
+    df = load_master()
+    category = check_category(category, df)
+    years = check_years(years, category, df)
+    n, highlight = int(n), int(highlight)
+    if not 2 <= n <= 20:
+        raise NirfInputError("Choose between 2 and 20 institutions for the rank race.")
+    highlight = max(0, min(highlight, n, MAX_LINES))
+    depth = int(depth) if depth else int(np.ceil(2.5 * n / 5) * 5)
+    cat = filter_df(df, years=years, categories=category, exact_ranks_only=True)
+    last_year = max(years)
+    last = cat[cat["year"].eq(last_year)].sort_values(["rank", "canonical_name"]).head(n)
+    if last.empty:
+        raise NirfInputError(f"NIRF published no exact {category} ranks in {last_year}.")
+    keys = last["institution_key"].tolist()
+    labels = chart_labels(keys)
+    sub = cat[cat["institution_key"].isin(keys)]
+    ranks = sub.pivot_table(index="institution_key", columns="year", values="rank", aggfunc="min").reindex(keys)
+    ranks = ranks.reindex(columns=years)
+
+    colors = {k: (CATEGORICAL[i] if i < highlight else OTHER) for i, k in enumerate(keys)}
+    fig = go.Figure()
+    # Grey context lines first so the coloured ones are drawn on top.
+    for k in sorted(keys, key=lambda k: colors[k] != OTHER):
+        r = ranks.loc[k].astype(float)
+        name, c = labels[k], colors[k]
+        strong = c != OTHER
+        end = int(r[last_year])
+        fig.add_trace(go.Scatter(
+            x=years, y=r.values, mode="lines+markers", name=f"{end} · {name}", connectgaps=False,
+            line=dict(color=c, width=2.5 if strong else 1.5), marker=dict(color=c, size=8 if strong else 6),
+            opacity=1 if strong else 0.9, legendrank=end,
+            customdata=[f"rank {int(v)}" if pd.notna(v) else "no exact rank" for v in r.values],
+            hovertemplate=f"<b>{name}</b><br>%{{x}}: %{{customdata}}<extra></extra>"))
+        fig.add_trace(go.Scatter(
+            x=[last_year], y=[end], mode="text", text=[f"  {name}"], textposition="middle right",
+            textfont=dict(size=11, color=INK if strong else INK_SECONDARY), cliponaxis=False, showlegend=False,
+            hoverinfo="skip"))
+
+    first_rank = {k: ranks.loc[k].dropna() for k in keys}
+    moves = {k: int(s.iloc[0]) - int(s.iloc[-1]) for k, s in first_rank.items() if len(s) > 1}
+    span = f"{min(years)}–{last_year}" if len(years) > 1 else str(last_year)
+    leader = keys[0]
+    leader_years = int((ranks.loc[leader] == 1).sum())
+    if len(years) > 1 and moves:
+        climber = max(moves, key=moves.get)
+        s = first_rank[climber]
+        climb = (f"; {labels[climber]} climbed the most, from rank {int(s.iloc[0])} in {int(s.index[0])} to "
+                 f"{int(s.iloc[-1])} in {last_year} ({places(moves[climber])})" if moves[climber] > 0 else "")
+        always = int(sum(ranks.loc[k].le(n).all() for k in keys))
+        insight = (f"{labels[leader]} is rank 1 in {category} {last_year} and was rank 1 in {leader_years} of "
+                   f"{len(years)} years{climb}. {always} of today's top {n} were in the top {n} in every year "
+                   f"{span}.")
+        title = (f"{labels[leader]} leads {category} {last_year}; {labels[climber]} made the biggest climb"
+                 if moves[climber] > 0 else f"{labels[leader]} leads the {category} top {n} in {last_year}")
+    else:
+        insight = f"{labels[leader]} is rank 1 in {category} {last_year}."
+        title = f"{labels[leader]} leads the {category} top {n} in {last_year}"
+
+    fig.update_yaxes(title_text="Rank (1 = best, shown at the top)", range=[depth + 0.6, 0.4], tickvals=
+                     [1] + list(range(5, depth + 1, 5)), zeroline=False)
+    fig.update_xaxes(title_text="Year", dtick=1, range=[min(years) - 0.3, last_year + 0.3], showgrid=True)
+    fig.update_layout(margin=dict(r=190), legend=dict(title_text=f"{last_year} rank · institution"),
+                      hovermode="closest")
+    finish(fig, title, f"{category} ranking, {span} · the top {n} of {last_year}, followed back in time",
+           note=f"Gaps = no exact rank that year; a line leaving the bottom = ranked below {depth}.",
+           legend_title=f"{last_year} rank · institution", height=560)
+
+    table = pd.DataFrame({"institution": [labels[k] for k in keys]})
+    for y in years:
+        table[str(y)] = [ranks.at[k, y] for k in keys]
+    table["change_first_to_last"] = [moves.get(k) for k in keys]
+    method = (f"We take the {n} institutions with the best exact {category} ranks in {last_year} and look up their "
+              f"exact rank in every year {span}. Each line joins those ranks; years with only a NIRF band or no rank "
+              f"are gaps (never filled in). The y-axis is reversed so rank 1 is at the top and shows ranks 1-{depth}. "
+              f"Change = first exact rank - last exact rank (positive = moved up).")
+    return ChartResult(fig, table, insight, method, "multi-series line chart")

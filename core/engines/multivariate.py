@@ -31,7 +31,7 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year,
 from core.result import ChartResult
 from core.stats import signed
 from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, OTHER, UP, add_lollipops, color_map, finish,
-                        ordinal_blues)
+                        label_points, ordinal_ramp, padded_range)
 
 MAX_INSTITUTIONS = 8
 
@@ -177,16 +177,10 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
     fig = go.Figure()
     groups = ((~d["in_quadrant"], "Other institutions", OTHER, 8),
               (d["in_quadrant"], f"High {SHORT[hi]}, low {SHORT[lo]}", CATEGORICAL[1], 10))
-    # Alternate label positions so neighbouring labels in a cluster do not print on top of each other.
-    spots = ["top center", "bottom center", "middle left", "middle right"]
-    where = {k: spots[i % len(spots)] for i, k in enumerate(label_keys)}
     for mask, name, color, size in groups:
         t = d[mask]
-        text = [lab if k in label_keys else "" for k, lab in zip(t["institution_key"], t["label"])]
         fig.add_trace(go.Scatter(
-            x=t[lo], y=t[hi], mode="markers+text", name=name, text=text,
-            textposition=[where.get(k, "top center") for k in t["institution_key"]],
-            textfont=dict(size=10, color=INK_SECONDARY), marker=dict(color=color, size=size, opacity=0.85),
+            x=t[lo], y=t[hi], mode="markers", name=name, marker=dict(color=color, size=size, opacity=0.85),
             customdata=np.stack([t["canonical_name"], t["rank_raw"], t["z_gap"].round(2)], axis=1),
             hovertemplate=(f"<b>%{{customdata[0]}}</b><br>Rank %{{customdata[1]}}<br>{SHORT[hi]}: %{{y:.2f}} · "
                            f"{SHORT[lo]}: %{{x:.2f}}<br>z-gap ({SHORT[hi]} − {SHORT[lo]}): %{{customdata[2]}}"
@@ -202,6 +196,9 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
     fig.update_xaxes(title_text=LABELS[lo], showgrid=True)
     fig.update_yaxes(title_text=LABELS[hi])
     fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
+    lab = d.set_index("institution_key").loc[label_keys]
+    label_points(fig, lab[lo], lab[hi], lab["label"], padded_range(d[lo]), padded_range(d[hi]),
+                 avoid_x=d[lo], avoid_y=d[hi])
 
     if len(quad):
         best = quad.iloc[0]
@@ -245,7 +242,7 @@ def improved_despite_decline(category: str = "Overall", start_year: int | None =
     Method: keep institutions with published scores in both years, compute every change, keep those
     that qualify and sort them by overall score gain. The table lists all of them; the chart shows
     the first n as small-multiple bar charts (one small chart per institution, same y-axis for all):
-    one bar per parameter change (blue = rose, red = fell) and the overall-score change as a dark bar.
+    one bar per parameter change (teal = rose, coral = fell) and the overall-score change as a dark bar.
     Defaults: the first and last year of the category.
     """
     df = load_master()
@@ -432,7 +429,7 @@ def parameter_pca(year: int | None = None, category: str = "Overall") -> ChartRe
 
     d["group"] = d["rank_band"].fillna("unknown")
     groups = [b for b in BAND_ORDER if b in set(d["group"])]
-    colors = dict(zip(groups, ordinal_blues(len(groups))[::-1]))
+    colors = dict(zip(groups, ordinal_ramp(len(groups))[::-1]))
     labels = chart_labels(d["institution_key"])
     fig = go.Figure()
     for g in groups:

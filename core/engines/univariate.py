@@ -7,6 +7,7 @@ Functions
   summary_stats()       mean, median, min, max, SD, quartiles of the scores (table + box-and-whisker plot)
   quartile_shares()     % of institutions in each score quartile, two definitions (100% stacked bar chart)
   spread_by_category()  score spread of every category in one year (box-and-whisker plot per category)
+  coverage_by_category_year()  how many institutions each category lists per year (matrix heatmap)
 
 Every chart type is one of the types listed in docs/allowed_charts.md.
 
@@ -26,7 +27,7 @@ from core.data import (BAND_ORDER, NirfInputError, category_years, check_categor
                        load_master, short_name)
 from core.result import ChartResult
 from core.stats import describe
-from core.theme import (BLUES, CATEGORICAL, CROSS_CATEGORY_NOTE, INK, INK_SECONDARY, finish, ordinal_blues)
+from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, INK, INK_SECONDARY, RAMP, SURFACE, finish, ordinal_ramp)
 
 
 def _scored(category: str | None, year: int | None) -> tuple[pd.DataFrame, str, int]:
@@ -128,7 +129,7 @@ def rank_distribution(year: int | None = None, category: str = "Overall") -> Cha
     total = counts.sum(axis=1)
 
     fig = go.Figure()
-    for k, color in (("Exact rank published", CATEGORICAL[0]), ("Only rank band published", BLUES[3])):
+    for k, color in (("Exact rank published", CATEGORICAL[0]), ("Only rank band published", RAMP[3])):
         if counts[k].sum():
             fig.add_trace(go.Bar(
                 x=counts.index, y=counts[k], name=k, marker_color=color,
@@ -244,11 +245,11 @@ def quartile_shares(year: int | None = None, category: str = "Overall", mode: st
                           "score_to": [round(b[1], 2) for b in bounds], "institutions": counts.values,
                           "share_pct": shares.round(1).values})
 
-    colors = ordinal_blues(4)
+    colors = ordinal_ramp(4)
     fig = go.Figure()
     for name, c, n, p in zip(names, colors, counts.values, shares.values):
         fig.add_trace(go.Bar(
-            x=[p], y=[f"{category} {year}"], name=name, orientation="h", marker=dict(color=c, line=dict(width=2, color="#fcfcfb")),
+            x=[p], y=[f"{category} {year}"], name=name, orientation="h", marker=dict(color=c, line=dict(width=2, color=SURFACE)),
             text=[f"{p:.0f}%" if p >= 6 else ""], textposition="inside", insidetextanchor="middle",
             textfont=dict(color="white" if colors.index(c) >= 2 else INK, size=13),
             hovertemplate=f"<b>{name}</b><br>{n} institutions ({p:.1f}%)<extra></extra>"))
@@ -333,3 +334,61 @@ def spread_by_category(year: int | None = None) -> ChartResult:
               f"how spread out scores are, not which category is 'better'. Categories without published scores: "
               f"{', '.join(no_scores) if no_scores else 'none'}.")
     return ChartResult(fig, table.reset_index(), insight, method, "box-and-whisker plot")
+
+
+def coverage_by_category_year() -> ChartResult:
+    """Answers questions like: "Which ranking categories did NIRF publish in which years, and how big is each list?"
+
+    Definition: the number of institutions NIRF listed in each category-year (exact ranks and
+    band-only ranks both count; a blank cell = NIRF published no ranking for that category that year).
+    Method: count the rows of the master table per category and year and draw the counts as a
+    category x year grid; darker = a longer list. Categories are ordered by their first year.
+    """
+    df = load_master()
+    years = sorted(df["year"].unique().tolist())
+    g = df.groupby(["category_std", "year"]).agg(listed=("institution_key", "size"),
+                                                  exact=("rank", lambda s: int(s.notna().sum())),
+                                                  scored=("score", lambda s: int(s.notna().sum())))
+    first = df.groupby("category_std")["year"].min()
+    order = sorted(first.index, key=lambda c: (first[c], -int(g.loc[c, "listed"].max()), c))
+    z, text, hover = [], [], []
+    for c in order:
+        zr, tr, hr = [], [], []
+        for y in years:
+            if (c, y) in g.index:
+                r = g.loc[(c, y)]
+                zr.append(int(r["listed"]))
+                tr.append(str(int(r["listed"])))
+                hr.append(f"{int(r['listed'])} listed · {int(r['exact'])} with an exact rank · "
+                          f"{int(r['scored'])} with a score")
+            else:
+                zr.append(None)
+                tr.append("")
+                hr.append("no ranking published")
+        z.append(zr)
+        text.append(tr)
+        hover.append(hr)
+    fig = go.Figure(go.Heatmap(
+        z=z, x=[str(y) for y in years], y=order, text=text, texttemplate="%{text}", customdata=hover,
+        colorscale=[[i / (len(RAMP) - 1), c] for i, c in enumerate(RAMP)], textfont=dict(size=11),
+        colorbar=dict(title=dict(text="Institutions listed")),
+        hovertemplate="<b>%{y}</b> %{x}<br>%{customdata}<extra></extra>"))
+    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="", title_text=None)
+    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text=None)
+    n_pairs = len(g)
+    newest = [c for c in order if first[c] == first.max()]
+    biggest = g["listed"].idxmax()
+    title = f"NIRF grew from {int(first.eq(min(years)).sum())} ranking lists in {min(years)} to " \
+            f"{int((g.reset_index()['year'] == max(years)).sum())} in {max(years)}"
+    insight = (f"The master table holds {n_pairs} category-year lists across {len(order)} categories; the longest "
+               f"is {biggest[0]} {biggest[1]} ({int(g.loc[biggest, 'listed'])} institutions) and the newest "
+               f"category is {', '.join(newest)} (first published in {first.max()}).")
+    method = ("We count the rows of the cleaned master table for every category and year (every listed institution, "
+              "whether NIRF gave an exact rank or only a band). Blank cells are years in which NIRF did not publish "
+              "that category, which is why categories are compared only in the years they share.")
+    finish(fig, title, "Institutions listed per category and year · blank = category not published that year",
+           height=max(420, 180 + 30 * len(order)), legend_title="Institutions listed")
+    fig.update_layout(margin=dict(t=130, l=200))
+    table = g.reset_index().rename(columns={"category_std": "category", "listed": "institutions_listed",
+                                            "exact": "with_exact_rank", "scored": "with_score"})
+    return ChartResult(fig, table, insight, method, "matrix heatmap")

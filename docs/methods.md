@@ -120,10 +120,13 @@ scores are only compared within the same category unless a visible note says oth
   worst rank ≤ N. A 76-100 row is in the top 100; a 101-150 row is not; a 51-75 row is in the top 75.
 - **Exact ranks only:** whenever a rank must be used as a number (subtracting, averaging, box plots of ranks), rows
   with only a band are left out and the method text says how many.
-- **`core/theme.py`:** one Plotly template `nirf` (light surface, hairline grid, 2 px lines, 8 px markers), a
-  colour-blind-safe 8-colour categorical palette in a fixed order (groups beyond 7–8 are folded into "Other"), one
-  blue light→dark scale for amounts, blue (up / gained) vs red (down / lost) for changes, and `add_source_note()`,
-  which writes "Source: NIRF, Ministry of Education, Govt. of India" under every chart.
+- **`core/theme.py`:** one Plotly template `nirf` matching the dashboard's "National Observatory" look (navy ink,
+  teal for data, marigold for highlights, Fraunces titles, Inter text; white card surface, hairline grid, 2 px lines,
+  8 px markers), a colour-blind-safe 8-colour categorical palette in a fixed order (teal, marigold, indigo, coral, sky,
+  olive, orchid, brown; checked with a colour-vision simulation; groups beyond 7–8 are folded into "Other"), one
+  teal light→dark scale for amounts, teal (up / gained) vs coral (down / lost) for changes, and `add_source_note()`,
+  which writes "Source: NIRF, Ministry of Education, Govt. of India" under every chart. `dark_variant()` swaps each
+  colour for its own dark-mode step (chosen for the navy dark surface), so every chart also reads well in dark mode.
 - **`core/result.py`:** every engine returns `ChartResult(fig, table, insight, method, chart_type)`.
 - **`core/stats.py`:** summary statistics, Pearson/Spearman correlation, R², p-value and the least-squares line.
   Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 moderate, < 0.8 strong, otherwise very strong.
@@ -135,12 +138,12 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 | Function | Chart drawn | Allowed name (`chart_type`) |
 |---|---|---|
 | `trends.rank_trajectory` | one line with markers per institution, rank axis reversed; band-only years as a faint range bar | `multi-series line chart` (`line chart` for one institution) |
-| `trends.biggest_movers` | horizontal bars of improvement, sorted, blue right of zero / red left | `bar chart` (ranked, horizontal) |
+| `trends.biggest_movers` | horizontal bars of improvement, sorted, teal right of zero / coral left | `bar chart` (ranked, horizontal) |
 | `trends.average_score_over_time` | one line with markers per category; `show_spread=True`: point + Q1-Q3 error bar | `multi-series line chart` (`line chart` for one category) / `point plot with error bars` |
 | `trends.consistent_top_n` | institution × year grid of coloured cells, rank written in the cell | `matrix heatmap` |
 | `geography.state_counts` | horizontal bars, most to fewest | `bar chart` (ranked, horizontal) |
 | `geography.state_share_over_time` | one line per state (top 8 + "Other states") | `multi-series line chart` |
-| `geography.state_representation_change` | horizontal bars of change, sorted, blue right of zero / red left | `bar chart` (ranked, horizontal) |
+| `geography.state_representation_change` | horizontal bars of change, sorted, teal right of zero / coral left | `bar chart` (ranked, horizontal) |
 | `geography.compare_states` | box per state and year, dots = institutions, thin line through the yearly medians | `box-and-whisker plot` |
 | `geography.new_entrants_by_state` | one horizontal bar per state split by year | `stacked bar chart` |
 | `univariate.score_distribution` | histogram + KDE curve + mean/median lines | `histogram with density curve` |
@@ -164,7 +167,7 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 | `mobility.band_transitions` | band in year A × band in year B grid with counts (confusion-matrix style) | `matrix heatmap` |
 | `mobility.top10_entries_exits` | one row per institution, dot per top-10 year, entry/exit markers | `time-series dot plot` |
 | `mobility.band_retention` | % staying in the same band per year pair; `by_band=True`: one line per band | `line chart` / `multi-series line chart` |
-| `mobility.biggest_rank_moves` | stems from zero, blue right (up) / red left (down) | `lollipop chart` |
+| `mobility.biggest_rank_moves` | stems from zero, teal right (up) / coral left (down) | `lollipop chart` |
 | `mobility.up_down_same_counts` | one bar per year pair split into up / same / down | `stacked bar chart` |
 | `outliers.research_vs_overall_outliers` | dots + least-squares line, residual z > 2 highlighted and labelled | `scatterplot` |
 | `outliers.research_over_teaching` | ranked horizontal bars of RPC − TLR | `bar chart` |
@@ -197,7 +200,7 @@ of one category-year (default: its latest year).
 - **Calculation (plain words):** keep institutions with an exact rank in both years (a band cannot be subtracted;
   the method text says how many were left out), subtract, sort, keep the n largest climbs (`up`), falls (`down`)
   or both.
-- **Chart and why:** diverging horizontal bar (blue = up, red = down) around zero, labelled "old → new rank"; bars
+- **Chart and why:** diverging horizontal bar (teal = up, coral = down) around zero, labelled "old → new rank"; bars
   compare amounts and the zero line separates climbers from fallers.
 - **Filters the user can change:** category, start and end year (default: the category's first and last year),
   direction, n.
@@ -253,7 +256,7 @@ of one category-year (default: its latest year).
 - **Engine / function:** `geography.py :: state_representation_change(category, start_year, end_year, top_n)`
 - **Definition used:** change = top-N count in the end year − top-N count in the start year (positive = gained).
 - **Calculation (plain words):** count per state in both years, subtract, sort; tied states are named together.
-- **Chart and why:** diverging bar (blue gained, red lost) labelled "old → new count"; states with no change appear
+- **Chart and why:** diverging bar (teal gained, coral lost) labelled "old → new count"; states with no change appear
   only in the table.
 - **Filters the user can change:** category, start and end year, top_n.
 
@@ -272,7 +275,7 @@ of one category-year (default: its latest year).
 - **Definition used:** `is_new_entrant` from the pipeline: first appearance in the category's ranked list (exact rank
   or band), in a year when the category already existed the year before.
 - **Calculation (plain words):** count new entrants per state and year; sort states by their total.
-- **Chart and why:** horizontal stacked bar, one bar per state split by year (darker blue = later), total at the bar
+- **Chart and why:** horizontal stacked bar, one bar per state split by year (darker teal = later), total at the bar
   end: shows who produced the most and when.
 - **Filters the user can change:** category, years. Years in which NIRF lengthened a list bring more entrants (noted
   on the chart).
@@ -318,7 +321,7 @@ of one category-year (default: its latest year).
   - `statistical`: the data's own Q1, median and Q3. Each group holds about 25% *by definition* (ties can shift it
     slightly), so the useful answer is the cut-point scores.
 - **Calculation (plain words):** put each scored institution in its group; share = group count / all × 100.
-- **Chart and why:** one 100% stacked bar in ordered shades of blue: parts of a whole.
+- **Chart and why:** one 100% stacked bar in ordered shades of teal: parts of a whole.
 - **Filters the user can change:** year, category, mode.
 
 ### Q3.5: How does the spread of scores differ across NIRF categories?
@@ -352,7 +355,7 @@ of one category-year (default: its latest year).
   parameter with the overall score (Spearman ρ, R² and the p-value in the table), sorted from strongest to weakest.
   The insight also names the two parameters that move together the most.
 - **Chart and why:** main view (`view="correlogram"`): **correlogram** (correlation heatmap), one cell per pair with r
-  printed in it, blue = positive, red = negative, darker = stronger, diagonal = 1, mirror image across the diagonal.
+  printed in it, teal = positive, coral = negative, darker = stronger, diagonal = 1, mirror image across the diagonal.
   The "Overall score" row answers the question, and the rest of the grid adds what a bar chart cannot show: which
   parameters rise and fall together (e.g. RPC and PR, r = 0.78 in Overall 2025). Alternative view (`view="bar"`):
   **ranked horizontal bar chart** of r with the overall score: the quickest way to rank a handful of numbers. A high r
@@ -400,7 +403,7 @@ of one category-year (default: its latest year).
   that qualify, sorted by overall gain. This is possible because the overall score is a weighted sum: a gain on a heavy
   parameter can outweigh a loss on another.
 - **Chart and why:** **small-multiple bar charts**: the same small bar chart repeated for each of the first n
-  institutions (blue = parameter rose, red = fell, dark bar = overall change), all on one shared y-axis so panels can be
+  institutions (teal = parameter rose, coral = fell, dark bar = overall change), all on one shared y-axis so panels can be
   compared. One chart per institution keeps each "which parameter fell" story readable.
 - **Filters the user can change:** category, start and end year (default 2017 → 2025), n. Note: NIRF adjusted some
   sub-metrics over the years, so part of a long-range change can come from the method.
@@ -501,7 +504,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
 - **Calculation (plain words):** compare each year with the previous one; list every entry and exit with the rank
   before and after (table).
 - **Chart and why:** **time-series dot plot**: one row per institution ever in the top 10, a faint dot in every year it
-  was there, a blue triangle where it entered and a red cross in the first year outside. Each institution's whole
+  was there, a teal triangle where it entered and a coral cross in the first year outside. Each institution's whole
   history and every change are visible in one picture.
 - **Filters the user can change:** category, top (e.g. 5 or 20).
 
@@ -521,7 +524,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
   `trends.biggest_movers(direction="both")`).
 - **Definition used:** improvement = rank in year A − rank in year B (positive = moved up), exact ranks in both years.
 - **Calculation (plain words):** subtract, sort, keep the n largest climbs and the n largest falls.
-- **Chart and why:** **lollipop chart**: stems from zero, blue dots right of zero for climbs and red dots left of zero
+- **Chart and why:** **lollipop chart**: stems from zero, teal dots right of zero for climbs and coral dots left of zero
   for falls, labelled "old → new rank". Both directions in one sorted picture.
 - **Filters the user can change:** category, year A, year B (default 2017 → 2025), n.
 
@@ -531,7 +534,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
   improvement > 0, down = improvement < 0, same = 0.
 - **Calculation (plain words):** count the three groups per year pair; institutions listed only by band in either year
   are counted as `not_comparable` in the table.
-- **Chart and why:** **stacked bar chart**, one bar per year pair split into up / same / down (blue / grey / red), so
+- **Chart and why:** **stacked bar chart**, one bar per year pair split into up / same / down (teal / grey / coral), so
   both the counts and the mix can be read. Up and down tend to balance: when one institution climbs past another, the
   other moves down.
 - **Filters the user can change:** category.
@@ -553,7 +556,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
 - **Calculation (plain words):** subtract for every institution, sort, show the n largest. The table also has the gap
   in z-scores, z(RPC) − z(TLR), which measures research strength relative to other institutions (RPC is typically far
   below TLR: medians 41.5 vs 70.4 in Overall 2025, so only 3 institutions have RPC > TLR).
-- **Chart and why:** **bar chart** (ranked, horizontal): blue = RPC higher, red = TLR still higher, labelled with both
+- **Chart and why:** **bar chart** (ranked, horizontal): teal = RPC higher, coral = TLR still higher, labelled with both
   scores.
 - **Filters the user can change:** year, category, n.
 
@@ -565,8 +568,8 @@ lies wholly inside one of these four, so institutions known only by band can be 
 - **Calculation (plain words):** all changes, their z-scores, keep |z| > 2; the insight names institutions with more
   than one unusual change.
 - **Chart and why:** **jittered strip chart** over a box plot per year pair: every change is a dot, spread sideways at
-  random (fixed seed) so dots do not hide each other; the box shows the year's typical change. Unusual jumps are blue,
-  unusual drops red, and the 12 largest are labelled.
+  random (fixed seed) so dots do not hide each other; the box shows the year's typical change. Unusual jumps are teal,
+  unusual drops coral, and the 12 largest are labelled.
 - **Filters the user can change:** category, threshold, number of labels.
 
 ### Q8.4: Which institutions have a strong parameter score but a relatively poor overall rank?

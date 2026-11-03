@@ -26,7 +26,7 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_years
                        filter_df, fmt_years, load_master, parameters_of)
 from core.result import ChartResult
 from core.stats import correlate, p_text, signed, strength
-from core.theme import CATEGORICAL, DIVERGING, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_blues
+from core.theme import CATEGORICAL, DIVERGING, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_ramp
 
 COLOR_BY = {"region", "state", "rank_band"}
 MAX_STATE_COLORS = 7
@@ -76,7 +76,7 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
     elif color_by == "rank_band":
         d["group"] = d["rank_band"].fillna("unknown")
         groups = [b for b in BAND_ORDER if b in set(d["group"])]
-        colors = dict(zip(groups, ordinal_blues(len(groups))[::-1]))
+        colors = dict(zip(groups, ordinal_ramp(len(groups))[::-1]))
     else:
         d["group"] = d[color_by]
         groups = d["group"].value_counts().index.tolist()
@@ -143,7 +143,7 @@ def correlation_with_overall(year: int | None = None, category: str = "Overall",
     Method: compute r for every pair of the overall score and the parameters the category publishes
     (score, TLR, RPC, GO, OI, PR; Research Institutions: QnR, QlR, SFC, OI, PR).
       view="correlogram" (default): correlation heatmap, one cell per pair with r printed in it
-        (blue = positive, red = negative, darker = stronger). The "Overall score" row answers the
+        (teal = positive, coral = negative, darker = stronger). The "Overall score" row answers the
         question; the other cells show how the parameters move with each other.
       view="bar": ranked horizontal bar chart of each parameter's r with the overall score.
     """
@@ -215,7 +215,7 @@ def _correlogram(cat: pd.DataFrame, params: list[str], category: str, year: int,
         z=corr.values, x=names, y=names, zmin=-1, zmax=1, colorscale=DIVERGING,
         text=corr.round(2).values, texttemplate="%{text:.2f}", textfont=dict(size=13),
         customdata=n.values, xgap=2, ygap=2,
-        colorbar=dict(title=dict(text="Pearson r", side="right"), tickvals=[-1, -0.5, 0, 0.5, 1]),
+        colorbar=dict(title=dict(text="Pearson r", side="top"), tickvals=[-1, -0.5, 0, 0.5, 1], thickness=12),
         hovertemplate="<b>%{y} and %{x}</b><br>Pearson r = %{z:.3f}<br>n = %{customdata} institutions<extra></extra>"))
     fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text=None)
     fig.update_yaxes(showgrid=False, showline=False, ticks="", autorange="reversed", title_text=None)
@@ -233,7 +233,7 @@ def _correlogram(cat: pd.DataFrame, params: list[str], category: str, year: int,
     method = (f"We take the {category} institutions of {year} and compute the Pearson correlation r for every pair of "
               f"the overall score and the {len(params)} parameters ({', '.join(SHORT[p] for p in params)}), each pair "
               f"using the institutions that have both values. The correlogram (correlation heatmap) shows one cell per "
-              f"pair with r printed in it: blue = positive, red = negative, darker = stronger; the diagonal is 1 "
+              f"pair with r printed in it: teal = positive, coral = negative, darker = stronger; the diagonal is 1 "
               f"(every variable with itself) and the matrix is a mirror image across it. The 'Overall score' row "
               f"answers the question; the other cells show which parameters rise and fall together. r runs from −1 "
               f"to +1. Because the overall score is a weighted sum of the parameters, a parameter correlates "

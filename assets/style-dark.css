@@ -1,0 +1,26 @@
+/* NIRF Atlas dark-mode tokens: the same names as assets/style.css, stepped for the navy dark surface.
+   Injected after style.css only when the dark theme is active. */
+
+:root {
+  --ink: #eef0fa;
+  --ink-2: #b6bbd6;
+  --ink-3: #8a91b3;
+  --bg: #0b1026;
+  --surface: #151b34;
+  --surface-2: #11172f;
+  --border: #283058;
+  --border-soft: #222a4e;
+  --teal: #14a090;
+  --teal-ink: #3cc4b2;
+  --teal-soft: rgba(20, 160, 144, 0.16);
+  --marigold: #f0a92e;
+  --marigold-ink: #f6c766;
+  --marigold-soft: rgba(240, 169, 46, 0.1);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-hover: 0 8px 26px rgba(0, 0, 0, 0.35);
+}
+
+.nirf-hero {
+  border: 1px solid #283058;
+  box-shadow: none;
+}

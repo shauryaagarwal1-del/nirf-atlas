@@ -11,7 +11,6 @@ docs/allowed_charts.md and matches the registry. Each figure is written to docs/
 
 from __future__ import annotations
 
-import re
 import sys
 import textwrap
 import time
@@ -21,55 +20,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import pandas as pd  # noqa: E402
-import plotly.graph_objects as go  # noqa: E402
-
-from core.questions import QUESTION_REGISTRY, engine_function  # noqa: E402
-from core.result import ChartResult  # noqa: E402
-from core.theme import SOURCE_NOTE  # noqa: E402
+from core.questions import QUESTION_REGISTRY, check_result, engine_function  # noqa: E402
 
 PREVIEWS = ROOT / "docs" / "previews"
-ALLOWED_CHARTS = ROOT / "docs" / "allowed_charts.md"
-
-
-def allowed_chart_types() -> set[str]:
-    """The chart-type names in docs/allowed_charts.md (the backticked name at the start of each list item)."""
-    return set(re.findall(r"^- `([^`]+)`", ALLOWED_CHARTS.read_text(encoding="utf-8"), flags=re.MULTILINE))
-
-
-def check(result, expected_chart: str, allowed: set[str]) -> list[str]:
-    """Everything that is wrong with one answer (empty list = pass)."""
-    problems = []
-    if not isinstance(result, ChartResult):
-        return [f"returned {type(result).__name__}, not ChartResult"]
-    if not isinstance(result.fig, go.Figure) or not result.fig.data:
-        problems.append("figure has no data")
-    if not result.fig.layout.title.text:
-        problems.append("no title")
-    if not any(SOURCE_NOTE in (a.text or "") for a in result.fig.layout.annotations):
-        problems.append("no source note")
-    if not isinstance(result.table, pd.DataFrame) or result.table.empty:
-        problems.append("empty table")
-    if not result.insight or len(result.insight) < 20:
-        problems.append("no insight")
-    if not result.method or len(result.method) < 40:
-        problems.append("no method")
-    if result.chart_type not in allowed:
-        problems.append(f"chart type '{result.chart_type}' not in docs/allowed_charts.md")
-    elif result.chart_type != expected_chart:
-        problems.append(f"chart type '{result.chart_type}' differs from registry '{expected_chart}'")
-    return problems
 
 
 def main() -> int:
-    allowed = allowed_chart_types()
     PREVIEWS.mkdir(parents=True, exist_ok=True)
     rows = []
     for qid, q in QUESTION_REGISTRY.items():
         start = time.perf_counter()
         try:
             r = engine_function(q)(**q.default_params)
-            problems = check(r, q.chart_type, allowed)
+            problems = check_result(r, q)
             r.fig.write_html(PREVIEWS / f"{qid}.html", include_plotlyjs="cdn", full_html=True)
             insight = r.insight
         except Exception as exc:                       # report and keep going: one failure must not hide others

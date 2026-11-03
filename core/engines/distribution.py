@@ -27,7 +27,7 @@ from core.data import (LABELS, SHORT, NirfInputError, category_year, category_ye
 from core.engines import trends
 from core.result import ChartResult
 from core.stats import describe, signed
-from core.theme import CATEGORICAL, INK_SECONDARY, finish
+from core.theme import CATEGORICAL, INK_SECONDARY, SURFACE, finish, tint
 
 
 def _scored(category: str, year) -> tuple[pd.DataFrame, str, int]:
@@ -87,7 +87,7 @@ def top10_vs_rest(year: int | None = None, category: str = "Overall", top: int =
         if view == "violin":
             fig.add_trace(go.Violin(
                 y=t["score"], x=[label] * len(t), line_color=colors[g], fillcolor=colors[g], opacity=0.55,
-                box=dict(visible=True, fillcolor="rgba(255,255,255,0.55)", line=dict(color=INK_SECONDARY, width=1.5),
+                box=dict(visible=True, fillcolor=tint(SURFACE, 0.55), line=dict(color=INK_SECONDARY, width=1.5),
                          width=0.16),
                 meanline=dict(visible=False), points="all", pointpos=0, jitter=0.5,
                 marker=dict(size=5, opacity=0.75, color=INK_SECONDARY), spanmode="hard", scalemode="width", **common))
@@ -344,7 +344,7 @@ def score_by_state(year: int | None = None, category: str = "Overall", min_insti
         label = f"{s['state']} ({int(s['n'])})"
         fig.add_trace(go.Box(
             x=t["score"], y=[label] * len(t), name=label, orientation="h", marker_color=CATEGORICAL[0],
-            line_color=CATEGORICAL[0], boxpoints="all", jitter=0.4, pointpos=0, fillcolor="rgba(42,120,214,0.12)",
+            line_color=CATEGORICAL[0], boxpoints="all", jitter=0.4, pointpos=0, fillcolor=tint(CATEGORICAL[0], 0.12),
             marker=dict(size=6, opacity=0.75), customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
             hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} · score %{x:.2f}<extra>" + s["state"]
                           + "</extra>"))

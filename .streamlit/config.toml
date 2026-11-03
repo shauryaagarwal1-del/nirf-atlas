@@ -1,0 +1,58 @@
+# NIRF Atlas base theme: "National Observatory".
+# Deep navy ink, marigold for highlights (primary), teal for data. Fraunces for headings,
+# Inter for text, JetBrains Mono for numbers. Finer styling lives in assets/style.css and the
+# chart colours in core/theme.py; keep the three in step.
+
+[client]
+toolbarMode = "viewer"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Fraunces:https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap, serif"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap, monospace"
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+baseFontSize = 15
+baseRadius = "10px"
+buttonRadius = "8px"
+showWidgetBorder = true
+showSidebarBorder = false
+chartCategoricalColors = ["#0e9c8c", "#e39a12", "#4a50c8", "#e0564f", "#2f8fd8", "#7f8c1f", "#b35bc4", "#a8642a"]
+
+[theme.light]
+primaryColor = "#e39a12"
+backgroundColor = "#f4f5f9"
+secondaryBackgroundColor = "#eaecf4"
+textColor = "#141b3d"
+linkColor = "#0b7f72"
+borderColor = "#dce0eb"
+codeBackgroundColor = "#eef0f6"
+dataframeHeaderBackgroundColor = "#eef0f6"
+
+[theme.light.sidebar]
+primaryColor = "#f0a92e"
+backgroundColor = "#121838"
+secondaryBackgroundColor = "#1d2450"
+textColor = "#e8eaf6"
+linkColor = "#f0a92e"
+borderColor = "#2c3466"
+
+[theme.dark]
+primaryColor = "#f0a92e"
+backgroundColor = "#0b1026"
+secondaryBackgroundColor = "#182044"
+textColor = "#eef0fa"
+linkColor = "#3cc4b2"
+borderColor = "#283058"
+codeBackgroundColor = "#182044"
+dataframeHeaderBackgroundColor = "#182044"
+
+[theme.dark.sidebar]
+primaryColor = "#f0a92e"
+backgroundColor = "#080c1e"
+secondaryBackgroundColor = "#151c3c"
+textColor = "#e8eaf6"
+linkColor = "#f0a92e"
+borderColor = "#232b52"

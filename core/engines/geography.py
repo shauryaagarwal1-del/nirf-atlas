@@ -26,7 +26,7 @@ from core.data import (NirfInputError, category_years, check_category, check_sta
                        filter_df, fmt_years, load_master, short_name)
 from core.result import ChartResult
 from core.stats import signed
-from core.theme import CATEGORICAL, DOWN, INK_SECONDARY, UP, color_map, finish, ordinal_blues
+from core.theme import CATEGORICAL, DOWN, INK_SECONDARY, SURFACE, UP, color_map, finish, ordinal_ramp
 
 MAX_LINES = 8          # states drawn as their own line; the rest are summed as "Other states"
 MAX_STATES = 8
@@ -368,12 +368,12 @@ def new_entrants_by_state(category: str = "Overall", years=None) -> ChartResult:
     totals = counts.sum(axis=1).sort_values(ascending=True)
     counts = counts.loc[totals.index]
 
-    shades = dict(zip(counts.columns, ordinal_blues(len(counts.columns))))
+    shades = dict(zip(counts.columns, ordinal_ramp(len(counts.columns))))
     fig = go.Figure()
     for y in counts.columns:
         fig.add_trace(go.Bar(
             y=counts.index, x=counts[y], name=str(y), orientation="h", marker_color=shades[y],
-            marker_line=dict(width=1, color="#fcfcfb"),
+            marker_line=dict(width=1, color=SURFACE),
             hovertemplate=f"<b>%{{y}}</b><br>{y}: %{{x}} new institutions<extra></extra>"))
     fig.add_trace(go.Scatter(
         y=totals.index, x=totals.values, mode="text", text=[f"  {v}" for v in totals.values],
