@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets (public repo: never commit keys)
+.env
+.streamlit/secrets.toml
+
+# Raw scraped HTML (large, re-downloadable)
+data/raw/html/
+
+# Course statement PDF and private playbook stay on our laptops only
+docs/*.pdf
+MASTER_PROMPTS.md
+
+# OS junk
+.DS_Store
+Thumbs.db
