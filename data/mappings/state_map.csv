@@ -1,0 +1,58 @@
+state_raw,state_std,region,raw_rows,note
+Andaman and Nicobar Islands,Andaman and Nicobar Islands,East,16,Official spelling. Region: in no zonal council; placed in East by geography (Bay of Bengal).
+Andaman And Nicobar Islands,Andaman and Nicobar Islands,East,2,Letter case. Region: in no zonal council; placed in East by geography (Bay of Bengal).
+Andaman & Nicobar,Andaman and Nicobar Islands,East,1,Short form with '&'. Region: in no zonal council; placed in East by geography (Bay of Bengal).
+Andhra Pradesh,Andhra Pradesh,South,7497,Official spelling.
+Arunachal Pradesh,Arunachal Pradesh,North-East,117,Official spelling.
+Assam,Assam,North-East,1451,Official spelling.
+Bihar,Bihar,East,880,Official spelling.
+Chandigarh,Chandigarh,North,360,Official spelling.
+Chhattisgarh,Chhattisgarh,Central,770,Official spelling.
+Dadra and Nagar Haveli,Dadra and Nagar Haveli and Daman and Diu,West,14,Pre-2020 UT; merged with Daman and Diu in January 2020.
+Daman and Diu,Dadra and Nagar Haveli and Daman and Diu,West,4,Pre-2020 UT; merged with Dadra and Nagar Haveli in January 2020.
+Dadra And Nagar Haveli,Dadra and Nagar Haveli and Daman and Diu,West,1,"Pre-2020 UT, letter case; merged with Daman and Diu in January 2020."
+Dadra and Nagar Haveli and Daman and Diu,Dadra and Nagar Haveli and Daman and Diu,West,0,Official spelling (not in current data).
+Delhi,Delhi,North,2210,Official spelling.
+DELHI,Delhi,North,1,Upper case on the 2023 Innovation page.
+NCT of Delhi,Delhi,North,0,Formal name (not in current data).
+New Delhi,Delhi,North,0,City name used as state (not in current data).
+Goa,Goa,West,501,Official spelling.
+Gujarat,Gujarat,West,3552,Official spelling.
+Haryana,Haryana,North,1949,Official spelling.
+Himachal Pradesh,Himachal Pradesh,North,612,Official spelling.
+Jammu and Kashmir,Jammu and Kashmir,North,606,Official spelling.
+Jammu And Kashmir,Jammu and Kashmir,North,58,Letter case.
+Jammu & Kashmir,Jammu and Kashmir,North,7,'&' instead of 'and'.
+Jharkhand,Jharkhand,East,1163,Official spelling.
+Karnataka,Karnataka,South,6054,Official spelling.
+KARNATAKA,Karnataka,South,1,Upper case on the 2023 Innovation page.
+Kerala,Kerala,South,3608,Official spelling.
+KERALA,Kerala,South,1,Upper case on the 2023 Innovation page.
+Ladakh,Ladakh,North,0,Official spelling (not in current data).
+Lakshadweep,Lakshadweep,South,0,Official spelling (not in current data). Region: in no zonal council; placed in South by geography (off the Kerala coast).
+Madhya Pradesh,Madhya Pradesh,Central,3004,Official spelling.
+Maharashtra,Maharashtra,West,11830,Official spelling.
+MAHARASHTRA,Maharashtra,West,1,Upper case on the 2023 Innovation page.
+Manipur,Manipur,North-East,307,Official spelling.
+Meghalaya,Meghalaya,North-East,180,Official spelling.
+Mizoram,Mizoram,North-East,69,Official spelling.
+Nagaland,Nagaland,North-East,96,Official spelling.
+Odisha,Odisha,East,1216,Official spelling.
+Orissa,Odisha,East,0,Old name; renamed Odisha in 2011 (not in current data).
+Pondicherry,Puducherry,South,451,Old name; renamed Puducherry in 2006.
+Puducherry,Puducherry,South,1,Official spelling.
+Punjab,Punjab,North,1655,Official spelling.
+Rajasthan,Rajasthan,North,2040,Official spelling.
+Sikkim,Sikkim,North-East,130,"Official spelling. Region: member of the North Eastern Council since 2002, so grouped with the North-East."
+Tamil Nadu,Tamil Nadu,South,11295,Official spelling.
+TAMIL NADU,Tamil Nadu,South,2,Upper case on the 2023 Innovation page.
+Tamilnadu,Tamil Nadu,South,0,Written as one word (not in current data; kept for future scrapes).
+Telangana,Telangana,South,3489,Official spelling.
+TELANGANA,Telangana,South,1,Upper case on the 2023 Innovation page.
+Tripura,Tripura,North-East,240,Official spelling.
+Uttar Pradesh,Uttar Pradesh,Central,3982,Official spelling.
+UTTAR PRADESH,Uttar Pradesh,Central,2,Upper case on the 2023 Innovation page.
+Uttarakhand,Uttarakhand,Central,1010,Official spelling.
+UTTARAKHAND,Uttarakhand,Central,1,Upper case on the 2023 Innovation page.
+Uttaranchal,Uttarakhand,Central,0,Old name; renamed Uttarakhand in 2007 (not in current data).
+West Bengal,West Bengal,East,3188,Official spelling.

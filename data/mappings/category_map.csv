@@ -1,0 +1,104 @@
+category_original,year,category_std,introduced_year,note
+College,2017,College,2017,
+Engineering,2017,Engineering,2017,
+Management,2017,Management,2017,
+Overall,2017,Overall,2017,
+Pharmacy,2017,Pharmacy,2017,
+University,2017,University,2017,
+Architecture,2018,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2018,College,2017,
+Engineering,2018,Engineering,2017,
+Law,2018,Law,2018,
+Management,2018,Management,2017,
+Medical,2018,Medical,2018,
+Overall,2018,Overall,2017,
+Pharmacy,2018,Pharmacy,2017,
+Special Mention Institutions,2018,Special Mention,2018,"Not a ranking: 4 institutions named without rank or score (2018 only). Kept in the participants table, not in the master table."
+University,2018,University,2017,
+Architecture,2019,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2019,College,2017,
+Engineering,2019,Engineering,2017,
+Law,2019,Law,2018,
+Management,2019,Management,2017,
+Medical,2019,Medical,2018,
+Overall,2019,Overall,2017,
+Pharmacy,2019,Pharmacy,2017,
+University,2019,University,2017,
+Architecture,2020,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2020,College,2017,
+Dental,2020,Dental,2020,
+Engineering,2020,Engineering,2017,
+Law,2020,Law,2018,
+Management,2020,Management,2017,
+Medical,2020,Medical,2018,
+Overall,2020,Overall,2017,
+Pharmacy,2020,Pharmacy,2017,
+University,2020,University,2017,
+Architecture,2021,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2021,College,2017,
+Dental,2021,Dental,2020,
+Engineering,2021,Engineering,2017,
+Law,2021,Law,2018,
+Management,2021,Management,2017,
+Medical,2021,Medical,2018,
+Overall,2021,Overall,2017,
+Pharmacy,2021,Pharmacy,2017,
+Research,2021,Research Institutions,2021,"Renamed: published as 'Research' 2021-2023 and as 'Research Institutions' from 2024. Uses QNR, QLR, SFC instead of TLR, RPC, GO."
+University,2021,University,2017,
+Architecture,2022,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2022,College,2017,
+Dental,2022,Dental,2020,
+Engineering,2022,Engineering,2017,
+Law,2022,Law,2018,
+Management,2022,Management,2017,
+Medical,2022,Medical,2018,
+Overall,2022,Overall,2017,
+Pharmacy,2022,Pharmacy,2017,
+Research,2022,Research Institutions,2021,"Renamed: published as 'Research' 2021-2023 and as 'Research Institutions' from 2024. Uses QNR, QLR, SFC instead of TLR, RPC, GO."
+University,2022,University,2017,
+Agriculture and Allied Sectors,2023,Agriculture & Allied Sectors,2023,
+Architecture,2023,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2023,College,2017,
+Dental,2023,Dental,2020,
+Engineering,2023,Engineering,2017,
+Innovation,2023,Innovation,2023,Rank-only category: no overall score or parameter scores published. The 2023 page has no City column and puts the rank in a column called 'Band'.
+Law,2023,Law,2018,
+Management,2023,Management,2017,
+Medical,2023,Medical,2018,
+Overall,2023,Overall,2017,
+Pharmacy,2023,Pharmacy,2017,
+Research,2023,Research Institutions,2021,"Renamed: published as 'Research' 2021-2023 and as 'Research Institutions' from 2024. Uses QNR, QLR, SFC instead of TLR, RPC, GO."
+University,2023,University,2017,
+Agriculture and Allied Sectors,2024,Agriculture & Allied Sectors,2023,
+Architecture and Planning,2024,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2024,College,2017,
+Dental,2024,Dental,2020,
+Engineering,2024,Engineering,2017,
+Innovation,2024,Innovation,2023,Rank-only category: no overall score or parameter scores published.
+Law,2024,Law,2018,
+Management,2024,Management,2017,
+Medical,2024,Medical,2018,
+Open University,2024,Open University,2024,Rank-only category: no overall score or parameter scores published.
+Overall,2024,Overall,2017,
+Pharmacy,2024,Pharmacy,2017,
+Research Institutions,2024,Research Institutions,2021,"Renamed: published as 'Research' 2021-2023 and as 'Research Institutions' from 2024. Uses QNR, QLR, SFC instead of TLR, RPC, GO."
+Skill University,2024,Skill University,2024,Rank-only category: no overall score or parameter scores published.
+State Public University,2024,State Public University,2024,Wording only: 'State Public University' (2024) and 'State Public Universities' (2025).
+University,2024,University,2017,
+Agriculture and Allied Sectors,2025,Agriculture & Allied Sectors,2023,
+Architecture and Planning,2025,Architecture & Planning,2018,"Renamed: published as 'Architecture' 2018-2023 and as 'Architecture and Planning' from 2024; same ranking list, so one standard name."
+College,2025,College,2017,
+Dental,2025,Dental,2020,
+Engineering,2025,Engineering,2017,
+Innovation,2025,Innovation,2023,Rank-only category: no overall score or parameter scores published.
+Law,2025,Law,2018,
+Management,2025,Management,2017,
+Medical,2025,Medical,2018,
+Open University,2025,Open University,2024,Rank-only category: no overall score or parameter scores published.
+Overall,2025,Overall,2017,
+Pharmacy,2025,Pharmacy,2017,
+Research Institutions,2025,Research Institutions,2021,"Renamed: published as 'Research' 2021-2023 and as 'Research Institutions' from 2024. Uses QNR, QLR, SFC instead of TLR, RPC, GO."
+SDG Institutions,2025,SDG,2025,Rank-only category: no overall score or parameter scores published. Standard name shortened to 'SDG'.
+Skill University,2025,Skill University,2024,Rank-only category: no overall score or parameter scores published.
+State Public Universities,2025,State Public University,2024,Wording only: 'State Public University' (2024) and 'State Public Universities' (2025).
+University,2025,University,2017,
