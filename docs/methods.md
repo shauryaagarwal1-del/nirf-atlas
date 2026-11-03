@@ -127,6 +127,12 @@ scores are only compared within the same category unless a visible note says oth
   teal light→dark scale for amounts, teal (up / gained) vs coral (down / lost) for changes, and `add_source_note()`,
   which writes "Source: NIRF, Ministry of Education, Govt. of India" under every chart. `dark_variant()` swaps each
   colour for its own dark-mode step (chosen for the navy dark surface), so every chart also reads well in dark mode.
+- **Readable titles and labels (`core/theme.py`):** Plotly never wraps a title, so a title longer than 90 characters
+  is split into two balanced lines (subtitles at 130), with extra top margin per line. Point labels on scatterplots
+  and strip charts (Q5.2, Q5.3, Q8.1, Q8.3, Q8.4, Q8.5) are placed by `label_points()`: each label, most important
+  first, tries spots around its point (right, left, above, below, diagonals, then further out) and takes the first
+  one that stays inside the plot, does not cover another label and covers as few points as possible; a thin leader
+  line joins it to its point. This changes only where a name is printed, never the data.
 - **`core/result.py`:** every engine returns `ChartResult(fig, table, insight, method, chart_type)`.
 - **`core/stats.py`:** summary statistics, Pearson/Spearman correlation, R², p-value and the least-squares line.
   Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 moderate, < 0.8 strong, otherwise very strong.
@@ -201,7 +207,8 @@ of one category-year (default: its latest year).
   the method text says how many were left out), subtract, sort, keep the n largest climbs (`up`), falls (`down`)
   or both.
 - **Chart and why:** diverging horizontal bar (teal = up, coral = down) around zero, labelled "old → new rank"; bars
-  compare amounts and the zero line separates climbers from fallers.
+  compare amounts and the zero line separates climbers from fallers. The largest climb (Q1.2) or the largest fall
+  (Q1.3) is always the top bar, so the bar the title names is the first one read.
 - **Filters the user can change:** category, start and end year (default: the category's first and last year),
   direction, n.
 - **Caveat:** the length of the exact-rank list changes (Engineering ranked 200 exactly in 2019–2022, 100 otherwise).
@@ -607,3 +614,31 @@ lies wholly inside one of these four, so institutions known only by band can be 
 - **Tests:** `tests/test_questions.py` checks the 40 IDs, the word-for-word text, that every registered chart type is in
   `docs/allowed_charts.md`, that every call's parameters exist, and that every question runs and draws its registered
   chart type.
+
+## Question Bank page (Level 1 and Level 2 live)
+
+- **Where:** `app/pages/question_bank.py` (page) and `app/question_controls.py` (the per-question controls).
+- **Layout:** the 8 sections are tabs (Trends, Geospatial, Univariate, Bivariate, Multivariate, Distribution, Mobility,
+  Outliers); each lists its 5 questions with their IDs. Picking one shows the question, a "Why this chart?" note
+  (`why_this_chart` from the registry), the controls for that question, then its chart card (chart, one-line answer,
+  "How we calculated this" and "See the data" with a CSV download). Only the open tab is computed.
+- **Controls = the question's own parameters:** one widget per parameter in the registry's `default_params`, starting
+  at the registered default. Examples: Q1.1 category + institution picker + year range; Q7.1 category + "From year" +
+  "To year"; Q5.2 category + year + "High parameter" + "Low parameter"; Q8.1/Q8.3 the |z| cut-off for "unusual".
+  Year and parameter lists follow the chosen category (e.g. Research Institutions offers QnR, QlR, SFC, OI, PR; a
+  default missing there falls back to that category's first parameter). Parameters that define the chart itself
+  (direction of Q1.2/Q1.3, the chart view, the quartile mode) are not offered, so the chart always matches its
+  "Why this chart?" note. "Reset" restores the registered defaults. This is how a new examiner question (Level 2)
+  is answered live: the same, already explained method with different years, category, institutions or parameters.
+- **Selections that cannot be answered** (e.g. a parameter question for Innovation, which publishes no parameter
+  scores, or "From year" after "To year") show a friendly message from the engine instead of an empty or wrong chart.
+- **Deep links:** `?q=Q4.3` in the address opens that question; the address always shows the open question, so a
+  link can be copied. An unknown ID falls back to Q1.1 with a short notice.
+- **"Run all 40":** runs every question with its defaults and shows a grid with a tick (or cross and the reason) per
+  question, its run time and a mini preview; "Open" jumps to the full question. A tick means the same checks as
+  `scripts/run_all_questions.py` (`core.questions.check_result`).
+- **Tests:** `tests/test_question_bank.py` runs the real app headless (Streamlit AppTest): all 40 deep links open with
+  one chart, the right controls and no error; changing a control redraws and enables Reset; picking a question
+  updates the link; Run all 40 shows 40 ticks and 40 previews; an unknown ID does not crash. In addition every
+  question was run for every category (and several years) to check that each combination gives a chart or a
+  friendly message, never a crash.
