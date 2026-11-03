@@ -4,6 +4,7 @@ Reads every raw CSV in data/raw/csv/<year>/ (never changes them) and writes:
 
   data/processed/nirf_master.parquet (+ .csv)        one row per (year, category, ranked institution):
                                                      every exact-rank row and every rank-band row
+  data/processed/dropped_duplicates.csv              every row step 11 dropped as a duplicate, and why
   data/processed/nirf_participants.parquet          the "List of Participating Institutions" pages
                                                      and the 2018 Special Mention page (no ranks);
                                                      kept apart so they are never counted as ranked
@@ -46,6 +47,9 @@ ALIAS_RULES = MAPPINGS / "institution_alias_rules.csv"
 ALIASES = MAPPINGS / "institution_aliases.csv"
 REVIEW = MAPPINGS / "institution_review.csv"
 REPORT = ROOT / "docs" / "cleaning_report.md"
+DUPLICATE_LOG = PROCESSED / "dropped_duplicates.csv"
+DUPLICATE_LOG_COLUMNS = ["year", "category_std", "category_original", "page_type", "institution_key",
+                         "institute_name_raw", "rank_raw", "source_url", "reason"]
 
 YEARS = range(2017, 2026)
 RANKED_PAGES = {"ranking", "band"}
@@ -610,13 +614,18 @@ def duplicates(df: pd.DataFrame, rec: StepRecord, ctx: Context) -> pd.DataFrame:
         log.warning("Duplicate key dropped: %s %s %s %s", r.year, r.category_std, r.institution_key,
                     r.institute_name)
     df = df[~key_dup].drop(columns="_filled").sort_index()
+    dropped = pd.concat([dropped_exact.assign(reason="exact duplicate row"),
+                         dropped_key.assign(reason="duplicate (year, category_std, institution_key)")])
+    dropped[DUPLICATE_LOG_COLUMNS].to_csv(DUPLICATE_LOG, index=False)
     side = ctx.participants
     side_dups = int(side.duplicated(subset=["year", "category_std", "list_type", "institute_name_raw",
                                             "city", "state"]).sum())
     rec.changed = (f"Exact duplicate rows dropped: **{len(dropped_exact)}**. Duplicate (year, category, "
                    f"institution_key) rows dropped: **{len(dropped_key)}**. The identity step already "
                    f"refuses to give two rows of one list the same key, so 0 is expected and confirms "
-                   f"it. In the participants table, {side_dups} rows repeat another row's name, city "
+                   f"it. Every dropped row is written to `data/processed/dropped_duplicates.csv` "
+                   f"(header only when nothing was dropped), so the row-count test can prove that "
+                   f"raw rows = master rows + dropped rows. In the participants table, {side_dups} rows repeat another row's name, city "
                    f"and state in the same list; they are kept, because several are different colleges "
                    f"with the same generic name in one district (e.g. 'Government Degree College', "
                    f"Srikakulam, 5 times in 2018).")

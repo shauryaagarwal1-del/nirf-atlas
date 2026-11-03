@@ -83,6 +83,31 @@ scores are only compared within the same category unless a visible note says oth
 - **Checks:** `tests/test_master.py` (one row per key, ranges, ties, known renames such as UPES and IISc,
   same-name colleges kept apart).
 
+### Step 4: validation (`tests/test_data.py`, `pipeline/spot_check.py`)
+- **What:** automatic tests that compare the master table with things *outside* the cleaning code, plus a
+  side-by-side check against the original web pages for a person to read.
+- **How (plain words):**
+  1. *No duplicates:* no (year, category, institution) appears twice.
+  2. *States:* every state is one of India's 28 states + 8 UTs, typed into the test from the official list
+     (not read from our own `state_map.csv`, so a wrong mapping would be caught).
+  3. *Ranges:* score and the five parameters are between 0 and 100 wherever they exist.
+  4. *Rank agrees with score:* inside each category-year, nobody has a score more than 0.01 (rounding) above
+     someone ranked better. Institutions sharing a rank number (ties, `21A`) are not compared with each other.
+  5. *Coverage:* every year 2017–2025 is present, and the categories of each year are exactly the ticks in
+     the year × category table of `docs/source_map.md` (Special Mention 2018 excluded: it is not a ranking).
+  6. *Nothing silently lost:* for every (year, category), master rows = rows on the raw ranking and band
+     pages − rows logged in `data/processed/dropped_duplicates.csv`. A second test checks that the raw CSVs
+     still hold the row counts `data/raw/scrape_log.csv` recorded.
+  7. *Spot check:* `python -m pipeline.spot_check` picks 15 random master rows, re-reads the same institution
+     from the saved HTML page with its own small parser (not the scraper's code) and prints both versions
+     with a verdict per field: `same`, `cleaned` (only case/spacing/punctuation/PIN codes differ),
+     `standardised` (state spelling → official name) or `DIFF`.
+- **Result (3 Nov 2026):** all tests pass. The spot check run on *all* 11,647 rows found 0 real differences (116,470 fields compared)
+  and 0 institutions missing from their page: every difference was an intended cleaning (487 tidied names
+  and cities, 104 states renamed, e.g. Pondicherry → Puducherry).
+- **Why:** the examiner sees numbers only through our charts, so we must be able to show that every number
+  in the master table is the number NIRF printed, and that no row was dropped without a record.
+
 ## Analyses
 
 _To be filled in as engines are built._

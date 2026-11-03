@@ -311,7 +311,7 @@ NIRF band -> standard band:
 
 **Rows:** 11,647 -> 11,647
 
-**What changed:** Exact duplicate rows dropped: **0**. Duplicate (year, category, institution_key) rows dropped: **0**. The identity step already refuses to give two rows of one list the same key, so 0 is expected and confirms it. In the participants table, 59 rows repeat another row's name, city and state in the same list; they are kept, because several are different colleges with the same generic name in one district (e.g. 'Government Degree College', Srikakulam, 5 times in 2018).
+**What changed:** Exact duplicate rows dropped: **0**. Duplicate (year, category, institution_key) rows dropped: **0**. The identity step already refuses to give two rows of one list the same key, so 0 is expected and confirms it. Every dropped row is written to `data/processed/dropped_duplicates.csv` (header only when nothing was dropped), so the row-count test can prove that raw rows = master rows + dropped rows. In the participants table, 59 rows repeat another row's name, city and state in the same list; they are kept, because several are different colleges with the same generic name in one district (e.g. 'Government Degree College', Srikakulam, 5 times in 2018).
 
 **Why:** A duplicate would count one institution twice in every count and average and break the rule 'one row per institution per category per year'.
 
