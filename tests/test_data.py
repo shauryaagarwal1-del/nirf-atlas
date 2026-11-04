@@ -101,6 +101,47 @@ def test_better_rank_never_has_clearly_lower_score(m):
     assert not problems, "\n".join(problems)
 
 
+# ---------- 4b. score = NIRF's weighted sum of the parameters ----------
+
+# NIRF's published weights (TLR, RPC, GO, OI, PR; Research Institutions: QnR, QlR, SFC, OI, PR), typed here
+# from the methodology, not computed from our data. (category, first year, last year) -> weights.
+STANDARD_WEIGHTS = (0.30, 0.30, 0.20, 0.10, 0.10)
+WEIGHTS = {
+    ("College", 2017, 2017): (0.30, 0.20, 0.25, 0.15, 0.10),
+    ("College", 2018, 2025): (0.40, 0.15, 0.25, 0.10, 0.10),
+    ("Law", 2018, 2025): (0.40, 0.15, 0.25, 0.10, 0.10),
+    ("Architecture & Planning", 2019, 2025): (0.40, 0.20, 0.20, 0.10, 0.10),
+}
+# Each published parameter and the score are rounded to 2 decimals, so small gaps are rounding.
+WEIGHTED_SUM_TOLERANCE = 0.05
+
+
+def weights_for(category: str, year: int) -> tuple[float, ...]:
+    for (cat, first, last), w in WEIGHTS.items():
+        if cat == category and first <= year <= last:
+            return w
+    return STANDARD_WEIGHTS
+
+
+def test_score_is_the_weighted_sum_of_the_parameters(m):
+    """Every published score equals NIRF's weighted sum of its five parameters (within rounding), so the
+    scores and parameters in the master table agree with each other and with NIRF's formula."""
+    problems, checked = [], 0
+    for (year, cat), g in m[m["score"].notna()].groupby(["year", "category_std"]):
+        research = cat == "Research Institutions"
+        params = ["qnr", "qlr", "sfc", "oi", "pr"] if research else ["tlr", "rpc", "go", "oi", "pr"]
+        g = g.dropna(subset=params)
+        if g.empty:
+            continue
+        gap = (g[params].to_numpy() @ weights_for(cat, year) - g["score"].to_numpy())
+        checked += len(g)
+        for name, d in zip(g["institute_name"], gap):
+            if abs(d) > WEIGHTED_SUM_TOLERANCE:
+                problems.append(f"{year} {cat}: {name} weighted sum differs from score by {d:+.2f}")
+    assert checked > 6000, f"only {checked} scored rows checked"
+    assert not problems, "\n".join(problems[:20])
+
+
 # ---------- 5. years and categories ----------
 
 def published_categories() -> dict[int, set[str]]:

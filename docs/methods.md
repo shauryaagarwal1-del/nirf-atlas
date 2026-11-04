@@ -100,7 +100,11 @@ scores are only compared within the same category unless a visible note says oth
   6. *Nothing silently lost:* for every (year, category), master rows = rows on the raw ranking and band
      pages − rows logged in `data/processed/dropped_duplicates.csv`. A second test checks that the raw CSVs
      still hold the row counts `data/raw/scrape_log.csv` recorded.
-  7. *Spot check:* `python -m pipeline.spot_check` picks 15 random master rows, re-reads the same institution
+  7. *Score = NIRF's formula:* every published score equals the weighted sum of its five parameters with NIRF's
+     published weights for that category and year (typed into the test, e.g. 30/30/20/10/10 for Overall,
+     40/15/25/10/10 for College from 2018 and for Law), within 0.05 for rounding. A least-squares fit of score on the
+     parameters per category-year gives exactly these weights (largest gap 0.02).
+  8. *Spot check:* `python -m pipeline.spot_check` picks 15 random master rows, re-reads the same institution
      from the saved HTML page with its own small parser (not the scraper's code) and prints both versions
      with a verdict per field: `same`, `cleaned` (only case/spacing/punctuation/PIN codes differ),
      `standardised` (state spelling → official name) or `DIFF`.
