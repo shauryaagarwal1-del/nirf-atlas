@@ -234,6 +234,36 @@ def test_spare_key_is_tried(monkeypatch):
     assert llm.complete("s", "u") == GOOD and used == ["key-1", "key-2"]
 
 
+def test_used_up_model_moves_to_the_next_model(monkeypatch):
+    """The free tier counts requests per model, so a used-up quota on every key tries the next model."""
+    monkeypatch.setattr(llm, "settings", lambda: llm.Settings(("key-1", "key-2"), ("model-a", "model-b")))
+    tried = []
+
+    def fake(key, model, system, user, json_mode):
+        tried.append((key, model))
+        if model == "model-a":
+            raise _FakeAPIError(429, "RESOURCE_EXHAUSTED", "Generate content requests per day limit exceeded")
+        return GOOD
+
+    monkeypatch.setattr(llm, "_gemini", fake)
+    assert llm.complete("s", "u") == GOOD and llm.LAST_MODEL == "model-b"
+    assert tried == [("key-1", "model-a"), ("key-2", "model-a"), ("key-1", "model-b")]
+
+
+def test_no_internet_stops_at_once(monkeypatch):
+    monkeypatch.setattr(llm, "settings", lambda: llm.Settings(("key-1", "key-2"), ("model-a", "model-b")))
+    tried = []
+
+    def fake(key, model, system, user, json_mode):
+        tried.append(model)
+        raise ConnectError("getaddrinfo failed")
+
+    monkeypatch.setattr(llm, "_gemini", fake)
+    with pytest.raises(llm.LLMError) as e:
+        llm.complete("s", "u")
+    assert e.value.kind == "offline" and tried == ["model-a"]
+
+
 def test_no_key_is_a_friendly_error(monkeypatch):
     monkeypatch.setattr(llm, "settings", lambda: llm.Settings((), ("model-a",)))
     with pytest.raises(llm.LLMError) as e:

@@ -6,6 +6,8 @@ without touching the planner. The default provider is Google Gemini (google-gena
     environment, the project's .env file, or Streamlit's st.secrets;
   * temperature 0, so the same question gives the same plan, and the reply is requested as JSON;
   * if a call fails and GEMINI_API_KEY_2 exists, the call is tried once more with the spare key;
+  * the free tier allows only about 20 requests per day PER MODEL, so when every key has used up a
+    model's quota (or the model is missing or overloaded) the next model in the list is tried;
   * every failure becomes an LLMError with a plain-English message and a fix, so the page can show
     what went wrong (no internet, invalid key, quota used up ...) instead of crashing.
 The model only ever returns text; it is never given the data and never calculates numbers.
@@ -20,8 +22,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PROVIDER = "Gemini"
-# Tried in this order when GEMINI_MODEL is not set: "-latest" follows Google's newest Flash model.
-DEFAULT_MODELS = ("gemini-flash-latest", "gemini-2.5-flash")
+# Tried in this order (after GEMINI_MODEL, if set). Each model has its own free daily quota, so a
+# used-up model moves on to the next. "-latest" follows Google's newest Flash model.
+DEFAULT_MODELS = ("gemini-flash-latest", "gemini-3.6-flash", "gemini-2.5-flash", "gemini-flash-lite-latest")
+# Errors after which another model may still work (each model has its own quota and servers).
+NEXT_MODEL = {"quota", "model", "server"}
 TIMEOUT_MS = 45_000
 
 
@@ -39,7 +44,7 @@ class LLMError(Exception):
 @dataclass(frozen=True)
 class Settings:
     keys: tuple[str, ...]       # main key first, then the spare key (if any)
-    models: tuple[str, ...]     # the configured model, or the defaults to try in order
+    models: tuple[str, ...]     # the configured model first, then the defaults, in the order tried
 
 
 def _secret(name: str) -> str:
@@ -67,7 +72,7 @@ def settings() -> Settings:
     _load_dotenv()
     keys = tuple(k for k in dict.fromkeys([_secret("GEMINI_API_KEY"), _secret("GEMINI_API_KEY_2")]) if k)
     model = _secret("GEMINI_MODEL")
-    return Settings(keys, (model,) if model else DEFAULT_MODELS)
+    return Settings(keys, tuple(dict.fromkeys(([model] if model else []) + list(DEFAULT_MODELS))))
 
 
 def _no_key() -> LLMError:
@@ -131,22 +136,32 @@ def _gemini(key: str, model: str, system: str, user: str, json_mode: bool) -> st
 def complete(system: str, user: str, json_mode: bool = True) -> str:
     """Send `user` with the `system` instructions to the model and return its text reply.
 
-    Tries the main key, then (on any failure) the spare key GEMINI_API_KEY_2 once. When no model is
-    configured, a "model not found" answer moves on to the next default model. Raises LLMError.
+    For each model in turn, the main key is tried, then the spare key GEMINI_API_KEY_2. When every key
+    fails with a used-up quota, a missing model or a server problem, the next model is tried; no
+    internet or rejected keys stop at once. The model that answered is kept in LAST_MODEL (shown in
+    the accuracy report). Raises LLMError.
     """
+    global LAST_MODEL
     s = settings()
     if not s.keys:
         raise _no_key()
     error: LLMError | None = None
-    for key in s.keys:
-        for model in s.models:
+    for model in s.models:
+        for key in s.keys:
             try:
-                return _gemini(key, model, system, user, json_mode)
+                text = _gemini(key, model, system, user, json_mode)
+                LAST_MODEL = model
+                return text
             except Exception as exc:  # every provider failure is explained, never shown as a traceback
                 error = _classify(exc)
-                if error.kind != "model":
-                    break             # only a missing model is worth trying the next model for
+                if error.kind == "offline":
+                    raise error
+        if error.kind not in NEXT_MODEL:
+            break
     raise error
+
+
+LAST_MODEL: str | None = None
 
 
 def check_connection() -> tuple[bool, str]:
