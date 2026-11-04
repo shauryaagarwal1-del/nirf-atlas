@@ -31,7 +31,7 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year,
 from core.result import ChartResult
 from core.stats import signed
 from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, OTHER, UP, add_lollipops, color_map, finish,
-                        label_points, ordinal_ramp, padded_range)
+                        highlight_marker, label_points, ordinal_ramp, padded_range)
 
 MAX_INSTITUTIONS = 8
 
@@ -110,8 +110,8 @@ def parameter_profile(institutions=None, year: int | None = None, category: str 
             z=z, x=xs, y=table["institution"], text=np.round(z, 1), texttemplate="%{text}", customdata=where,
             zmin=0, zmax=100, colorbar=dict(title=dict(text="Score")),
             hovertemplate="<b>%{y}</b><br>%{x}: %{z:.2f}<br>%{customdata} in " + f"{category} {year}<extra></extra>"))
-        fig.update_yaxes(autorange="reversed", showgrid=False, title_text=None)
-        fig.update_xaxes(side="top", title_text=None)
+        fig.update_yaxes(autorange="reversed", showgrid=False, title_text="Institution")
+        fig.update_xaxes(side="top", title_text="NIRF parameter")
 
     # Insight: who leads on most parameters, and where the chosen institutions differ most / least.
     leaders = {p: table.loc[table[SHORT[p]].idxmax(), "institution"] for p in params}
@@ -180,7 +180,7 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
     for mask, name, color, size in groups:
         t = d[mask]
         fig.add_trace(go.Scatter(
-            x=t[lo], y=t[hi], mode="markers", name=name, marker=dict(color=color, size=size, opacity=0.85),
+            x=t[lo], y=t[hi], mode="markers", name=name, marker=highlight_marker(color, size, 0.85),
             customdata=np.stack([t["canonical_name"], t["rank_raw"], t["z_gap"].round(2)], axis=1),
             hovertemplate=(f"<b>%{{customdata[0]}}</b><br>Rank %{{customdata[1]}}<br>{SHORT[hi]}: %{{y:.2f}} · "
                            f"{SHORT[lo]}: %{{x:.2f}}<br>z-gap ({SHORT[hi]} − {SHORT[lo]}): %{{customdata[2]}}"
@@ -214,7 +214,7 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
         insight = (f"In {category} {year}, no institution combines {SHORT[hi]} above the median ({med_hi:.1f}) with "
                    f"{SHORT[lo]} below the median ({med_lo:.1f}); the two parameters rise and fall together here.")
     finish(fig, title, f"{category} ranking {year} · dashed lines = medians · labelled: the {min(len(quad), int(n_labels))} "
-           f"largest gaps", legend_title="")
+           f"largest gaps", legend_title="Group")
     method = (f"We take the {len(d)} {category} institutions of {year} with both {SHORT[hi]} and {SHORT[lo]} published. "
               f"'High' and 'low' are relative to the median of the same year and category (median = middle value; half "
               f"of the institutions are above it). The top-left quadrant holds institutions above the median on "
@@ -305,6 +305,7 @@ def improved_despite_decline(category: str = "Overall", start_year: int | None =
     fig.update_yaxes(zeroline=True, zerolinecolor=INK_SECONDARY, zerolinewidth=1)
     fig.update_yaxes(title_text="Change (points)", col=1)
     fig.update_xaxes(tickfont=dict(size=10), showline=True)
+    fig.update_xaxes(title_text="Parameter", title_font=dict(size=11), row=rows_n)
     fig.update_annotations(font=dict(size=12, color=INK))
     fig.update_layout(bargap=0.2, margin=dict(t=130))
 
@@ -319,7 +320,7 @@ def improved_despite_decline(category: str = "Overall", start_year: int | None =
                f"{table.at[0, 'parameters_declined']} fell).")
     finish(fig, title, f"{category} · change {start_year}→{end_year} · first {len(show)} of {len(q)} by overall gain · "
            f"every small chart uses the same scale", note="NIRF adjusted some sub-metrics over the years, so part of a "
-           "change can come from the method.", height=170 + 210 * rows_n, legend_title="")
+           "change can come from the method.", height=170 + 210 * rows_n, legend_title="Change")
     method = (f"For each {category} institution with published scores in both {start_year} and {end_year} "
               f"({len(both)}), change = {end_year} value − {start_year} value for the overall score and for each "
               f"parameter ({', '.join(SHORT[p] for p in params)}). An institution qualifies if its overall score change "
@@ -368,7 +369,7 @@ def strongest_weakest_gap(year: int | None = None, category: str = "Overall", n:
                        "points<extra></extra>"))
     fig.update_xaxes(title_text="Gap: strongest − weakest parameter (points)", showgrid=True,
                      range=[0, top["gap"].max() * 1.15])
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="Institution", showgrid=False)
 
     first = d.iloc[0]
     pair = (d["strongest"] + " − " + d["weakest"]).value_counts()

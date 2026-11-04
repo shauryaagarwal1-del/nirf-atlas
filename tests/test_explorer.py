@@ -25,7 +25,7 @@ from tests.app_helpers import PICKER_TAB, chart_notes, chart_titles, html_text, 
 if not MASTER_PATH.exists():
     pytest.skip("run `python -m pipeline.clean` first", allow_module_level=True)
 
-PAGES_DIR = Path(__file__).resolve().parents[1] / "app" / "pages"
+PAGES_DIR = Path(__file__).resolve().parents[1] / "app" / "views"
 PAGES = {"trends": "trends", "geography": "geography", "distributions": "distributions",
          "multi_parameter": "multi", "mobility": "mobility", "outliers": "outliers", "relationships": "relationships"}
 ELSEWHERE = {("bivariate", "scatter_relation"), ("univariate", "coverage_by_category_year")}
@@ -35,7 +35,7 @@ def page_views(name: str) -> list:
     """The View list of a page, read without running Streamlit (everything above its page_header() call)."""
     source = (PAGES_DIR / f"{name}.py").read_text(encoding="utf-8").split("\npage_header(")[0]
     ns: dict = {}
-    exec(compile(source, f"app/pages/{name}.py", "exec"), ns)
+    exec(compile(source, f"app/views/{name}.py", "exec"), ns)
     return ns.get("VIEWS") or ns["OTHER_VIEWS"]
 
 
@@ -71,7 +71,7 @@ def test_view_has_a_control_for_every_parameter(page, view):
 @pytest.mark.parametrize("page", list(PAGES))
 def test_every_view_draws_a_chart_in_the_app(page):
     prefix = PAGES[page]
-    at = open_page(f"pages/{page}.py", PICKER_TAB.get(f"pages/{page}.py"))
+    at = open_page(f"views/{page}.py", PICKER_TAB.get(f"views/{page}.py"))
     picker = widget(at, "selectbox", f"x-{prefix}-view")
     for option in picker.options:
         at = set_widget(at, "selectbox", f"x-{prefix}-view", option)
@@ -81,7 +81,7 @@ def test_every_view_draws_a_chart_in_the_app(page):
 
 
 def test_page_category_and_sidebar_stay_in_sync():
-    at = open_page("pages/trends.py")
+    at = open_page("views/trends.py")
     at = set_widget(at, "selectbox", "x-trends-category", "Pharmacy")
     assert at.session_state["f_category"] == "Pharmacy"
     # The sidebar's widget is keyed f_category; AppTest does not list sidebar widgets of st.navigation apps,
@@ -94,7 +94,7 @@ def test_page_category_and_sidebar_stay_in_sync():
 
 
 def test_local_choices_survive_a_category_change():
-    at = open_page("pages/distributions.py")
+    at = open_page("views/distributions.py")
     at = set_widget(at, "selectbox", "x-distributions-score_distribution-year", 2019)
     at = set_widget(at, "selectbox", "x-distributions-category", "Engineering")
     assert widget(at, "selectbox", "x-distributions-score_distribution-year").value == 2019
@@ -104,7 +104,7 @@ def test_local_choices_survive_a_category_change():
 
 
 def test_years_control_writes_the_sidebar_range():
-    at = open_page("pages/trends.py")
+    at = open_page("views/trends.py")
     at = set_widget(at, "selectbox", "x-trends-view", "Biggest climbers between two years")
     at = set_widget(at, "select_slider", "x-trends-biggest_movers-up-period", (2019, 2023))
     assert tuple(at.session_state["f_years"]) == (2019, 2023)
@@ -112,14 +112,14 @@ def test_years_control_writes_the_sidebar_range():
 
 
 def test_state_filter_is_applied_and_shown():
-    at = open_page("pages/mobility.py")
+    at = open_page("views/mobility.py")
     at = set_widget(at, "multiselect", "x-mobility-states", ["Karnataka"])
     assert at.session_state["f_states"] == ["Karnataka"]
     assert "Among institutions in Karnataka" in html_text(at)
 
 
 def test_relationships_two_variable_interface():
-    at = open_page("pages/relationships.py")
+    at = open_page("views/relationships.py")
     page = html_text(at)
     for label in ("Pearson r", "Spearman rho", "R²", "p-value", "institutions with both values"):
         assert label in page
@@ -138,7 +138,7 @@ def test_relationships_two_variable_interface():
 
 @pytest.mark.parametrize("tab,charts", [("India map", 1), ("State vs State", 2), ("New entrants", 1)])
 def test_geography_tabs_draw_their_charts(tab, charts):
-    at = open_page("pages/geography.py", {"geography-tab": tab})
+    at = open_page("views/geography.py", {"geography-tab": tab})
     assert not at.exception, [e.value for e in at.exception]
     assert len(at.get("plotly_chart")) == charts
     assert "nirf-empty" not in html_text(at)
@@ -146,7 +146,7 @@ def test_geography_tabs_draw_their_charts(tab, charts):
 
 def test_geography_map_has_a_play_button_and_a_year_slider():
     import json
-    at = open_page("pages/geography.py", {"geography-tab": "India map"})
+    at = open_page("views/geography.py", {"geography-tab": "India map"})
     spec = json.loads(at.get("plotly_chart")[0].proto.spec)
     assert spec["data"][0]["type"] == "choropleth"
     assert [b["label"] for b in spec["layout"]["updatemenus"][0]["buttons"]] == ["▶ Play", "❚❚ Pause"]
@@ -154,7 +154,7 @@ def test_geography_map_has_a_play_button_and_a_year_slider():
 
 
 def test_state_vs_state_defaults_and_state_pickers():
-    at = open_page("pages/geography.py", {"geography-tab": "State vs State"})
+    at = open_page("views/geography.py", {"geography-tab": "State vs State"})
     assert widget(at, "selectbox", "x-geography-state_vs_state-state_a").value == "Karnataka"
     assert widget(at, "selectbox", "x-geography-state_vs_state-state_b").value == "Tamil Nadu"
     assert "Karnataka" in chart_titles(at)[0] and "TAMIL NADU" in html_text(at).upper()

@@ -121,7 +121,7 @@ def top10_vs_rest(year: int | None = None, category: str = "Overall", top: int =
                   if b["skew"] > 0.5 else ""))
     finish(fig, title, f"{category} ranking {year} · {a['n'] + b['n']} institutions with a published score · "
            + ("violin = smoothed distribution, box = median and middle 50%, dots = institutions" if view == "violin"
-              else "bars 2.5 points wide, overlapping"), legend_title="" if view == "histogram" else None)
+              else "bars 2.5 points wide, overlapping"), legend_title="Group" if view == "histogram" else None)
     method = (f"We split the {a['n'] + b['n']} {category} institutions with a published score in {year} into the top "
               f"{top} (exact rank ≤ {top}) and the rest, and compare their score distributions. "
               + ("A violin plot is a box plot with the distribution's shape around it: the outline is a smoothed "
@@ -248,7 +248,7 @@ def parameter_variability(year: int | None = None, category: str = "Overall", vi
                            "%{customdata[2]:.1f}<br>IQR %{customdata[3]:.1f}<extra></extra>"), showlegend=False))
         fig.update_xaxes(title_text="Coefficient of variation (SD / mean)", showgrid=True,
                          range=[0, table["cv"].max() * 1.15])
-        fig.update_yaxes(title_text=None, showgrid=False)
+        fig.update_yaxes(title_text="NIRF parameter", showgrid=False)
     else:
         for name in table["parameter"]:
             v = rows[[col_of[name], "canonical_name", "rank_raw"]].dropna(subset=[col_of[name]])
@@ -350,7 +350,7 @@ def score_by_state(year: int | None = None, category: str = "Overall", min_insti
                           + "</extra>"))
     fig.update_layout(showlegend=False)
     fig.update_xaxes(title_text="Overall score (0-100)", showgrid=True)
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="State", showgrid=False)
 
     best = shown.iloc[0]
     widest = shown.loc[shown["iqr"].idxmax()]

@@ -31,14 +31,14 @@ from core.runner import ENGINES
 
 # The Explore page that shows each engine's analyses (path relative to app/, title).
 ENGINE_PAGES = {
-    "trends": ("pages/trends.py", "Trends"),
-    "geography": ("pages/geography.py", "Geography"),
-    "univariate": ("pages/distributions.py", "Distributions"),
-    "distribution": ("pages/distributions.py", "Distributions"),
-    "bivariate": ("pages/relationships.py", "Relationships"),
-    "multivariate": ("pages/multi_parameter.py", "Multi-Parameter"),
-    "mobility": ("pages/mobility.py", "Mobility"),
-    "outliers": ("pages/outliers.py", "Outliers"),
+    "trends": ("views/trends.py", "Trends"),
+    "geography": ("views/geography.py", "Geography"),
+    "univariate": ("views/distributions.py", "Distributions"),
+    "distribution": ("views/distributions.py", "Distributions"),
+    "bivariate": ("views/relationships.py", "Relationships"),
+    "multivariate": ("views/multi_parameter.py", "Multi-Parameter"),
+    "mobility": ("views/mobility.py", "Mobility"),
+    "outliers": ("views/outliers.py", "Outliers"),
 }
 
 COLUMNS = {
@@ -180,4 +180,4 @@ def closest_questions(text: str, k: int = 3) -> list[Question]:
 
 def page_for(engine: str) -> tuple[str, str]:
     """(page path, page title) of the Explore page for an engine; the Chart Builder for custom queries."""
-    return ENGINE_PAGES.get(engine, ("pages/chart_builder.py", "Chart Builder"))
+    return ENGINE_PAGES.get(engine, ("views/chart_builder.py", "Chart Builder"))

@@ -24,7 +24,7 @@ if not MASTER_PATH.exists():
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 HOME = Path(__file__).resolve().parents[1] / "app" / "Home.py"
-PAGE = "pages/question_bank.py"
+PAGE = "views/question_bank.py"
 
 
 def open_page(qid: str | None = None) -> AppTest:
@@ -36,7 +36,8 @@ def open_page(qid: str | None = None) -> AppTest:
 
 
 def html_text(at: AppTest) -> str:
-    return " ".join(h.proto.body for h in at.get("html"))
+    """The page's HTML blocks, without the injected stylesheet (its CSS names every class, e.g. .nirf-empty)."""
+    return " ".join(h.proto.body for h in at.get("html") if not h.proto.body.lstrip().startswith("<style>"))
 
 
 def charts(at: AppTest) -> list:
@@ -60,10 +61,10 @@ def test_deep_link_opens_question_with_chart(qid):
 
 
 def test_controls_match_the_question():
-    at = open_page("Q7.1")
-    assert [s.label for s in at.selectbox] == ["Category", "From year", "To year"]
-    at = open_page("Q5.2")
-    assert [s.label for s in at.selectbox] == ["Category", "Year", "High parameter", "Low parameter"]
+    def question_selects(at):   # the question's own controls (the sidebar has its own Category box)
+        return [s.label for s in at.selectbox if s.key and s.key.startswith("qb-")]
+    assert question_selects(open_page("Q7.1")) == ["Category", "From year", "To year"]
+    assert question_selects(open_page("Q5.2")) == ["Category", "Year", "High parameter", "Low parameter"]
     at = open_page("Q1.1")
     assert [m.label for m in at.multiselect if m.key and m.key.startswith("qb-")] == ["Institutions"]
 

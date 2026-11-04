@@ -161,14 +161,14 @@ def _alternatives(question: str, i: int, engine: str | None = None) -> None:
         c1, c2, c3 = st.columns([3, 1.1, 1.1], vertical_alignment="center")
         c1.button(f"Run {q.id} here: {q.text}", key=f"ask-alt-{i}-{q.id}", on_click=_ask_sample, args=(q.id,),
                   icon=":material/play_arrow:", width="stretch")
-        c2.page_link("pages/question_bank.py", label=f"{q.id} in Question Bank", icon=":material/quiz:",
+        c2.page_link("views/question_bank.py", label=f"{q.id} in Question Bank", icon=":material/quiz:",
                      query_params={"q": q.id})
         path, title = page_for(q.engine)
         c3.page_link(path, label=f"Open {title}", icon=":material/explore:")
     if not matches:
         path, title = page_for(engine or "builder")
         c1, c2 = st.columns(2)
-        c1.page_link("pages/question_bank.py", label="Open the Question Bank", icon=":material/quiz:")
+        c1.page_link("views/question_bank.py", label="Open the Question Bank", icon=":material/quiz:")
         c2.page_link(path, label=f"Open {title}", icon=":material/explore:")
 
 
@@ -240,13 +240,16 @@ typed = st.chat_input("Ask about NIRF rankings, e.g. Which IITs improved the mos
 if typed and typed.strip():
     _ask(typed.strip())
 
-head, side = st.columns([5, 1], vertical_alignment="bottom")
-with head:
-    page_header("Ask NIRF", "Type a question in plain words and get the chart that answers it. The Gemini API reads "
-                "the question; our engines do every calculation.", eyebrow="Build & ask · Natural language")
-with side:
-    if st.session_state[HISTORY]:
+HEADER = ("Ask NIRF", "Type a question in plain words and get the chart that answers it. The Gemini API reads the "
+          "question; our engines do every calculation.")
+if st.session_state[HISTORY]:
+    head, side = st.columns([5, 1], vertical_alignment="bottom")
+    with head:
+        page_header(*HEADER, eyebrow="Build & ask · Natural language")
+    with side:
         st.button("New chat", on_click=_clear, icon=":material/add_comment:", key="ask-clear", width="stretch")
+else:   # no button yet: the header (and its rule) spans the page like on every other page
+    page_header(*HEADER, eyebrow="Build & ask · Natural language")
 
 if not st.session_state[HISTORY] and PENDING not in st.session_state:
     _intro()

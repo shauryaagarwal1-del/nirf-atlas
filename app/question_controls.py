@@ -136,8 +136,8 @@ def _widget(q: Question, name: str, params: dict, category: str | None, years: l
     if name == "institutions":
         options = list(institution_options())
         value = st.multiselect("Institutions", options, default=default or [], key=_key(q, name),
-                               format_func=lambda k: institution_options()[k], max_selections=MAX_INSTITUTIONS,
-                               placeholder="Empty = the top 5 of the year" if not default else "Search by name")
+                               format_func=institution_options().__getitem__, max_selections=MAX_INSTITUTIONS,
+                               placeholder="Top 5 (default)" if not default else "Search by name")
         return {name: value or None}
 
     if name == "states":

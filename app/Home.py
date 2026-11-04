@@ -2,7 +2,12 @@
 
 Every page visit runs this file first: it sets up the page, injects the stylesheet once, builds the
 sidebar navigation (grouped, with icons) and draws the global filters, then runs the chosen page
-from app/pages/. The page catalogue itself is in app/nav.py.
+from app/views/. The page catalogue itself is in app/nav.py.
+
+The page files live in app/views/, not app/pages/: Streamlit treats a folder called "pages" next to the
+entry point as an old-style page list, and on a freshly started server a direct link (e.g. a restored
+browser tab on /question_bank) then ran the page WITHOUT this file: no styling, no grouped sidebar, no
+filters. With another folder name every visit goes through st.navigation below.
 """
 
 from __future__ import annotations
@@ -31,4 +36,8 @@ for p in PAGES:
 page = st.navigation(sections, position="sidebar")
 
 render_sidebar()
+if (ROOT / "app" / "pages").exists():   # left over (e.g. its __pycache__) from before the rename to app/views
+    st.warning("Delete the old folder app/pages (only cache files are left in it) and restart the app: while it "
+               "exists, Streamlit may open direct links without the atlas styling and filters.",
+               icon=":material/folder_delete:")
 page.run()

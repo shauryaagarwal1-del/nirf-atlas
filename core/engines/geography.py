@@ -97,7 +97,7 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
                        "<br>Best rank: %{customdata[1]}<br>%{customdata[2]}<extra></extra>")))
     fig.update_xaxes(title_text=f"Institutions in the {category} top {top_n}, {year}", showgrid=True,
                      range=[0, table["institutions"].max() * 1.12])
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="State / UT", showgrid=False)
 
     lead = table[table["institutions"].eq(table["institutions"].max())]["state"].tolist()
     top3 = table.head(3)
@@ -259,7 +259,7 @@ def state_representation_change(category: str = "Overall", start_year: int | Non
     fig.update_xaxes(title_text=f"Change in top-{top_n} institutions ({end_year} − {start_year})", showgrid=True,
                      range=[lo - (pad if lo < 0 else 0), hi + (pad if hi > 0 else 0)], zeroline=True,
                      zerolinecolor=INK_SECONDARY, dtick=1 if hi - lo <= 12 else None)
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="State / UT", showgrid=False)
     fig.update_layout(barmode="overlay", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
 
     best, worst = table["change"].max(), table["change"].min()
@@ -281,7 +281,7 @@ def state_representation_change(category: str = "Overall", start_year: int | Non
                 if worst < 0 else "; no state lost places.")
     finish(fig, title, f"{category} ranking · labels show the number of institutions {start_year} → {end_year}",
            note=_list_note(cat, top_n, [start_year, end_year]), height=max(380, 170 + 26 * len(moved)),
-           legend_title="")
+           legend_title="Change")
     method = (f"For {start_year} and {end_year} we count, per state, the institutions certainly in the {category} "
               f"top {top_n}. Change = count in {end_year} − count in {start_year}: positive means the state "
               f"gained places. States with no change are not drawn but are listed in the table. Because the top "
@@ -423,7 +423,7 @@ def new_entrants_by_state(category: str = "Overall", years=None, by_year: bool =
                            "<br><i>Best placed: %{customdata[1]}</i><extra></extra>")))
     fig.update_xaxes(title_text=f"New {category} entrants, {fmt_years(years)}", showgrid=True,
                      range=[0, totals.max() * 1.12])
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="State / UT", showgrid=False)
 
     ranked = totals.iloc[::-1]
     total = int(ranked.sum())

@@ -18,9 +18,9 @@ from tests.level2_questions import LEVEL2
 if not MASTER_PATH.exists():
     pytest.skip("run `python -m pipeline.clean` first", allow_module_level=True)
 
-PREFIX = {"pages/trends.py": "trends", "pages/geography.py": "geography", "pages/distributions.py": "distributions",
-          "pages/relationships.py": "relationships", "pages/multi_parameter.py": "multi",
-          "pages/mobility.py": "mobility", "pages/outliers.py": "outliers"}
+PREFIX = {"views/trends.py": "trends", "views/geography.py": "geography", "views/distributions.py": "distributions",
+          "views/relationships.py": "relationships", "views/multi_parameter.py": "multi",
+          "views/mobility.py": "mobility", "views/outliers.py": "outliers"}
 
 
 def expected_title(q) -> str:

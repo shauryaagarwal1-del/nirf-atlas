@@ -27,8 +27,8 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year,
                        check_category, check_column, filter_df, fmt_years, load_master)
 from core.result import ChartResult
 from core.stats import correlate, signed
-from core.theme import (CATEGORICAL, DOWN, INK_SECONDARY, OTHER, UP, finish, jitter, label_points, padded_range,
-                        tint)
+from core.theme import (CATEGORICAL, DOWN, INK_SECONDARY, OTHER, UP, finish, highlight_marker, jitter, label_points,
+                        padded_range, tint)
 
 HIGHLIGHT = CATEGORICAL[1]
 
@@ -71,7 +71,7 @@ def research_vs_overall_outliers(year: int | None = None, category: str = "Overa
                                     (d["residual_z"] > z_threshold, f"Unusually high (z > {z_threshold:g})", HIGHLIGHT, 11)):
         t = d[mask]
         fig.add_trace(go.Scatter(
-            x=t["score"], y=t[p], mode="markers", name=name, marker=dict(color=color, size=size, opacity=0.9),
+            x=t["score"], y=t[p], mode="markers", name=name, marker=highlight_marker(color, size, 0.9),
             customdata=np.stack([t["canonical_name"], t["rank_raw"], t["expected"], t["residual_z"]], axis=1),
             hovertemplate=(f"<b>%{{customdata[0]}}</b> (rank %{{customdata[1]}})<br>Overall score %{{x:.2f}}<br>"
                            f"{SHORT[p]} %{{y:.2f}} (line predicts %{{customdata[2]:.1f}})<br>Residual z-score "
@@ -161,7 +161,7 @@ def research_over_teaching(year: int | None = None, category: str = "Overall", n
     pad = 0.35 * (hi - lo)   # room for the "RPC .. · TLR .." labels outside the bar ends, on both sides
     fig.update_xaxes(title_text="RPC − TLR (points)", showgrid=True, zeroline=True, zerolinecolor=INK_SECONDARY,
                      range=[lo - (pad if lo < 0 else 0), hi + (pad if hi > 0 else 0)])
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="Institution", showgrid=False)
     fig.update_layout(barmode="overlay", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
 
     positive = d[d["difference"] > 0]
@@ -175,7 +175,7 @@ def research_over_teaching(year: int | None = None, category: str = "Overall", n
                f"{signed(first['difference'], 1)} points). Typically RPC is far below TLR (medians "
                f"{d[rpc].median():.1f} vs {d[tlr].median():.1f}), so even a small positive gap is rare.")
     finish(fig, title, f"{category} ranking {year} · the {len(top)} largest values of RPC − TLR · label = both scores",
-           height=max(420, 170 + 30 * len(top)), legend_title="")
+           height=max(420, 170 + 30 * len(top)), legend_title="Comparison")
     method = (f"For each of the {len(d)} {category} institutions of {year} with both parameters published we compute "
               f"RPC − TLR (both are scored out of 100). A positive value means research and professional practice score "
               f"higher than teaching, learning and resources. We sort and show the {len(top)} largest. Because RPC is "
@@ -243,7 +243,7 @@ def unusual_score_jumps(category: str = "Overall", z_threshold: float = 2.0, max
         if t.empty:
             continue
         fig.add_trace(go.Scatter(
-            x=t["x"], y=t["change"], mode="markers", name=name, marker=dict(color=color, size=size, opacity=0.8),
+            x=t["x"], y=t["change"], mode="markers", name=name, marker=highlight_marker(color, size, 0.8),
             customdata=np.stack([t["full_name"], t["pair"], t["score_from"], t["score_to"], t["z"]], axis=1),
             hovertemplate=("<b>%{customdata[0]}</b><br>%{customdata[1]}: %{customdata[2]:.2f} → %{customdata[3]:.2f}"
                            "<br>Change %{y:+.2f} points · z = %{customdata[4]:.2f}<extra></extra>")))
@@ -267,7 +267,7 @@ def unusual_score_jumps(category: str = "Overall", z_threshold: float = 2.0, max
                + (", ".join(f"{k} ({v}×)" for k, v in un["institution"].value_counts().loc[lambda s: s > 1].items())
                   or "none") + ".")
     finish(fig, title, f"{category} ranking · one box per year pair, every dot = one institution's score change · "
-           f"labelled: the {min(len(un), int(max_labels))} largest |z|", height=580, legend_title="")
+           f"labelled: the {min(len(un), int(max_labels))} largest |z|", height=580, legend_title="Score change")
     method = (f"For each {category} institution with a published score in two consecutive published years, change = new "
               f"score − old score. Within each year pair we turn the changes into z-scores, z = (change − mean change) / "
               f"SD of the changes, so a year in which NIRF's method moved everyone up or down does not make every "
@@ -311,7 +311,7 @@ def strong_param_poor_rank(param: str = "go", year: int | None = None, category:
                                     (d["flag"], f"Top-quartile {SHORT[p]}, bottom-half rank", HIGHLIGHT, 11)):
         t = d[mask]
         fig.add_trace(go.Scatter(
-            x=t[p], y=t["rank"], mode="markers", name=name, marker=dict(color=color, size=size, opacity=0.85),
+            x=t[p], y=t["rank"], mode="markers", name=name, marker=highlight_marker(color, size, 0.85),
             customdata=np.stack([t["canonical_name"], t["score"]], axis=1),
             hovertemplate=(f"<b>%{{customdata[0]}}</b><br>Rank %{{y:.0f}} · overall score %{{customdata[1]:.2f}}"
                            f"<br>{SHORT[p]} %{{x:.2f}}<extra></extra>")))
@@ -408,7 +408,7 @@ def volatility_vs_peers(category: str = "Overall", min_years: int = 4) -> ChartR
         if t.empty:
             continue
         fig.add_trace(go.Scatter(
-            x=t["x"], y=t["rank_sd"], mode="markers", name=name, marker=dict(color=color, size=size, opacity=0.85),
+            x=t["x"], y=t["rank_sd"], mode="markers", name=name, marker=highlight_marker(color, size, 0.85),
             customdata=np.stack([t["full_name"], t["median_rank"], t["best"], t["worst"], t["years"], t["median"]], axis=1),
             hovertemplate=("<b>%{customdata[0]}</b><br>Rank SD %{y:.1f} (peer median %{customdata[5]:.1f})<br>Median "
                            "rank %{customdata[1]:.0f} · best %{customdata[2]:.0f} · worst %{customdata[3]:.0f}<br>"
@@ -434,7 +434,7 @@ def volatility_vs_peers(category: str = "Overall", min_years: int = 4) -> ChartR
                + ". Typical volatility grows down the list: median rank SD "
                + ", ".join(f"{b} {stats_.at[b, 'median']:.1f}" for b in bands) + ".")
     finish(fig, title, f"{category} ranking, {fmt_years(years)} · institutions with {min_years}+ exact ranks · box = "
-           f"peer band's middle 50% · highlighted: above Q3 + 1.5 × IQR of the peer band", height=560, legend_title="")
+           f"peer band's middle 50% · highlighted: above Q3 + 1.5 × IQR of the peer band", height=560, legend_title="Rank volatility")
     method = (f"For each {category} institution with at least {min_years} years of exact ranks we compute the standard "
               f"deviation of those ranks (volatility: how far its rank typically is from its own average rank). Lower down "
               f"the list ranks naturally move more, so we compare like with like: peers = institutions whose median rank "

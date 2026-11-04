@@ -100,6 +100,19 @@ def tint(color: str, alpha: float) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
+# Highlighted points never rely on colour alone: each highlight colour also has its own marker shape
+# (grey context dots stay circles), so the groups can be told apart in greyscale or with colour blindness.
+_SYMBOLS = {MARIGOLD: "diamond", UP: "triangle-up", DOWN: "triangle-down"}
+
+
+def highlight_marker(color: str, size: float, opacity: float = 0.85) -> dict:
+    """Marker for a highlight group in a scatterplot: its colour plus a distinct shape and a thin outline."""
+    symbol = _SYMBOLS.get(color, "circle")
+    if symbol == "circle":
+        return dict(color=color, size=size, opacity=opacity)
+    return dict(color=color, size=size + 2, opacity=1, symbol=symbol, line=dict(width=1, color=SURFACE))
+
+
 def color_map(names, other_label: str = "Other") -> dict[str, str]:
     """Fixed colour per name in the order given (first name = slot 1). 'Other' is always grey."""
     out, slot = {}, 0
@@ -117,6 +130,9 @@ _axis = dict(
     tickfont=dict(color=INK_SECONDARY, size=12), title=dict(font=dict(color=INK_SECONDARY, size=13), standoff=10),
     gridcolor=GRID, gridwidth=1, zeroline=False, automargin=True,
 )
+
+_COLORBAR = dict(outlinewidth=0, thickness=12, tickfont=dict(color=INK_SECONDARY, size=11),
+                 title=dict(font=dict(size=12, color=INK_SECONDARY)))
 
 pio.templates["nirf"] = go.layout.Template(
     layout=dict(
@@ -139,14 +155,16 @@ pio.templates["nirf"] = go.layout.Template(
         bargap=0.28,
         barcornerradius=4,
         colorscale=dict(sequential=SEQUENTIAL, diverging=DIVERGING),
-        coloraxis=dict(colorbar=dict(outlinewidth=0, thickness=12, tickfont=dict(color=INK_SECONDARY))),
+        coloraxis=dict(colorbar=dict(outlinewidth=0, thickness=12, tickfont=dict(color=INK_SECONDARY, size=11),
+                                     title=dict(font=dict(size=12, color=INK_SECONDARY)))),
     ),
     data=dict(
         scatter=[go.Scatter(line=dict(width=2), marker=dict(size=8, line=dict(width=1, color=SURFACE)))],
         bar=[go.Bar(marker=dict(line=dict(width=0)), textfont=dict(color=INK_SECONDARY, size=11))],
         histogram=[go.Histogram(marker=dict(line=dict(width=1, color=SURFACE)))],
         box=[go.Box(line=dict(width=1.5), marker=dict(size=5, opacity=0.6))],
-        heatmap=[go.Heatmap(colorscale=SEQUENTIAL, xgap=2, ygap=2)],
+        heatmap=[go.Heatmap(colorscale=SEQUENTIAL, xgap=2, ygap=2, colorbar=_COLORBAR)],
+        choropleth=[go.Choropleth(colorbar=_COLORBAR)],
     ),
 )
 pio.templates.default = "nirf"
@@ -273,18 +291,68 @@ def wrap_text(text: str, width: int) -> tuple[str, int]:
     return "<br>".join(lines), len(lines) - 1
 
 
+# Full institution names for chart labels that had to be cut short (filled by core.data.chart_labels):
+# finish() puts the full name in the hover text of every point drawn with such a label.
+FULL_NAMES: dict[str, str] = {}
+
+
+def _full_names_on_hover(fig: go.Figure) -> None:
+    """Where a trace's points are labelled with a shortened name ('… University of Agricul…'), show the
+    full name when the mouse is over the point: the label goes in hovertext and the template uses it."""
+    for t in fig.data:
+        tmpl = getattr(t, "hovertemplate", None)
+        if not tmpl or getattr(t, "hovertext", None) is not None or t.type in ("heatmap", "choropleth"):
+            continue
+        for axis in ("y", "x"):
+            values = getattr(t, axis, None)
+            if values is None or f"%{{{axis}}}" not in tmpl:
+                continue
+            values = list(values)
+            if any(isinstance(v, str) and v in FULL_NAMES for v in values):
+                try:
+                    t.hovertext = [FULL_NAMES.get(v, v) if isinstance(v, str) else v for v in values]
+                except ValueError:       # a trace type without hovertext: keep the short label
+                    break
+                t.hovertemplate = tmpl.replace(f"%{{{axis}}}", "%{hovertext}")
+                break
+
+
+def with_surface(fig) -> go.Figure:
+    """Set the chart's paper and plot colour on the figure itself (not only in the template).
+
+    Streamlit fills in its own page colours when a figure leaves them to the template, which turned the
+    white chart surface into a grey-blue box and hid the hairline grid. Setting them explicitly keeps the
+    designed look; dark_variant() then swaps them for the dark surface.
+    """
+    fig.update_layout(paper_bgcolor=fig.layout.paper_bgcolor or SURFACE,
+                      plot_bgcolor=fig.layout.plot_bgcolor or SURFACE)
+    if any(t.type in ("choropleth", "scattergeo") for t in fig.data):
+        fig.update_geos(bgcolor=fig.layout.geo.bgcolor or SURFACE)
+    return fig
+
+
 def finish(fig: go.Figure, title: str, subtitle: str | None = None, note: str | None = None,
            height: int = 520, legend_title: str | None = None) -> go.Figure:
-    """Apply the template, the answer-style title (+ subtitle), legend title and the source note."""
+    """Apply the template, the answer-style title (+ subtitle), legend title and the source note.
+
+    A chart whose legend lists two or more entries always gets a legend title ("Key" when the engine
+    gives none), and shortened institution names get their full name in the hover text.
+    """
     title, extra = wrap_text(title, TITLE_WRAP)
     subtitle, extra_sub = wrap_text(subtitle or "", SUBTITLE_WRAP)
-    top = (fig.layout.margin.t if fig.layout.margin.t is not None else _MARGIN_TOP) + TITLE_LINE * extra         + 18 * extra_sub
+    top = (fig.layout.margin.t if fig.layout.margin.t is not None else _MARGIN_TOP) + TITLE_LINE * extra + 18 * extra_sub
     fig.update_layout(
         template="nirf", height=height + TITLE_LINE * extra + 18 * extra_sub, margin=dict(t=top),
         title=dict(text=title, subtitle=dict(text=subtitle)),
     )
+    if legend_title is None and not fig.layout.legend.title.text:
+        named = [t for t in fig.data if t.name and t.showlegend is not False]
+        if len(named) > 1 and fig.layout.showlegend is not False:
+            legend_title = "Key"
     if legend_title is not None:
         fig.update_layout(legend_title_text=legend_title)
+    _full_names_on_hover(fig)
+    with_surface(fig)
     return add_source_note(fig, note)
 
 

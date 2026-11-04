@@ -19,6 +19,7 @@ from core.builder import CHARTS, BuilderHint, build_chart
 from core.data import MASTER_PATH, filter_df, load_master
 from core.theme import SOURCE_NOTE
 from tests.test_engines import CHART_TYPES
+from tests.app_helpers import html_text
 
 if not MASTER_PATH.exists():
     pytest.skip("run `python -m pipeline.clean` first", allow_module_level=True)
@@ -132,12 +133,12 @@ def test_unused_options_are_ignored_with_a_note():
 def _page():
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file(str(HOME), default_timeout=180)
-    at.switch_page("pages/chart_builder.py")
+    at.switch_page("views/chart_builder.py")
     return at.run()
 
 
 def _html(at) -> str:
-    return " ".join(h.proto.body for h in at.get("html"))
+    return html_text(at)
 
 
 def test_page_quick_starts_each_draw_a_chart():

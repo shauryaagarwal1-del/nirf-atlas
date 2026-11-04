@@ -11,7 +11,7 @@ from core.data import find_institution
 
 HOME = Path(__file__).resolve().parents[1] / "app" / "Home.py"
 # Pages whose "What do you want to see?" picker sits in a tab: the session state that opens that tab.
-PICKER_TAB = {"pages/geography.py": {"geography-tab": "More views"}}
+PICKER_TAB = {"views/geography.py": {"geography-tab": "More views"}}
 
 
 def open_page(page: str, state: dict | None = None) -> AppTest:
@@ -42,7 +42,8 @@ def set_widget(at: AppTest, kind: str, prefix: str, value) -> AppTest:
 
 
 def html_text(at: AppTest) -> str:
-    return " ".join(h.proto.body for h in at.get("html"))
+    """The page's HTML blocks, without the injected stylesheet (its CSS names every class, e.g. .nirf-empty)."""
+    return " ".join(h.proto.body for h in at.get("html") if not h.proto.body.lstrip().startswith("<style>"))
 
 
 def chart_titles(at: AppTest) -> list[str]:

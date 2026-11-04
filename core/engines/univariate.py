@@ -88,7 +88,7 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
                f"is {s['mean']:.1f} and the median {s['median']:.1f}, so the distribution is {shape} "
                f"(skewness {s['skew']:.2f}).")
     finish(fig, title, f"{category} ranking {year} · {s['n']} institutions with a published score · "
-           f"bars {width:g} points wide · curve = smoothed shape (KDE)", legend_title="")
+           f"bars {width:g} points wide · curve = smoothed shape (KDE)", legend_title="Layer")
     method = (f"We take every {category} institution with a published overall score in {year} ({s['n']}) and count "
               f"how many fall into each {width:g}-point score interval (histogram). The grey curve is a kernel "
               f"density estimate (KDE): a small bell curve is placed on every institution's score and they are added "
@@ -316,7 +316,7 @@ def spread_by_category(year: int | None = None) -> ChartResult:
             hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} · score %{x:.2f}<extra>" + c + "</extra>"))
     fig.update_layout(showlegend=False)
     fig.update_xaxes(title_text="Overall score (0-100, within each category)", showgrid=True)
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="Category", showgrid=False)
 
     wide, narrow = table["iqr"].idxmax(), table["iqr"].idxmin()
     title = f"In {year}, {wide} scores are the most spread out (IQR {table.at[wide, 'iqr']:.1f})"
@@ -373,8 +373,8 @@ def coverage_by_category_year() -> ChartResult:
         colorscale=[[i / (len(RAMP) - 1), c] for i, c in enumerate(RAMP)], textfont=dict(size=11),
         colorbar=dict(title=dict(text="Institutions listed")),
         hovertemplate="<b>%{y}</b> %{x}<br>%{customdata}<extra></extra>"))
-    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="", title_text=None)
-    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text=None)
+    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="", title_text="Category")
+    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text="Year", type="category")
     n_pairs = len(g)
     newest = [c for c in order if first[c] == first.max()]
     biggest = g["listed"].idxmax()

@@ -29,26 +29,32 @@ def master() -> pd.DataFrame:
     return load_master()
 
 
-@st.cache_data(show_spinner=False)
+# The lookup tables below are cached with cache_resource, not cache_data: cache_data hands every caller a
+# fresh copy (it unpickles the stored value), which made the 1,693-entry institution list cost ~2.7 s per
+# page run when a search box looked up one label per option. These tables are read-only, so one shared
+# copy is safe and every lookup is instant.
+
+@st.cache_resource(show_spinner=False)
 def category_years_map() -> dict[str, list[int]]:
-    """Category -> the years NIRF published it, categories ordered by how many years they cover."""
+    """Category -> the years NIRF published it, categories ordered by how many years they cover (read-only)."""
     df = master()
     years = df.groupby("category_std")["year"].agg(lambda s: sorted(s.unique().tolist()))
     order = sorted(years.index, key=lambda c: (c != DEFAULT_CATEGORY, -len(years[c]), c))
     return {c: years[c] for c in order}
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def institution_options() -> dict[str, str]:
-    """institution_key -> 'Short name · City, State', sorted by name (for the search box)."""
+    """institution_key -> 'Short name · City, State', sorted by name (for the search box; read-only)."""
     df = master().sort_values("year").drop_duplicates("institution_key", keep="last")
     labels = {r.institution_key: f"{short_name(r.canonical_name, 60)} · {r.city}, {r.state}" if r.city
               else f"{short_name(r.canonical_name, 60)} · {r.state}" for r in df.itertuples()}
     return dict(sorted(labels.items(), key=lambda kv: kv[1].lower()))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def state_options() -> list[str]:
+    """All states / UTs with a ranked institution, A to Z (read-only)."""
     return sorted(master()["state"].dropna().unique().tolist())
 
 
@@ -124,9 +130,9 @@ def render_sidebar() -> Filters:
         st.multiselect("States", state_options(), key="f_states", placeholder="All states",
                        help="Explore pages analyse only institutions in these states (ranks stay national). "
                             "Leave empty for all of India.")
-        st.multiselect("Institutions", list(institution_options()), key="f_institutions",
-                       format_func=lambda k: institution_options()[k], max_selections=MAX_INSTITUTIONS,
-                       placeholder="Search by name, e.g. IIT Madras",
+        inst = institution_options()
+        st.multiselect("Institutions", list(inst), key="f_institutions", format_func=inst.__getitem__, max_selections=MAX_INSTITUTIONS,
+                       placeholder="Search, e.g. IIT Madras",
                        help="Used by charts that follow chosen institutions (trajectories, profiles).")
         st.select_slider("Top N", TOP_N_OPTIONS, key="f_top_n",
                          help="How many institutions a 'top N' chart shows.")

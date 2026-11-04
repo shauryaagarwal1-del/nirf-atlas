@@ -27,8 +27,8 @@ from core.data import (LABELS, SHORT, NirfInputError, category_years, chart_labe
                        check_years, filter_df, find_institutions, fmt_years, load_master, parameters_of)
 from core.result import ChartResult
 from core.stats import places, signed
-from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_SECONDARY, OTHER, SURFACE, UP,
-                        color_map, finish)
+from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_MUTED, INK_SECONDARY, OTHER,
+                        SURFACE, UP, color_map, finish)
 
 MAX_LINES = 8
 
@@ -312,7 +312,7 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
     pad = 0.18 * (hi - lo)   # room for the "old -> new" labels outside the bar ends
     fig.update_xaxes(title_text=f"Improvement in places ({start_year} rank − {end_year} rank)",
                      range=[lo - (pad if lo < 0 else 0), hi + (pad if hi > 0 else 0)], zeroline=True, zerolinecolor=INK_SECONDARY, zerolinewidth=1, showgrid=True)
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="Institution", showgrid=False)
     fig.update_layout(barmode="overlay", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
 
     top_up, top_down = (ups.iloc[0] if len(ups) else None), (downs.iloc[0] if len(downs) else None)
@@ -334,7 +334,7 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
               f"Note: the length of NIRF's exact-rank list can change between years (e.g. Engineering ranked "
               f"200 exactly in 2019-2022 but 100 otherwise), which limits how far an institution can move.")
     finish(fig, title, f"{category} ranking · labels show rank {start_year} → {end_year}",
-           height=max(380, 150 + 30 * len(pick)), legend_title="")
+           height=max(380, 150 + 30 * len(pick)), legend_title="Direction")
     table = pick.drop(columns="institution_key").rename(columns={"canonical_name": "full_name"})
     return ChartResult(fig, table.iloc[::-1].reset_index(drop=True), insight, method, "bar chart")
 
@@ -509,8 +509,8 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     for name, c in ((f"In the top {n} (number = rank)", UP), (f"Ranked, outside the top {n}", CONTEXT)):
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=name,
                                  marker=dict(symbol="square", size=12, color=c)))
-    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="")
-    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text=None)
+    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="", title_text="Institution")
+    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text="Year", type="category")
     fig.update_layout(legend=dict(orientation="h", x=0, y=-0.02, yanchor="top"), margin=dict(t=120, b=110))
 
     always = [labels[k] for k in order if keep[k] == len(years)]
@@ -543,7 +543,8 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     Method: one line per institution through its exact ranks; a year with only a band or no rank is
     a gap. The y-axis is reversed (rank 1 at the top) and shows ranks 1 to `depth` (default 2.5 x n);
     a line that leaves the bottom was ranked below that (the hover still gives the real rank). The
-    best `highlight` institutions are coloured and the rest drawn in grey, each named at the line end.
+    best `highlight` institutions are coloured and the rest drawn in grey; every line is named at its
+    end with its last-year rank (labels pushed apart so they never overlap), so no legend is needed.
     """
     df = load_master()
     category = check_category(category, df)
@@ -573,17 +574,31 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
         r = ranks.loc[k].astype(float)
         name, c = labels[k], colors[k]
         strong = c != OTHER
-        end = int(r[last_year])
         fig.add_trace(go.Scatter(
-            x=years, y=r.values, mode="lines+markers", name=f"{end} · {name}", connectgaps=False,
+            x=years, y=r.values, mode="lines+markers", name=f"{int(r[last_year])} · {name}", connectgaps=False,
             line=dict(color=c, width=2.5 if strong else 1.5), marker=dict(color=c, size=8 if strong else 6),
-            opacity=1 if strong else 0.9, legendrank=end,
+            opacity=1 if strong else 0.9, showlegend=False,
             customdata=[f"rank {int(v)}" if pd.notna(v) else "no exact rank" for v in r.values],
             hovertemplate=f"<b>{name}</b><br>%{{x}}: %{{customdata}}<extra></extra>"))
-        fig.add_trace(go.Scatter(
-            x=[last_year], y=[end], mode="text", text=[f"  {name}"], textposition="middle right",
-            textfont=dict(size=11, color=INK if strong else INK_SECONDARY), cliponaxis=False, showlegend=False,
-            hoverinfo="skip"))
+    # Every line is named at its end ("3 · IIT Bombay"), so no legend and no colour matching is needed.
+    # Neighbouring ranks are only a few pixels apart, so labels are pushed apart to at least one text
+    # line (14 px) and joined to their line end by a thin leader.
+    px_per_rank = (560 - 104 - 112) / (depth + 0.2)     # plot height / ranks shown (margins from finish())
+    gap = 14 / px_per_rank
+    ends = [(int(ranks.at[k, last_year]), k) for k in keys]
+    placed: list[float] = []
+    for end, _ in ends:
+        placed.append(max(end, placed[-1] + gap) if placed else end)
+    overflow = placed[-1] - (depth + 0.4)
+    if overflow > 0:                      # pushed past the bottom: move the whole stack up
+        placed = [max(0.6, y - overflow) for y in placed]
+    for (end, k), y in zip(ends, placed):
+        strong = colors[k] != OTHER
+        fig.add_annotation(x=last_year, y=end, text=f"{end} · {labels[k]}", showarrow=True, arrowhead=0,
+                           arrowwidth=0.7, arrowcolor=INK_MUTED, axref="pixel", ayref="pixel", ax=16,
+                           ay=(y - end) * px_per_rank, xanchor="left", standoff=4,
+                           font=dict(size=11, color=INK if strong else INK_SECONDARY,
+                                     weight=600 if strong else 400))
 
     first_rank = {k: ranks.loc[k].dropna() for k in keys}
     moves = {k: int(s.iloc[0]) - int(s.iloc[-1]) for k, s in first_rank.items() if len(s) > 1}
@@ -609,11 +624,10 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     fig.update_yaxes(title_text="Rank (1 = best, shown at the top)", range=[depth + 0.6, 0.4], tickvals=
                      [1] + list(range(5, depth + 1, 5)), zeroline=False)
     fig.update_xaxes(title_text="Year", dtick=1, range=[min(years) - 0.3, last_year + 0.3], showgrid=True)
-    fig.update_layout(margin=dict(r=190), legend=dict(title_text=f"{last_year} rank · institution"),
-                      hovermode="closest")
-    finish(fig, title, f"{category} ranking, {span} · the top {n} of {last_year}, followed back in time",
-           note=f"Gaps = no exact rank that year; a line leaving the bottom = ranked below {depth}.",
-           legend_title=f"{last_year} rank · institution", height=560)
+    fig.update_layout(margin=dict(r=230), showlegend=False, hovermode="closest")
+    finish(fig, title, f"{category} ranking, {span} · the top {n} of {last_year}, followed back in time · "
+           f"labels = {last_year} rank · institution",
+           note=f"Gaps = no exact rank that year; a line leaving the bottom = ranked below {depth}.", height=560)
 
     table = pd.DataFrame({"institution": [labels[k] for k in keys]})
     for y in years:

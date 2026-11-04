@@ -224,7 +224,7 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
                 customdata=np.stack([e["rank_before"].astype(str), e["rank_after"].astype(str)], axis=1),
                 hovertemplate=(f"<b>%{{y}}</b><br>%{{x}}: {change} (rank %{{customdata[0]}} → %{{customdata[1]}})"
                                "<extra></extra>")))
-    fig.update_yaxes(title_text=None, autorange="reversed", showgrid=True, type="category",
+    fig.update_yaxes(title_text="Institution", autorange="reversed", showgrid=True, type="category",
                      categoryorder="array", categoryarray=[ylab[k] for k in order])
     fig.update_xaxes(title_text="Year", dtick=1, range=[years[0] - 0.5, years[-1] + 0.5], showgrid=True)
     fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
@@ -248,7 +248,7 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
     else:
         insight += f" The top {top} of {last_year} is the same group as in {years[-2]}."
     finish(fig, title, f"{category} ranking, {fmt_years(years)} · one row per institution · dot = in the top {top} "
-           f"that year", height=max(420, 200 + 30 * len(order)), legend_title="")
+           f"that year", height=max(420, 200 + 30 * len(order)), legend_title="Status")
     method = (f"For every year we mark which institutions are certainly in the {category} top {top} (exact rank ≤ {top}, "
               f"or a whole NIRF band within it). Comparing each year with the previous published year: entered = in "
               f"the top {top} now but not before; exited = in the top {top} before but not now. Each row of the dot "
@@ -374,7 +374,7 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
     pad = 0.22 * (hi - lo)
     fig.update_xaxes(title_text=f"Change in places ({year_a} rank − {year_b} rank)", showgrid=True, zeroline=True,
                      zerolinecolor=INK_SECONDARY, zerolinewidth=1, range=[lo - (pad if lo < 0 else 0), hi + pad])
-    fig.update_yaxes(title_text=None, showgrid=False, type="category", categoryorder="array",
+    fig.update_yaxes(title_text="Institution", showgrid=False, type="category", categoryorder="array",
                      categoryarray=t["institution"].tolist())
     fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
 
@@ -393,7 +393,7 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
              + (f"{down['institution']} {places(down['improvement'])}" if down is not None else ""))
     insight = f"Between {year_a} and {year_b} in {category}, " + " and ".join(parts) + "." + base.insight.split(".", 2)[-1]
     finish(fig, title, f"{category} ranking · the {len(ups)} largest climbs and {len(downs)} largest falls · labels "
-           f"show rank {year_a} → {year_b}", height=max(420, 170 + 28 * len(t)), legend_title="")
+           f"show rank {year_a} → {year_b}", height=max(420, 170 + 28 * len(t)), legend_title="Direction")
     method = base.method + (" Drawn as a lollipop chart (a bar chart with a thin stem and a dot), teal to the right of "
                             "zero for climbs and coral to the left for falls.")
     return ChartResult(fig, base.table, insight, method, "lollipop chart")
@@ -460,7 +460,7 @@ def up_down_same_counts(category: str = "Overall") -> ChartResult:
                f"({most_up['moved_up_pct']:.0f}% of {int(most_up['compared'])}); the typical move is "
                f"{table['median_move'].median():.0f} places.")
     finish(fig, title, f"{category} ranking · institutions with an exact rank in both years · improvement = old rank − "
-           f"new rank", legend_title="")
+           f"new rank", legend_title="Rank change")
     method = (f"For each pair of consecutive published {category} years we take the institutions with an exact rank in "
               f"both years and compute improvement = old rank − new rank: positive = moved up, negative = moved down, "
               f"0 = same rank. We count each group and stack the three counts in one bar per year pair. Institutions "

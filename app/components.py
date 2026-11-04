@@ -23,7 +23,7 @@ import streamlit as st
 from core.data import NirfInputError, SHORT
 from core.result import ChartResult
 from core.runner import run
-from core.theme import dark_variant, for_theme
+from core.theme import dark_variant, for_theme, with_surface
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 
@@ -101,8 +101,10 @@ def section_title(title: str, eyebrow: str | None = None, lead: str | None = Non
 # ---------- empty state ----------
 
 def empty_state(message: str, title: str = "Nothing to show for this selection",
-                hint: str = "Try a wider year range, another category, or clear the state and institution filters.") -> None:
-    st.html(f"<div class='nirf-empty'><div class='icon'>?</div><div class='title'>{_esc(title)}</div>"
+                hint: str = "Try a wider year range, another category, or clear the state and institution filters.",
+                icon: str = "?") -> None:
+    """A friendly card instead of a blank space or an error: what happened, and what to try next."""
+    st.html(f"<div class='nirf-empty'><div class='icon'>{_esc(icon)}</div><div class='title'>{_esc(title)}</div>"
             f"<div class='msg'>{_esc(message)}</div><div class='hint'>{_esc(hint)}</div></div>")
 
 
@@ -136,7 +138,8 @@ def chart_card(result: ChartResult, key: str, why: str | None = None) -> None:
         if result.table is None or result.table.empty:
             empty_state("The filters left no rows for this chart.")
             return
-        fig = dark_variant(result.fig) if is_dark() else result.fig
+        fig = with_surface(result.fig)
+        fig = dark_variant(fig) if is_dark() else fig
         st.plotly_chart(fig, width="stretch", theme=None, config=PLOTLY_CONFIG, key=f"chart-{key}")
         st.html(f"<div class='nirf-callout'><div class='label'>The answer</div>"
                 f"<div class='text'>{_md_inline(result.insight)}</div></div>")
@@ -164,8 +167,17 @@ def show(engine: str, function: str, key: str, why: str | None = None, scope=Non
 
     scope: limit the analysis to institutions in these states (None = all of India).
     """
-    with st.spinner("Drawing the chart…"):
-        result, error = run_engine(engine, function, params, tuple(scope) if scope else None)
+    try:
+        with st.spinner("Drawing the chart…"):
+            result, error = run_engine(engine, function, params, tuple(scope) if scope else None)
+    except Exception as e:  # an unexpected bug must not break the whole page during a demo
+        with st.container(border=True, key=f"card-{key}"):
+            empty_state("Something went wrong while drawing this chart. The rest of the page still works.",
+                        title="This chart could not be drawn",
+                        hint="Try another setting, or press Reset filters in the sidebar.", icon="!")
+            with st.expander("Technical details"):
+                st.code(f"{engine}.{function}({params})\n{type(e).__name__}: {e}", language=None)
+        return None
     if error:
         with st.container(border=True, key=f"card-{key}"):
             empty_state(error, title="This selection has no answer")

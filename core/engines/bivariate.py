@@ -229,7 +229,7 @@ def correlation_with_overall(year: int | None = None, category: str = "Overall",
     lo = min(0, table["pearson_r"].min())
     fig.update_xaxes(title_text="Pearson correlation with the overall score (r)", showgrid=True,
                      range=[lo - 0.12 if lo < 0 else 0, 1.08], zeroline=True, zerolinecolor=INK_SECONDARY)
-    fig.update_yaxes(title_text=None, showgrid=False)
+    fig.update_yaxes(title_text="NIRF parameter", showgrid=False)
 
     finish(fig, title, f"{category} ranking {year} · {int(table['n'].max())} institutions with published scores · "
            f"ranked bar chart of r", note=weight_note, height=420)
@@ -262,8 +262,8 @@ def _correlogram(cat: pd.DataFrame, params: list[str], category: str, year: int,
         customdata=n.values, xgap=2, ygap=2,
         colorbar=dict(title=dict(text="Pearson r", side="top"), tickvals=[-1, -0.5, 0, 0.5, 1], thickness=12),
         hovertemplate="<b>%{y} and %{x}</b><br>Pearson r = %{z:.3f}<br>n = %{customdata} institutions<extra></extra>"))
-    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text=None)
-    fig.update_yaxes(showgrid=False, showline=False, ticks="", autorange="reversed", title_text=None)
+    fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text="Parameter")
+    fig.update_yaxes(showgrid=False, showline=False, ticks="", autorange="reversed", title_text="Parameter")
     fig.update_layout(margin=dict(t=130))
 
     pairs = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1)).stack()

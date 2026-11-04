@@ -12,7 +12,7 @@ build_chart() checks the combination first. A combination that cannot make a sen
 BuilderHint, whose message is a friendly hint saying what to change ("A pie chart shows parts of a
 whole, so it needs Count"). Smaller problems (too many groups, an option the chart does not use) are
 handled and reported in the chart note and the method instead.
-The page is app/pages/chart_builder.py; the Ask NIRF chat can call the same function.
+The page is app/views/chart_builder.py; the Ask NIRF chat can call the same function.
 """
 
 from __future__ import annotations
@@ -442,7 +442,11 @@ def _aggregated(d, chart, x, y, agg, color, facet, notes, limit=None):
     if x == "year":
         fig.update_xaxes(dtick=1)
     elif x in ("institution", "state") and len(x_order) > 8:
-        fig.update_xaxes(tickangle=-40)
+        # Slanted names need room below the axis: a fixed bottom margin sized to the longest name keeps
+        # the axis title and the source note underneath them instead of on top of them.
+        longest = max((len(str(v)) for v in x_order), default=0)
+        fig.update_xaxes(tickangle=-40, automargin=False)
+        fig.update_layout(margin=dict(b=110 + int(longest * 6.6 * 0.64)))
     if fc:
         _facet_titles(fig)
     sums = t.groupby(xc)["value"].sum() if chart == "stacked_bar" else t.set_index(xc)["value"]

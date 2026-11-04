@@ -199,7 +199,7 @@ def draw(c: C, ctx: Ctx) -> dict:
                         list(f.institutions), default=[k for k in f.institutions if k in opts],
                         label="Institutions", options=list(opts),
                         format_func=lambda k: opts[k], max_selections=MAX_INSTITUTIONS,
-                        placeholder=c.help or "Empty = the top 5 of the last year")
+                        placeholder=c.help or "Top 5 (default)")
         return {"institutions": value or None}
 
     if c.kind == "institution":
@@ -213,7 +213,7 @@ def draw(c: C, ctx: Ctx) -> dict:
     if c.kind == "states":
         value = _synced(st.multiselect, f"x-{ctx.page}-states", "f_states", list(f.states), default=list(f.states),
                         label="States",
-                        options=state_options(), max_selections=8, placeholder="Empty = Karnataka and Tamil Nadu")
+                        options=state_options(), max_selections=8, placeholder="Karnataka, Tamil Nadu")
         return {"states": value or list(c.default)}
 
     if c.kind == "state":                                 # one half of a state_pair

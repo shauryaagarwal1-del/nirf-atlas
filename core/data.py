@@ -304,14 +304,20 @@ def short_name(name: str, max_len: int = 48) -> str:
     return s if len(s) <= max_len else s[: max_len - 1].rstrip() + "…"
 
 
+CHART_LABEL_LEN = 36   # longest institution label on a chart axis (fits a 1366 px projector next to the bars)
+
+
 def chart_labels(keys: Iterable[str]) -> dict[str, str]:
     """institution_key -> short chart label, unique within this set (adds the city on a clash).
 
-    Unique labels matter: two bars with the same label would be drawn as one.
+    Unique labels matter: two bars with the same label would be drawn as one. A label cut to
+    CHART_LABEL_LEN characters is remembered with its full name, so the chart's hover shows the full name.
     """
+    from core.theme import FULL_NAMES
+
     df = _master().drop_duplicates("institution_key").set_index("institution_key")
     keys = list(dict.fromkeys(keys))
-    labels = {k: short_name(df.at[k, "canonical_name"]) for k in keys}
+    labels = {k: short_name(df.at[k, "canonical_name"], CHART_LABEL_LEN) for k in keys}
     counts = pd.Series(labels).value_counts()
     for k, lab in labels.items():
         if counts[lab] > 1:
@@ -320,6 +326,9 @@ def chart_labels(keys: Iterable[str]) -> dict[str, str]:
     for k, lab in labels.items():
         if counts[lab] > 1:
             labels[k] = f"{lab} [{k}]"
+    for k, lab in labels.items():
+        if "…" in lab:
+            FULL_NAMES[lab] = df.at[k, "canonical_name"]
     return labels
 
 

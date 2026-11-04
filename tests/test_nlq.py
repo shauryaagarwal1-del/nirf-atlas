@@ -292,7 +292,7 @@ def _ask_page(monkeypatch, planner):
     monkeypatch.setattr(nlq.planner, "plan_question", planner)
     monkeypatch.setattr(llm, "check_connection", lambda: (True, "Key loaded and working · test"))
     at = AppTest.from_file(str(HOME), default_timeout=180)
-    at.switch_page("pages/ask_nirf.py")
+    at.switch_page("views/ask_nirf.py")
     at.run()
     return at
 

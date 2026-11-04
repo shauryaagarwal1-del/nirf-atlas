@@ -135,6 +135,14 @@ scores are only compared within the same category unless a visible note says oth
   first, tries spots around its point (right, left, above, below, diagonals, then further out) and takes the first
   one that stays inside the plot, does not cover another label and covers as few points as possible; a thin leader
   line joins it to its point. This changes only where a name is printed, never the data.
+- **Chart rules checked on every chart (Phase 13 polish):** a title that states the answer; axis titles with units
+  (also on name axes: "Institution", "State / UT", "NIRF parameter"); a legend title whenever a legend lists two or
+  more entries (`finish()` adds "Key" if an engine gives none); rank axes reversed so rank 1 is at the top; the source
+  note. Institution names on an axis are cut to 36 characters (`core/data.py :: chart_labels()`, e.g. "IIT Madras",
+  "Sri Ramachandra Institute of Higher…") and every cut name shows in full in the hover text. Highlighted points never
+  rely on colour alone: "unusually high" points are marigold **diamonds**, jumps up teal **triangles up**, drops coral
+  **triangles down**, context points grey circles (`core/theme.py :: highlight_marker()`). `with_surface()` sets the
+  white chart surface on every figure, because Streamlit otherwise paints its own page colour behind the plot.
 - **`core/result.py`:** every engine returns `ChartResult(fig, table, insight, method, chart_type)`.
 - **State filter for any analysis (`core/data.py :: only_states()`, `core/runner.py :: run()`):** inside
   `only_states(["Kerala"])` every `load_master()` returns only the rows of institutions located in Kerala, so every
@@ -675,7 +683,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
 
 ## Question Bank page (Level 1 and Level 2 live)
 
-- **Where:** `app/pages/question_bank.py` (page) and `app/question_controls.py` (the per-question controls).
+- **Where:** `app/views/question_bank.py` (page) and `app/question_controls.py` (the per-question controls).
 - **Layout:** the 8 sections are tabs (Trends, Geospatial, Univariate, Bivariate, Multivariate, Distribution, Mobility,
   Outliers); each lists its 5 questions with their IDs. Picking one shows the question, a "Why this chart?" note
   (`why_this_chart` from the registry), the controls for that question, then its chart card (chart, one-line answer,
@@ -703,7 +711,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
 
 ## Explore pages (Level 2: every knob of every analysis)
 
-- **Where:** `app/explorer.py` (the shared control system) and the seven topic pages in `app/pages/` (Trends,
+- **Where:** `app/explorer.py` (the shared control system) and the seven topic pages in `app/views/` (Trends,
   Geography, Distributions, Relationships, Multi-Parameter, Mobility, Outliers).
 - **Layout:** "What do you want to see?" lists that page's analyses in plain English (one entry per engine function;
   Trends lists climbers and fallers separately). Under it, a card holds ONLY the controls of the chosen analysis, with
@@ -736,6 +744,31 @@ lies wholly inside one of these four, so institutions known only by band can be 
   score are gaps, never filled in.
 - **Filters the user can change:** category, institution, year range.
 
+### Extra: Home page overview, today's top N followed back in time
+- **Engine / function:** `core/engines/trends.py :: top_n_race(category, years, n, highlight, depth)` (Home page and
+  Trends page, "Today's top N, followed back in time").
+- **Definition used:** the N institutions with the best exact ranks in the last chosen year, and their exact rank in
+  every earlier year.
+- **Calculation (plain words):** look up each institution's exact rank per year; change = first exact rank - last
+  exact rank (positive = moved up). Years with only a band or no rank are gaps, never filled in.
+- **Chart and why:** multi-series line chart with the rank axis reversed (rank 1 at the top). Every line is named at
+  its end as "rank · institution" instead of a legend: neighbouring ranks are only a few pixels apart, so the labels
+  are pushed apart to one text line each and joined to their line end by a thin leader. Direct labels mean no colour
+  matching is needed (the best three lines are coloured, the rest grey context).
+
+### Data & Method page
+- **Pipeline diagram:** the four layers (scrape → clean → master table → 8 engines → dashboard and Ask NIRF) with the
+  real counts of the last pipeline run (files, raw rows, ranked rows, institutions, categories).
+- **Cleaning steps:** read from `docs/cleaning_report.md` by `core/cleaning_report.py` (no number is typed into the
+  page): every step with rows before, rows after and the change, a bar of the rows after each step, and for a chosen
+  step "What changed" and "Why". Summary cards: raw rows, ranked rows kept, institutions (from name spellings), states
+  (from spellings), duplicates dropped.
+- **Data dictionary:** every column of the master table (meaning, type, example), searchable.
+- **Limitations (counts from the master table):** banded ranks have no score (left out of every score chart, never
+  given a mid-point); scores are not comparable across categories (own weights; Research Institutions use different
+  parameters); the NIRF method changed over the years (new and renamed lists, different band ranges, revised
+  parameter definitions); ranks are relative to who took part that year.
+
 ### Relationships page: the "select any two variables" interface
 - **Controls:** X and Y (overall score, every parameter the category publishes, rank), colour by (nothing, state,
   region, category, rank band), category (several categories when colouring by category), year, only ranks 1 to N,
@@ -749,7 +782,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
 
 ## Chart Builder (the safety net for unusual questions)
 
-- **Where:** `core/builder.py :: build_chart()` (logic) and `app/pages/chart_builder.py` (controls). The Ask NIRF chat
+- **Where:** `core/builder.py :: build_chart()` (logic) and `app/views/chart_builder.py` (controls). The Ask NIRF chat
   can call the same function for questions no ready-made analysis covers.
 - **Filters:** categories (empty = all), from year, to year, rank cut-off (top 10 ... top 200: rows certainly ranked
   within it), states, regions, institutions. They start from the sidebar filters when the page opens.
@@ -787,7 +820,7 @@ and checks that the chart drawn is the same answer as the analysis those setting
 
 ## Ask NIRF (Level 3: a typed question becomes a chart)
 
-- **Where:** `nlq/` (logic) and `app/pages/ask_nirf.py` (chat page). Tests: `tests/test_nlq.py` with the 25 questions in
+- **Where:** `nlq/` (logic) and `app/views/ask_nirf.py` (chat page). Tests: `tests/test_nlq.py` with the 25 questions in
   `tests/nlq_questions.py`; live accuracy report: `python -m scripts.nlq_accuracy` (needs a Gemini key).
 - **Question answered:** any question about the NIRF data that one of our analyses (or a simple group-and-summarise
   chart) can answer, typed in plain English or Hinglish, with typos and short forms.
