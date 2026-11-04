@@ -133,6 +133,10 @@ def parameter_profile(institutions=None, year: int | None = None, category: str 
                    f"{', '.join(SHORT[p] for p in params if leaders[p] == top)}. They differ most on {SHORT[widest]} "
                    f"({table[SHORT[widest]].min():.1f} to {table[SHORT[widest]].max():.1f}, a {spread[widest]:.1f}-point "
                    f"range) and least on {SHORT[narrowest]} ({spread[narrowest]:.1f} points).")
+        ranks = sel["rank"].dropna()
+        if len(ranks) == len(keys) and ranks.nunique() == 1:
+            insight += (f" All of them share rank {int(ranks.iloc[0])} (a tie: NIRF gave them the same overall rank), "
+                        f"so the parameters show how each one reaches that rank.")
     subtitle = f"{category} ranking {year}" + (f" · {chosen}" if chosen else "") + " · each parameter out of 100"
     finish(fig, title, subtitle, legend_title="Institution" if view == "bar" else None,
            height=520 if view == "bar" else max(360, 200 + 46 * len(keys)))

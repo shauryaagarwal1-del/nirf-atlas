@@ -16,7 +16,7 @@ The examiner tests three levels. Each has its own part of the app:
 | 2 (5 marks) | Asks a *new* question ("same for Engineering in 2019, top 50, Kerala only") | **Explore pages** (every knob of every analysis) and **Chart Builder** |
 | 3 (5 marks) | Types a question | **Ask NIRF** chat (see `06_ai_chat.md`) |
 
-How to start it: `streamlit run app/Home.py`. Every page except Ask NIRF works offline.
+How to start it: `python -m streamlit run app/Home.py` (exact commands in the README). Every page except Ask NIRF works offline.
 
 ---
 

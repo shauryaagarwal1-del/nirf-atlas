@@ -142,6 +142,10 @@ def band_transitions(category: str = "Overall", year_a: int | None = None, year_
                f"stayed in the same band, {up} moved to a better band and {down} to a worse one; "
                f"{int(matrix.loc[BANDS, NOT_RANKED].sum())} dropped out of the list and "
                f"{int(matrix.loc[NOT_RANKED, BANDS].sum())} were newly listed.")
+    from_101 = int(matrix.loc["101+", ["1-10", "11-50", "51-100"]].sum())
+    if from_101:      # rows below 100 are mostly NIRF band-only positions (101-150 ...), still a sure band
+        insight += (f" {from_101} climbed from 101+ (where NIRF publishes mostly bands such as 101-150) into the "
+                    f"top 100.")
     fig.update_layout(margin=dict(t=150))
     finish(fig, title, f"{category} ranking · rows = band in {year_a}, columns = band in {year_b} · dotted diagonal = "
            f"stayed · orange box = 51-100 → top 50", height=580)
@@ -236,10 +240,11 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
     n_in = int(ev["change"].eq("entered").sum())
     n_out = int(ev["change"].eq("exited").sum())
     title = (f"{len(order)} different institutions were in the {category} top {top} in {fmt_years(years)}; "
-             f"{len(always)} were there every year")
+             f"{len(always)} {'were' if len(always) != 1 else 'was'} there every year")
     insight = (f"Across {fmt_years(years)}, {len(order)} different institutions were in the {category} top {top}; "
                f"there were {n_in} entries and {n_out} exits, in {len(changes_years)} of {len(years) - 1} year-to-year "
-               f"changes. {len(always)} institutions were in the top {top} every year.")
+               f"changes. {len(always)} institution{'s were' if len(always) != 1 else ' was'} in the top {top} "
+               f"every year.")
     if len(last):
         ins = last[last["change"].eq("entered")]["institution"].tolist()
         outs = last[last["change"].eq("exited")]["institution"].tolist()
@@ -292,6 +297,9 @@ def band_retention(category: str = "Overall", by_band: bool = False) -> ChartRes
         rows.append(row)
     table = pd.DataFrame(rows)
     table["pair"] = table["year_from"].astype(str) + "→" + table["year_to"].astype(str)
+    if table["retention_pct"].isna().all():
+        raise NirfInputError(f"No {category} institution was ranked in two consecutive published years, so no "
+                             f"retention can be calculated.")
 
     fig = go.Figure()
     hover = np.stack([table["pair"], table["stayed"], table["ranked_both"]] + [table[f"{b}_pct"] for b in BANDS], axis=1)
@@ -315,17 +323,25 @@ def band_retention(category: str = "Overall", by_band: bool = False) -> ChartRes
     avg = table["retention_pct"].mean()
     hi = table.loc[table["retention_pct"].idxmax()]
     lo = table.loc[table["retention_pct"].idxmin()]
-    sticky = {b: table[f"{b}_pct"].mean() for b in BANDS}
+    sticky = {b: table[f"{b}_pct"].mean() for b in BANDS if table[f"{b}_pct"].notna().any()}
     title = (f"On average {avg:.0f}% of {category} institutions stay in the same band from one year to the next")
-    insight = (f"In {category}, on average {avg:.0f}% of the institutions ranked in two consecutive years stayed in the "
-               f"same band (1-10, 11-50, 51-100, 101+); retention was highest for {hi['pair']} ({hi['retention_pct']:.0f}%) "
-               f"and lowest for {lo['pair']} ({lo['retention_pct']:.0f}%). The top 10 is the most stable band "
-               f"({sticky['1-10']:.0f}% stay on average) and 51-100 the least ({sticky['51-100']:.0f}%)."
-               if max(sticky, key=sticky.get) == "1-10" and min(sticky, key=sticky.get) == "51-100" else
-               f"In {category}, on average {avg:.0f}% of the institutions ranked in two consecutive years stayed in the "
-               f"same band; retention was highest for {hi['pair']} ({hi['retention_pct']:.0f}%) and lowest for "
-               f"{lo['pair']} ({lo['retention_pct']:.0f}%). Most stable band: {max(sticky, key=sticky.get)} "
-               f"({max(sticky.values()):.0f}%), least stable: {min(sticky, key=sticky.get)} ({min(sticky.values()):.0f}%).")
+    same_pairs = table["retention_pct"].nunique() == 1
+    most, least = max(sticky, key=sticky.get), min(sticky, key=sticky.get)
+    lead = (f"In {category}, on average {avg:.0f}% of the institutions ranked in two consecutive years stayed in the "
+            f"same band (1-10, 11-50, 51-100, 101+); ")
+    pairs = (f"in {'the only pair' if len(table) == 1 else 'every pair'} of years ({', '.join(table['pair'])}) it "
+             f"was {hi['retention_pct']:.0f}%" if same_pairs else
+             f"retention was highest for {hi['pair']} ({hi['retention_pct']:.0f}%) and lowest for {lo['pair']} "
+             f"({lo['retention_pct']:.0f}%)")
+    if same_pairs or len(set(sticky.values())) == 1:
+        # Nothing to rank (one year pair, or every pair / band the same, e.g. Agriculture 2023-2025: 100%).
+        insight = lead + pairs + ". Bands present: " + ", ".join(f"{b} ({v:.0f}% stay)" for b, v in sticky.items()) + "."
+    elif most == "1-10" and least == "51-100":
+        insight = lead + pairs + (f". The top 10 is the most stable band ({sticky['1-10']:.0f}% stay on average) and "
+                                  f"51-100 the least ({sticky['51-100']:.0f}%).")
+    else:
+        insight = lead + pairs + (f". Most stable band: {most} ({sticky[most]:.0f}%), least stable: {least} "
+                                  f"({sticky[least]:.0f}%).")
     finish(fig, title, f"{category} ranking, {fmt_years(years)} · bands 1-10, 11-50, 51-100, 101+ · institutions "
            f"ranked in both years", legend_title="Band in the earlier year" if by_band else None,
            note="Wide bands keep institutions more easily than narrow ones (a 10-place band vs a 40-place band).")

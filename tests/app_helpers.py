@@ -36,7 +36,7 @@ def set_widget(at: AppTest, kind: str, prefix: str, value) -> AppTest:
     """Set one widget (institution names are turned into keys) and rerun the app."""
     if kind == "button":
         return widget(at, "button", prefix).click().run()
-    if prefix.endswith("institutions") or prefix.endswith("institution"):
+    if prefix.rsplit("-", 1)[-1] in ("institutions", "institution"):     # not e.g. "...-min_institutions"
         value = [find_institution(v) for v in value] if isinstance(value, list) else find_institution(value)
     return widget(at, kind, prefix).set_value(value).run()
 

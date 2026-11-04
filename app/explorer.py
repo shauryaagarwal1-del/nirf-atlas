@@ -178,9 +178,11 @@ def draw(c: C, ctx: Ctx) -> dict:
             lo, hi = max(f.start, years[0]), min(f.end, years[-1])
             if lo >= hi:
                 lo, hi = years[0], years[-1]
-            ys = _synced(st.select_slider, ctx.key(c.kind, ctx.category), "f_years", (lo, hi), to_global=tuple,
-                         value=(lo, hi), label=c.label or ("Years" if c.kind == "years" else "From year → to year"), options=years,
+            ys = _synced(st.select_slider, ctx.key(c.kind, ctx.category), "f_years", (lo, hi),
+                         to_global=lambda v: tuple(sorted(v)), value=(lo, hi),
+                         label=c.label or ("Years" if c.kind == "years" else "From year → to year"), options=years,
                          help=None if c.kind == "years" else "The first and the last year to compare.")
+        ys = tuple(sorted(ys))                   # always earlier year first, however the range was set
         if c.kind == "years":
             return {"years": [y for y in years if ys[0] <= y <= ys[1]]}
         return dict(zip(c.params, ys))

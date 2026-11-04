@@ -200,10 +200,17 @@ def summary_stats(year: int | None = None, category: str = "Overall") -> ChartRe
     fig.update_yaxes(showgrid=False, showticklabels=False)
     fig.update_layout(showlegend=False)
 
-    title = f"{category} {year}: mean score {s['mean']:.1f}, median {s['median']:.1f}, range {s['min']:.1f}-{s['max']:.1f}"
-    insight = (f"In {category} {year}, the {s['n']} published scores have a mean of {s['mean']:.1f} and a median of "
-               f"{s['median']:.1f}; the lowest is {s['min']:.1f} ({short_name(lo['canonical_name'])}) and the highest "
-               f"{s['max']:.1f} ({short_name(hi['canonical_name'])}), with a standard deviation of {s['std']:.1f}.")
+    if s["n"] == 1:      # one institution (e.g. a state filter): its score is the mean, median, min and max
+        title = f"{category} {year}: only one published score ({s['mean']:.1f}, {short_name(lo['canonical_name'])})"
+        insight = (f"In {category} {year}, only one institution has a published score: {short_name(lo['canonical_name'])}"
+                   f" with {s['mean']:.1f}, which is at once the mean, median, minimum and maximum; one value has "
+                   f"no spread, so the standard deviation and IQR cannot be calculated.")
+    else:
+        title = f"{category} {year}: mean score {s['mean']:.1f}, median {s['median']:.1f}, range {s['min']:.1f}-{s['max']:.1f}"
+        insight = (f"In {category} {year}, the {s['n']} published scores have a mean of {s['mean']:.1f} and a median "
+                   f"of {s['median']:.1f}; the lowest is {s['min']:.1f} ({short_name(lo['canonical_name'])}) and the "
+                   f"highest {s['max']:.1f} ({short_name(hi['canonical_name'])}), with a standard deviation of "
+                   f"{s['std']:.1f}.")
     finish(fig, title, "Box = middle 50% (Q1 to Q3), line inside = median, dashed diamond = mean ± 1 SD, "
            "dots = institutions", height=400)
     method = (f"Calculated on the {s['n']} institutions with a published {category} score in {year}. Mean = sum / "

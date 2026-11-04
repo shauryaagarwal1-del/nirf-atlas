@@ -8,7 +8,8 @@ and checked by nlq/resolve.py:
   * category words -> the NIRF category; institution names -> institution keys; state codes -> states;
     parameter words -> column codes; year phrases -> years of that category;
   * years are fitted to what the function takes: a list (`years`), one year (`year`, the latest asked
-    for) or two years (`start_year`/`end_year`, `year_a`/`year_b`: the first and last asked for);
+    for) or two years (`start_year`/`end_year`, `year_a`/`year_b`: the first and last asked for; given
+    the wrong way round, e.g. "from 2024 to 2019", they are swapped and the swap is noted);
   * `states` on a function without its own states parameter limits the analysis to those states;
   * a parameter the function does not have is dropped, and the drop is listed as an assumption.
 Every translation is added to the plan's assumptions, so "How I understood your question" shows them.
@@ -152,6 +153,10 @@ def _fit_years(raw: dict, sig, category: str | None, notes: list[str]) -> dict:
                 out[a] = lo[0]
             if hi:
                 out[b] = hi[-1]
+            if a in out and b in out and out[a] > out[b]:    # "from 2024 back to 2019"
+                notes.append(f"You gave the later year first ({out[a]} → {out[b]}); a change is always measured "
+                             f"from the earlier year to the later one, so {out[b]} → {out[a]} is shown.")
+                out[a], out[b] = out[b], out[a]
             used = True
     if not used:
         notes.append(f"This analysis always uses every year it can, so the years you asked for "

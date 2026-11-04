@@ -120,8 +120,14 @@ scores are only compared within the same category unless a visible note says oth
 - **`core/data.py`:** `load_master()` reads the master table once and adds `rank_upper` = the worst rank a row can
   have (the exact rank, or the upper end of NIRF's own band). `filter_df()` narrows it by years, categories, states,
   institutions, `rank_max` and `exact_ranks_only`. Names typed by a person ("IIT Madras", "iisc", small typos) are
-  matched to one `institution_key`: exact name → all typed words appear in the name → close spelling (rapidfuzz
-  WRatio ≥ 90 and clearly ahead of the next candidate). If several institutions fit, the message lists them.
+  matched to one `institution_key`: exact name → all typed words appear in the name → name words in the name and
+  the remaining words in its city or state ("Christian Medical College Vellore", "National Law University Delhi") →
+  close spelling (rapidfuzz WRatio ≥ 90 and clearly ahead of the next candidate; only for names of 6+ letters, so an
+  unknown short form such as "LPU" is never matched to a name that merely contains those letters). If several
+  institutions fit, the message lists them.
+- **Year checks with a state filter:** when the chosen states have no institution in a year that NIRF did publish,
+  the message says so ("No institution in Goa is in the Overall ranking of 2025 (they appear in 2017-2022)") instead
+  of claiming that NIRF has no ranking that year.
 - **"In the top N" (used everywhere):** the rank is *certainly* N or better: exact rank ≤ N, or a NIRF band whose
   worst rank ≤ N. A 76-100 row is in the top 100; a 101-150 row is not; a 51-75 row is in the top 75.
 - **Exact ranks only:** whenever a rank must be used as a number (subtracting, averaging, box plots of ranks), rows
@@ -224,7 +230,12 @@ of one category-year (default: its latest year).
   year with only a band (e.g. 101-150) is drawn as a faint bar covering the band (no invented mid-point); a year
   without a rank is a gap. Change = first exact rank − last exact rank (positive = moved up).
 - **Chart and why:** line chart, because the question is change over time; the rank axis is reversed so "up = better".
-- **Filters the user can change:** institutions (up to 8, default the top 5 of the latest year), category, years.
+- **Gaps and bands in the answer:** for one institution the insight names the years with only a band and the years it
+  was not in the list (e.g. IIM Calcutta, Overall: ranked 2017-2019 and 2023 only). With a single exact rank no change
+  is claimed ("had an exact rank only in 2018").
+- **Filters the user can change:** institutions (up to 8, default the top 5 of the latest year that has a ranked
+  institution, by exact rank and then by band, so a state whose only institution is band-only, such as Mizoram, still
+  gets a chart), category, years.
 
 ### Q1.2 / Q1.3 / Q7.4: Which institutions improved / declined the most in rank?
 - **Engine / function:** `trends.py :: biggest_movers(category, start_year, end_year, direction, n)`
@@ -262,13 +273,17 @@ of one category-year (default: its latest year).
   by that count, then by average rank in those years.
 - **Chart and why:** heatmap institution × year: dark cell (with the rank written in it) = in the top n, light grey =
   ranked but outside, blank = not ranked. It shows "how often" and "which years" at a glance.
+- **Categories with few years:** when a category was ranked in fewer years than `min_years` (Agriculture & Allied
+  Sectors: 2023-2025), "at least 5 years" becomes "every year it has" (3) and the answer says so.
 - **Filters the user can change:** category, n, min_years.
 
 ### Q2.1: Which states have the highest number of institutions in the top 100?
 - **Engine / function:** `core/engines/geography.py :: state_counts(year, category, top_n)`
 - **Definition used:** institutions of each state certainly in the top N of that category-year.
 - **Calculation (plain words):** filter to the top N, count per state, sort; share = count / all top-N × 100. If NIRF
-  ranks fewer than N (e.g. Law), a note says every ranked institution is counted.
+  ranks fewer than N (e.g. Law), a note says every ranked institution is counted. A tie at the last place makes the
+  top N hold more than N institutions (Overall 2020: two institutions share rank 100, so the top 100 holds 101); the
+  answer names them, and shares are of the institutions actually in the list.
 - **Chart and why:** horizontal bar sorted from most to fewest: easy to compare, and long state names fit.
 - **Filters the user can change:** year, category, top_n.
 
@@ -572,6 +587,9 @@ lies wholly inside one of these four, so institutions known only by band can be 
   left of it = moved to a better band, right = worse. The orange box (51-100 → 1-10 and 11-50) answers Q7.1. A
   transition matrix shows every movement at once, including drop-outs and newcomers (a Sankey diagram would be the
   other usual choice but is not on the allowed list).
+- **Band-only ranks:** below 100 NIRF publishes mostly bands (101-150, 151-200 ...). Every such band lies wholly in
+  101+, so these institutions are still placed with certainty; the answer also counts how many climbed from 101+ into
+  the top 100.
 - **Filters the user can change:** category, year A, year B (default 2017 → 2025).
 
 ### Q7.2: Which institutions entered or exited the top 10 between consecutive years?
@@ -850,7 +868,8 @@ and checks that the chart drawn is the same answer as the analysis those setting
   ranges and phrases ("last 3 years" = the latest 3 years in which that category was published, "since 2020",
   "latest", "pichhle 5 saal"). Every translation is listed under "How I understood your question".
 - **Step 4, running (`nlq/executor.py`):** years are fitted to the function (a list, one year = the latest asked for,
-  or two years = the first and last asked for); `states` on any analysis limits it to institutions in those states
+  or two years = the first and last asked for; given the wrong way round, "from 2024 to 2019", they are swapped,
+  because a change is always measured from the earlier to the later year, and the swap is listed as an assumption); `states` on any analysis limits it to institutions in those states
   (ranks stay national); options a function does not have are dropped and listed. Only the 8 engines' public
   functions or the Chart Builder can be called. Nothing the model writes is run as code (no `exec`/`eval`; a test
   checks the syntax tree of `nlq/`).
@@ -866,4 +885,20 @@ and checks that the chart drawn is the same answer as the analysis those setting
   dot: is a key loaded, and does Gemini accept it (checked by asking for the model's description, no text generated).
 - **Accuracy test:** 25 varied questions (typos, Hinglish, abbreviations, informal phrasing, a custom chart and an
   out-of-scope question), each with the acceptable analyses. Offline, each reference plan must give a chart from the
-  expected analysis; live, the model's plan must name an expected analysis. Accuracy = correct plans / 25.
+  expected analysis; live, the model's plan must name an expected analysis. Accuracy = correct plans / 25. The live
+  test is opt-in (`NIRF_LIVE_TESTS=1`), so a normal test run never uses up the free daily quota the demo needs.
+
+## Exam simulation (Phase 14): 30 new questions, UI path and chat
+
+- **What:** `tests/exam_questions.py` holds 30 examiner questions that are not in Annexure A, across all 8 sections,
+  with the tricky cases on purpose: an institution missing in some years, a category that only exists from 2023, a
+  state with only one institution, a start year after the end year, tied ranks and band-only ranks.
+- **UI path:** the real app is opened headless (Streamlit AppTest), the view is picked and the controls are set as a
+  person would. Pass = the app draws exactly the chart of the analysis those settings stand for (same title as the
+  direct engine call), or, when the data cannot answer as asked (correlation for one institution, a year before the
+  category existed), a message card that explains why.
+- **Ask NIRF:** the question is planned by the live Gemini model; the plan is recorded in `tests/exam_chat_plans.json`
+  and replayed offline through our executor. Pass = an acceptable analysis run with the settings the question asks
+  for (category, years, institutions, states, parameters), or the same explanation as the UI.
+- **Run:** `python -m scripts.exam_simulation` (replay) or `--live` (ask the model first); results, the failures found
+  on the first run and their fixes: `docs/exam_simulation.md`. Tests: `tests/test_exam.py`.

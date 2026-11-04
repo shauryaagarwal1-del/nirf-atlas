@@ -97,7 +97,13 @@ The sidebar shows a green or red dot: is a key loaded, and does Gemini accept it
 **Accuracy test:** 25 varied questions (typos, Hinglish, abbreviations, informal phrasing, one custom chart, one
 out-of-scope question), each with the analyses we accept as correct. Offline, each reference plan must produce a
 chart from the expected analysis; live, the model's plan must name an expected analysis. Accuracy = correct plans
-÷ 25 (`python -m scripts.nlq_accuracy`).
+÷ 25 (`python -m scripts.nlq_accuracy`). The live part never runs inside a normal `pytest` (only with
+`NIRF_LIVE_TESTS=1`), so testing on the demo day does not use up the free quota.
+
+**Exam simulation:** 30 further examiner questions with tricky cases (`docs/exam_simulation.md`). The live model's
+plans are recorded once in `tests/exam_chat_plans.json` and replayed offline by the tests. Two rules came out of it:
+years given the wrong way round ("from 2024 to 2019") are put in order with a note, and "every year" means all the
+years a category was published.
 
 ---
 

@@ -44,7 +44,22 @@ FAMOUS = {"iisc": "Indian Institute of Science", "iisc bangalore": "Indian Insti
           "Technology and Science Pilani", "jnu": "Jawaharlal Nehru University", "bhu": "Banaras Hindu University",
           "amu": "Aligarh Muslim University", "aiims": "All India Institute of Medical Sciences Delhi",
           "aiims delhi": "All India Institute of Medical Sciences Delhi", "nlsiu": "National Law School of "
-          "India University", "nls": "National Law School of India University"}
+          "India University", "nls": "National Law School of India University",
+          "kiit": "Kalinga Institute of Industrial Technology", "lpu": "Lovely Professional University",
+          "iiit hyderabad": "International Institute of Information Technology Hyderabad",
+          "iiith": "International Institute of Information Technology Hyderabad",
+          "iiit bangalore": "International Institute of Information Technology Bangalore",
+          "iiitb": "International Institute of Information Technology Bangalore",
+          "nmims": "SVKM's Narsee Monjee Institute of Management Studies, Mumbai",
+          "isi": "Indian Statistical Institute", "isi kolkata": "Indian Statistical Institute",
+          "mdi": "Management Development Institute", "mdi gurgaon": "Management Development Institute",
+          "fms": "Faculty of Management Studies", "fms delhi": "Faculty of Management Studies",
+          "pgimer": "Post Graduate Institute of Medical Education and Research",
+          "pgi chandigarh": "Post Graduate Institute of Medical Education and Research",
+          "cmc vellore": "Christian Medical College Vellore", "cmc": "Christian Medical College Vellore",
+          "iift": "Indian Institute of Foreign Trade", "uoh": "University of Hyderabad",
+          "iiit delhi": "Indraprastha Institute of Information Technology",
+          "iiitd": "Indraprastha Institute of Information Technology"}
 
 
 def _expand_compact(text: str) -> str:
@@ -54,7 +69,8 @@ def _expand_compact(text: str) -> str:
         return FAMOUS[t]
     m = re.fullmatch(r"(iiit|iit|iim|nit) ?([a-z()]+)", t)
     if m and m.group(2) in CAMPUS_CODES[m.group(1)]:
-        return f"{m.group(1).upper()} {CAMPUS_CODES[m.group(1)][m.group(2)]}"
+        short = f"{m.group(1).upper()} {CAMPUS_CODES[m.group(1)][m.group(2)]}"
+        return FAMOUS.get(short.lower(), short)      # 'iiith' -> IIIT Hyderabad -> International Institute ...
     words = [CITY_SYNONYMS.get(w, w) for w in t.split()]
     return " ".join(words)
 

@@ -119,7 +119,7 @@ ranks only, no parameter scores.
 | Same 8 engines behind Question Bank, Explore pages, Chart Builder and chat | Pages can never disagree |
 | Chat: the model writes a JSON plan, our code computes every number | No hallucinated numbers; safe (nothing the model writes is run as code) |
 | Chat fallbacks: next model, spare key, offline closest-question match | The live demo cannot depend on one quota or the internet |
-| Automated tests: data checks, all 40 questions, the real app headless, 15 Level 2 and 25 chat questions | Confidence that it works live |
+| Automated tests: data checks, all 40 questions, the real app headless, 15 Level 2, 25 chat and 30 exam-simulation questions | Confidence that it works live |
 
 ---
 

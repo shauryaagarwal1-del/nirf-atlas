@@ -178,6 +178,12 @@ def check_year(year, category: str, df: pd.DataFrame | None = None) -> int:
     except (TypeError, ValueError):
         raise NirfInputError(f"'{year}' is not a year. {category} rankings exist for {fmt_years(available)}.")
     if y not in available:
+        scope = _STATE_SCOPE.get()
+        if scope and y in category_years(category, _master()):
+            # NIRF did publish this year; only the chosen states have no institution in it.
+            where = scope[0] if len(scope) == 1 else ", ".join(scope[:-1]) + " and " + scope[-1]
+            seen = (f"they appear in {fmt_years(available)}" if available else "none appears in any year")
+            raise NirfInputError(f"No institution in {where} is in the {category} ranking of {y} ({seen}).")
         raise NirfInputError(f"NIRF has no {category} ranking for {y}. "
                              f"{category} rankings exist for {fmt_years(available)}.")
     return y
@@ -270,6 +276,9 @@ def _name_index() -> pd.DataFrame:
                       for c in ("canonical_name", "institute_name", "institute_name_raw")])
     rows = rows.dropna().drop_duplicates()
     rows["norm"] = rows["name"].map(_expand)
+    place = df.drop_duplicates("institution_key").set_index("institution_key")
+    place = (place["city"].fillna("") + " " + place["state"].fillna("")).map(lambda t: frozenset(_expand(t).split()))
+    rows["place"] = rows["institution_key"].map(place)
     return rows.drop_duplicates(["institution_key", "norm"]).reset_index(drop=True)
 
 
@@ -344,8 +353,11 @@ def find_institution(name: str) -> str:
       1. an institution_key typed directly;
       2. the same name after normalising (case, '&', punctuation) and expanding short forms
          (IIT -> Indian Institute of Technology ...), against every spelling NIRF ever used;
-      3. every typed word appears in the name ('IIT Madras' -> Indian Institute of Technology Madras);
-      4. close spelling (rapidfuzz WRatio >= 90, clearly ahead of the next candidate).
+      3. every typed word appears in the name ('IIT Madras' -> Indian Institute of Technology Madras),
+         or the name words appear in the name and the rest are its city or state ('Christian Medical
+         College Vellore', 'National Law University Delhi');
+      4. close spelling (rapidfuzz WRatio >= 90, clearly ahead of the next candidate), only for
+         queries of 6+ letters, so an unknown short form is never matched to a random name.
     If several institutions fit, the message lists them so the person can be more specific.
     """
     idx = _name_index()
@@ -359,14 +371,23 @@ def find_institution(name: str) -> str:
     exact = idx.loc[idx["norm"].eq(q), "institution_key"].unique()
     if len(exact) == 1:
         return exact[0]
-    if len(exact) > 1:
-        raise NirfInputError(f"'{name}' matches {len(exact)} institutions: {_describe(exact[:6])}. "
-                             f"Please add the city.")
 
     words = set(q.split())
     contains = idx.loc[idx["norm"].map(lambda n: words <= set(n.split())), "institution_key"].unique()
-    if len(contains) == 1:
+    if len(exact) == 0 and len(contains) == 1:
         return contains[0]
+
+    # Name + place: 'Christian Medical College Vellore', 'National Law University Delhi'. The place words
+    # are matched against the institution's city and state, the other words against its name.
+    def name_and_place(r) -> bool:
+        place = words & r.place
+        return bool(place) and bool(words - place) and (words - place) <= set(r.norm.split())
+    placed = idx.loc[[name_and_place(r) for r in idx.itertuples()], "institution_key"].unique()
+    if len(placed) == 1:
+        return placed[0]
+    if len(exact) > 1:
+        raise NirfInputError(f"'{name}' matches {len(exact)} institutions: {_describe(exact[:6])}. "
+                             f"Please add the city (e.g. '{text} {_master().set_index('institution_key').loc[exact[0], 'city'].iloc[0]}').")
     if len(contains) > 1:
         raise NirfInputError(f"'{name}' fits {len(contains)} institutions, e.g. {_describe(contains[:6])}. "
                              f"Please be more specific.")
@@ -376,7 +397,10 @@ def find_institution(name: str) -> str:
     for _, score, i in hits:
         seen.setdefault(idx.at[i, "institution_key"], score)
     ranked = sorted(seen.items(), key=lambda kv: -kv[1])
-    if ranked and ranked[0][1] >= 90 and (len(ranked) == 1 or ranked[0][1] - ranked[1][1] >= 3):
+    # A very short query (an unknown short form such as 'LPU') is never matched by spelling: it would
+    # match any name that merely contains those letters ('lpu' in 'Samba-lpu-r University').
+    long_enough = len(q.replace(" ", "")) >= 6
+    if long_enough and ranked and ranked[0][1] >= 90 and (len(ranked) == 1 or ranked[0][1] - ranked[1][1] >= 3):
         return ranked[0][0]
     suggestions = _describe([k for k, _ in ranked[:5]]) if ranked else "none"
     raise NirfInputError(f"No institution called '{name}' in the NIRF data. Did you mean: {suggestions}?")

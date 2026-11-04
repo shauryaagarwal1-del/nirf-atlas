@@ -109,6 +109,11 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
                f"top {top_n} ({table['institutions'].max()}{' each' if len(lead) > 1 else ''}); the top three states ("
                f"{', '.join(f'{s} {c}' for s, c in zip(top3['state'], top3['institutions']))}) hold "
                f"{top3['share_pct'].sum():.0f}% of the {len(top)} places, spread over {len(table)} states/UTs.")
+    last = top["rank"].max()
+    sharing = top[top["rank"].eq(last)]
+    if len(top) > top_n and len(sharing) > 1:      # NIRF skips ranks after a tie, so only a tie at the end adds
+        insight += (f" The top {top_n} holds {len(top)} institutions because {len(sharing)} share rank {int(last)}: "
+                    f"{_join([short_name(n, 40) for n in sharing['canonical_name']])}.")
     note = _list_note(cat, top_n, [year])
     finish(fig, title, f"{category} ranking {year} · {len(top)} institutions in the top {top_n}", note=note,
            height=max(380, 160 + 24 * len(table)))
@@ -354,7 +359,7 @@ def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
         insight = (f"Over {span}, {better}'s {category}-ranked institutions had the best median rank "
                    f"({pooled.at[better, 'median_rank']:.0f} vs "
                    + ", ".join(f"{pooled.at[s, 'median_rank']:.0f} for {s}" for s in other) + "), while "
-                   f"{more} had the most ranked institutions ({pooled.at[more, 'avg_per_year']:.1f} per year vs "
+                   f"{more} had the most institutions with an exact rank ({pooled.at[more, 'avg_per_year']:.1f} per year vs "
                    + ", ".join(f"{pooled.at[s, 'avg_per_year']:.1f}" for s in states if s != more) + ").")
     table = med.rename(columns={"median": "median_rank", "size": "institutions"})
     table = table.merge(exact.groupby(["state", "year"])["rank"].agg(best_rank="min", worst_rank="max")
@@ -822,9 +827,13 @@ def state_rank_boxes(states=("Karnataka", "Tamil Nadu"), category: str = "Overal
 
 
 def _more_text(t: pd.DataFrame, states: list[str]) -> str:
-    """'Tamil Nadu has more exact ranks (58 vs 171 institution-years from 15 vs 28 institutions).'"""
+    """'Tamil Nadu has more exact ranks (171 vs 58 institution-years from 28 vs 15 institutions).'
+
+    The state with the most comes first, so the numbers read in the same order as the sentence.
+    """
     most = t["institution_years"].idxmax()
-    years_ = " vs ".join(str(int(t.at[s, "institution_years"])) for s in states)
-    insts = " vs ".join(str(int(t.at[s, "institutions"])) for s in states)
+    order = [most] + [s for s in states if s != most]
+    years_ = " vs ".join(str(int(t.at[s, "institution_years"])) for s in order)
+    insts = " vs ".join(str(int(t.at[s, "institutions"])) for s in order)
     return (f"{most} has {'more' if len(states) == 2 else 'the most'} exact ranks ({years_} institution-years from "
             f"{insts} institutions).")

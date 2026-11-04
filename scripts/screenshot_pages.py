@@ -28,7 +28,7 @@ from playwright.sync_api import Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 WIDTH, HEIGHT = 1366, 768
-# URL path of each page (Streamlit derives it from the file name in app/pages/).
+# URL path of each page (Streamlit derives it from the file name in app/views/).
 PAGES = ["home", "question_bank", "trends", "geography", "distributions", "relationships", "multi_parameter",
          "mobility", "outliers", "chart_builder", "ask_nirf", "data_method"]
 

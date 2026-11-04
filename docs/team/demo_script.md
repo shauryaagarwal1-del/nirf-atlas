@@ -19,6 +19,10 @@ never scroll fast · if something is slow, keep talking about the method.
 **The evening before**
 - [ ] `git pull` on branch `shaurya` on the demo laptop **and** on a second laptop (backup).
 - [ ] `python -m pytest` passes. (On this laptop set `OPENBLAS_NUM_THREADS=1` first if a memory error appears.)
+      It never calls Gemini, so it is safe to run on the demo day.
+- [ ] `python -m scripts.exam_simulation` shows 30/30 for the UI path and the chat, and each of us has practised
+      the tricky questions in `docs/exam_simulation.md` (a state with one institution, start year after end year,
+      a category that starts in 2023, ties, band-only ranks).
 - [ ] `python scripts/screenshot_pages.py` runs: it screenshots every page at projector size (1366 × 768) in light
       and dark theme and prints each page's load time. The screenshots in `docs/previews/pages/` are the offline
       backup.
@@ -27,7 +31,7 @@ never scroll fast · if something is slow, keep talking about the method.
 - [ ] Charge both laptops; pack the charger and an HDMI adapter.
 
 **30 minutes before**
-- [ ] Start the app: `streamlit run app/Home.py`. Open it in the browser, full screen (F11), zoom 100%.
+- [ ] Start the app: `python -m streamlit run app/Home.py`. Open it in the browser, full screen (F11), zoom 100%.
 - [ ] Click through every page once (warms the cache, so the demo is fast).
 - [ ] Ask NIRF: the sidebar dot is **green**. Ask one example question so the connection is warm.
 - [ ] Set the sidebar back to defaults: Category **Overall**, years **2017–2025**, no states, top N **10**.

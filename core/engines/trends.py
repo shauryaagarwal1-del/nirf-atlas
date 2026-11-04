@@ -56,9 +56,15 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
     cat = filter_df(df, years=years, categories=category)
 
     if institutions is None or (not isinstance(institutions, str) and len(list(institutions)) == 0):
-        last = cat[cat["year"].eq(max(years)) & cat["rank"].notna()].sort_values(["rank", "canonical_name"])
+        # The best 5 of the latest year that has any ranked row: by exact rank, then by NIRF band (a state
+        # filter can leave a year empty, or only band-only institutions such as Mizoram's in 2025).
+        ranked = cat[cat["rank_upper"].notna()]
+        if ranked.empty:
+            raise NirfInputError(f"No institution is ranked in {category} in {fmt_years(years)}.")
+        last_year = int(ranked["year"].max())
+        last = ranked[ranked["year"].eq(last_year)].sort_values(["rank_upper", "rank", "canonical_name"])
         keys = last["institution_key"].head(5).tolist()
-        chosen = f"the top 5 of {max(years)}"
+        chosen = f"the top {len(keys)} of {last_year}" if len(keys) > 1 else f"the best-ranked of {last_year}"
     else:
         keys = find_institutions(institutions)
         chosen = None
@@ -122,12 +128,24 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
                               n=int(len(t))))
     span = f"{min(years)}–{max(years)}" if len(years) > 1 else str(years[0])
     if len(keys) == 1:
-        if moves:
+        status = table.set_index("year")["rank_status"]
+        banded = [y for y in years if status.get(y) == "band"]
+        missing = [y for y in years if status.get(y) == "not ranked"]
+        gaps = "".join([
+            f"; in {fmt_years(banded)} NIRF published only a band" if banded else "",
+            f"; it was not in the {category} list in {fmt_years(missing)}" if missing else ""])
+        if moves and moves[0]["n"] == 1:
+            m = moves[0]
+            title = f"{m['name']}: rank {m['r0']} in {m['y0']}, its only exact {category} rank in {span}"
+            insight = (f"{m['name']} had an exact {category} rank only in {m['y0']} (rank {m['r0']}){gaps}, so no "
+                       f"change between two exact ranks can be measured.")
+        elif moves:
             m = moves[0]
             title = f"{m['name']}: rank {m['r0']} in {m['y0']} → rank {m['r1']} in {m['y1']} ({category})"
             insight = (f"{m['name']} went from rank {m['r0']} in {m['y0']} to rank {m['r1']} in {m['y1']} in "
                        f"{category} ({places(m['change'])}); its best rank was {m['best']} "
-                       f"(first reached in {m['best_year']}) and it had an exact rank in {m['n']} of {len(years)} years.")
+                       f"(first reached in {m['best_year']}) and it had an exact rank in {m['n']} of {len(years)} "
+                       f"years{gaps}.")
         else:
             title = f"{labels[keys[0]]} appears in {category} only as a rank band"
             insight = (f"{labels[keys[0]]} never has an exact {category} rank in {span}; NIRF published only its "
@@ -455,7 +473,8 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     Definition: an institution is "in the top n" in a year when its rank is certainly n or better
     (exact rank <= n, or a whole NIRF band within the top n).
     Method: count, per institution, the years it was in the top n; keep those with at least
-    min_years such years. Heatmap: one row per institution, one column per year; dark cells = in the
+    min_years such years (a category ranked in fewer years than min_years uses all its years, and the
+    answer says so). Heatmap: one row per institution, one column per year; dark cells = in the
     top n (labelled with the rank), light grey = ranked but outside the top n, blank = not ranked.
     """
     df = load_master()
@@ -464,9 +483,11 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     n, min_years = int(n), int(min_years)
     if n < 1:
         raise NirfInputError("n must be at least 1.")
-    if not 1 <= min_years <= len(years):
-        raise NirfInputError(f"{category} has rankings in {len(years)} years ({fmt_years(years)}), so min_years "
-                             f"must be between 1 and {len(years)}.")
+    if min_years < 1:
+        raise NirfInputError("min_years must be at least 1.")
+    requested, capped = min_years, min_years > len(years)
+    if capped:           # e.g. "at least 5 years" for Agriculture, ranked only 2023-2025: every year it has
+        min_years = len(years)
     cat = filter_df(df, categories=category)
     cat["in_top"] = cat["rank_upper"].le(n).fillna(False).astype(bool)
     counts = cat[cat["in_top"]].groupby("institution_key")["year"].nunique()
@@ -519,6 +540,9 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
                f"{len(years)} years ({fmt_years(years)}); "
                + (f"{len(always)} of them were there every year: {', '.join(always)}." if always
                   else f"none was there every year (most: {labels[order[0]]}, {keep[order[0]]} years)."))
+    if capped:
+        insight = (f"{category} was ranked in only {len(years)} years, so 'at least {requested} years' means every "
+                   f"year it has. " + insight)
     method = (f"For each year we mark an institution as 'in the top {n}' when its rank is certainly {n} or better "
               f"(an exact rank ≤ {n}, or a NIRF band whose worst rank is ≤ {n}). We count those years per "
               f"institution and keep everyone with at least {min_years}. Rows are sorted by the number of years in "

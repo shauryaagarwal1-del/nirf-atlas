@@ -8,16 +8,20 @@ Offline (always run, no API key needed):
   * the planner retries once with the error message, and the model wrapper falls back to GEMINI_API_KEY_2;
   * friendly messages for no key, no internet, an invalid key and a used-up quota;
   * the page draws a chart, the assumptions and 3 follow-ups, and survives a failed model call.
-Live (only when a Gemini key is set): every one of the 25 questions is sent to the model and the plan
-must name an expected analysis. Accuracy report: python scripts/nlq_accuracy.py
+Live (only when asked for, with NIRF_LIVE_TESTS=1, and a Gemini key is set): every one of the 25 questions
+is sent to the model and the plan must name an expected analysis. Opt-in because the free tier allows only
+about 20 questions per model per day: a normal test run must not use up the quota the demo needs.
+Accuracy report: python -m scripts.nlq_accuracy
 
     python -m pytest tests/test_nlq.py -v
+    $env:NIRF_LIVE_TESTS = "1"; python -m pytest tests/test_nlq.py -v -k live      (PowerShell)
 """
 
 from __future__ import annotations
 
 import ast
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -36,6 +40,7 @@ if not MASTER_PATH.exists():
 
 NLQ_DIR = Path(__file__).resolve().parents[1] / "nlq"
 HAS_KEY = bool(llm.settings().keys)
+LIVE = HAS_KEY and os.environ.get("NIRF_LIVE_TESTS") == "1"
 
 
 # ---------- the 25 questions ----------
@@ -336,7 +341,7 @@ def test_page_survives_a_failed_model_call(monkeypatch):
 
 # ---------- live model (needs a Gemini key) ----------
 
-@pytest.mark.skipif(not HAS_KEY, reason="no GEMINI_API_KEY in .env: live planning not tested")
+@pytest.mark.skipif(not LIVE, reason="live planning is opt-in: set NIRF_LIVE_TESTS=1 (and GEMINI_API_KEY in .env)")
 @pytest.mark.parametrize("q", NLQ_QUESTIONS, ids=[q.id for q in NLQ_QUESTIONS])
 def test_live_model_plans_the_expected_analysis(q):
     plan = plan_question(q.question)

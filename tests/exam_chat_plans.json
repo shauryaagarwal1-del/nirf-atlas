@@ -1,0 +1,781 @@
+{
+ "X01": {
+  "plan": {
+   "type": "engine",
+   "engine": "trends",
+   "function": "rank_trajectory",
+   "params": {
+    "institutions": [
+     "IIM Calcutta"
+    ],
+    "category": "Overall",
+    "years": [
+     2017,
+     2018,
+     2019,
+     2020,
+     2021,
+     2022,
+     2023,
+     2024,
+     2025
+    ]
+   },
+   "title": "IIM Calcutta Overall Rank Trajectory",
+   "assumptions": [
+    "Institution: IIM Calcutta",
+    "Category: Overall",
+    "Years: 2017 to 2025"
+   ],
+   "follow_ups": [
+    "How have IIM Calcutta's five parameter scores changed over the years?",
+    "How does IIM Calcutta's management ranking compare to its overall ranking?",
+    "Which management institutes have the most stable rankings?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X02": {
+  "plan": {
+   "type": "engine",
+   "engine": "trends",
+   "function": "biggest_movers",
+   "params": {
+    "category": "Overall",
+    "start_year": 2024,
+    "end_year": 2019,
+    "direction": "up",
+    "n": 10
+   },
+   "title": "Biggest Overall climbers from 2024 to 2019",
+   "assumptions": [
+    "Category: Overall, as specified in the question",
+    "Start year: 2024",
+    "End year: 2019",
+    "Direction: up (climbers)",
+    "Limit: top 10 movers"
+   ],
+   "follow_ups": [
+    "Which institutions experienced the largest decline in Overall rankings from 2019 to 2024?",
+    "How has the overall ranking trajectory of the top climber changed over time?",
+    "Which states produced the most top climbers between 2019 and 2024?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X04": {
+  "plan": {
+   "type": "engine",
+   "engine": "trends",
+   "function": "average_score_over_time",
+   "params": {
+    "categories": "Engineering",
+    "stat": "median"
+   },
+   "title": "Median Score of Engineering Institutions Over Time",
+   "assumptions": [
+    "Category: Engineering, as specified in the question",
+    "Statistic: Median score, as requested"
+   ],
+   "follow_ups": [
+    "How does the median score of Engineering institutions compare to Overall institutions?",
+    "What is the interquartile range of Engineering scores over the years?",
+    "Which Engineering institutions have consistently scored above the median?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X05": {
+  "plan": {
+   "type": "engine",
+   "engine": "geography",
+   "function": "compare_states",
+   "params": {
+    "states": [
+     "Mizoram",
+     "Meghalaya"
+    ],
+    "category": "Overall"
+   },
+   "title": "Mizoram vs Meghalaya Overall Rankings",
+   "assumptions": [
+    "Category: Overall",
+    "States compared: Mizoram and Meghalaya"
+   ],
+   "follow_ups": [
+    "How have the numbers of ranked institutions changed in Mizoram and Meghalaya over time?",
+    "Which state has higher average parameter scores between Mizoram and Meghalaya?",
+    "Which specific institutions from Mizoram and Meghalaya appear in the NIRF Overall rankings?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X06": {
+  "plan": {
+   "type": "engine",
+   "engine": "geography",
+   "function": "state_counts",
+   "params": {
+    "year": 2020,
+    "category": "Overall",
+    "top_n": 100
+   },
+   "title": "States with the most Overall top 100 institutions in 2020",
+   "assumptions": [
+    "Category: Overall, as requested in the query",
+    "Year: 2020",
+    "Top N: 100, matching 'top 100' in the query"
+   ],
+   "follow_ups": [
+    "How has the number of top 100 institutions in these states changed from 2017 to 2025?",
+    "Which states had the most Overall top 100 institutions in 2025?",
+    "Which states improved their representation in the top 100 over time?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X07": {
+  "plan": {
+   "type": "engine",
+   "engine": "geography",
+   "function": "state_representation_change",
+   "params": {
+    "category": "Agriculture & Allied Sectors",
+    "start_year": 2023,
+    "end_year": 2025,
+    "top_n": 25
+   },
+   "title": "State representation change in Agriculture top 25",
+   "assumptions": [
+    "Category: Agriculture & Allied Sectors, as specified in the question",
+    "Time range: 2023 to 2025, matching the published years for this category",
+    "Top N: 25, based on the question's mention of 'top 25'"
+   ],
+   "follow_ups": [
+    "Which states have the most institutions in the Agriculture top 25 in 2025?",
+    "How has the geographical distribution of Agriculture institutions changed from 2023 to 2025?",
+    "Which institutions are the top performers in Agriculture & Allied Sectors?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X08": {
+  "plan": {
+   "type": "engine",
+   "engine": "geography",
+   "function": "new_entrants_by_state",
+   "params": {
+    "category": "Medical",
+    "years": "since 2019"
+   },
+   "title": "New Medical institutions by state since 2019",
+   "assumptions": [
+    "Category: Medical, as specified in the question",
+    "Timeframe: since 2019, applied to the Medical ranking category which started in 2018"
+   ],
+   "follow_ups": [
+    "Which states have the most Medical institutions overall?",
+    "How have Medical institution rankings changed over time in these states?",
+    "Which Medical institutions were the first new entrants in 2019?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X09": {
+  "plan": {
+   "type": "engine",
+   "engine": "univariate",
+   "function": "summary_stats",
+   "params": {
+    "year": 2018,
+    "category": "Overall",
+    "states": [
+     "Goa"
+    ]
+   },
+   "title": "Mean, median, min and max Overall scores of Goa's institutions in 2018",
+   "assumptions": [
+    "Category: Overall, as requested",
+    "Year: 2018, as requested",
+    "State: Goa, as requested",
+    "Metric: Overall score"
+   ],
+   "follow_ups": [
+    "How have Goa's Overall scores changed from 2018 to 2025?",
+    "Which institutions in Goa are ranked in the Overall category?",
+    "How do Goa's scores compare with other states in 2018?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X10": {
+  "plan": {
+   "type": "engine",
+   "engine": "univariate",
+   "function": "rank_distribution",
+   "params": {
+    "year": 2024,
+    "category": "Engineering"
+   },
+   "title": "Engineering rank bands 2024",
+   "assumptions": [
+    "Category: Engineering, as requested",
+    "Year: 2024, as specified"
+   ],
+   "follow_ups": [
+    "How does the Engineering rank distribution in 2024 compare with Overall?",
+    "What is the distribution of Engineering scores in 2024?",
+    "Which states have the most Engineering institutions in the top 100 in 2024?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X11": {
+  "plan": {
+   "type": "out_of_scope",
+   "message": "Agriculture & Allied Sectors rankings were only published starting from 2023, so data for 2020 is not available. Please choose a year from 2023 to 2025."
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X12": {
+  "plan": {
+   "type": "engine",
+   "engine": "univariate",
+   "function": "quartile_shares",
+   "params": {
+    "year": 2022,
+    "category": "Management",
+    "mode": "statistical"
+   },
+   "title": "Statistical quartile shares for Management institutions in 2022",
+   "assumptions": [
+    "Category: Management, as specified in the question",
+    "Year: 2022, as specified in the question",
+    "Mode: statistical, to calculate the data's own quartiles (Q1, median, Q3)"
+   ],
+   "follow_ups": [
+    "How do the score cut-offs for each statistical quartile compare between 2021 and 2022 for Management?",
+    "What is the distribution of NIRF scores for Management institutions in 2022?",
+    "Which Management institutions fall into the top statistical quartile in 2022?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X13": {
+  "plan": {
+   "type": "engine",
+   "engine": "bivariate",
+   "function": "scatter_relation",
+   "params": {
+    "x": "pr",
+    "y": "score",
+    "year": 2025,
+    "category": "Medical"
+   },
+   "title": "Perception vs Overall Score in Medical 2025",
+   "assumptions": [
+    "Category: Medical, as explicitly named",
+    "Year: 2025, as explicitly named",
+    "Variables: Perception (pr) and overall score (score)"
+   ],
+   "follow_ups": [
+    "How does the correlation between Perception and overall score compare to Research and overall score in Medical 2025?",
+    "Which Medical institutions have unusually high Perception scores relative to their overall scores in 2025?",
+    "How has the relationship between Perception and overall score in Medical changed over time?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X14": {
+  "plan": {
+   "type": "engine",
+   "engine": "bivariate",
+   "function": "correlation_with_overall",
+   "params": {
+    "year": 2019,
+    "category": "Pharmacy",
+    "view": "bar"
+   },
+   "title": "Parameter correlation with overall score in Pharmacy 2019",
+   "assumptions": [
+    "Category: Pharmacy, as specified in the question",
+    "Year: 2019, as specified in the question",
+    "View: bar chart to easily compare the correlation coefficients of each parameter"
+   ],
+   "follow_ups": [
+    "How has the correlation between teaching scores and overall scores changed over time in Pharmacy?",
+    "Which parameter has the strongest correlation with overall scores in Pharmacy for the latest year?",
+    "What is the distribution of overall scores in Pharmacy for 2019?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X15": {
+  "plan": {
+   "type": "engine",
+   "engine": "bivariate",
+   "function": "scatter_relation",
+   "params": {
+    "x": "rpc",
+    "y": "score",
+    "year": 2018,
+    "category": "Overall",
+    "states": [
+     "Goa"
+    ]
+   },
+   "title": "Research vs Overall Score in Goa (2018)",
+   "assumptions": [
+    "Category: Overall, because none was named",
+    "Parameter for research: RPC (Research and Professional Practice)",
+    "Year: 2018, as specified",
+    "Filtered to institutions in Goa"
+   ],
+   "follow_ups": [
+    "How has the relationship between research and overall score in Goa changed over time?",
+    "Which institutions in Goa had the highest research scores in 2018?",
+    "How does Goa compare with neighboring states in research scores?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X16": {
+  "plan": {
+   "type": "engine",
+   "engine": "bivariate",
+   "function": "correlation_over_time",
+   "params": {
+    "param": "pr",
+    "category": "Engineering"
+   },
+   "title": "Perception correlation over time in Engineering",
+   "assumptions": [
+    "Category: Engineering, as specified in the question",
+    "Parameter: pr (Perception), representing the link between Perception and overall score",
+    "Timeframe: since 2017 (covers all available years from 2017 to 2025)"
+   ],
+   "follow_ups": [
+    "How does the correlation of Research (RPC) with the overall score compare in Engineering?",
+    "Which parameter has the strongest correlation with overall scores in Engineering for 2025?",
+    "How have Perception scores changed over time for top Engineering institutions?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X17": {
+  "plan": {
+   "type": "engine",
+   "engine": "multivariate",
+   "function": "parameter_profile",
+   "params": {
+    "institutions": [
+     "IIT Indore",
+     "KIIT"
+    ],
+    "year": 2025,
+    "category": "Overall",
+    "view": "bar"
+   },
+   "title": "Compare parameter scores of IIT Indore and KIIT in Overall 2025",
+   "assumptions": [
+    "Category: Overall, as stated in the question",
+    "Year: 2025, as stated in the question",
+    "Institutions: IIT Indore and KIIT"
+   ],
+   "follow_ups": [
+    "How have IIT Indore's parameter scores changed over time?",
+    "How have KIIT's parameter scores changed over time?",
+    "Which parameter has the largest difference between IIT Indore and KIIT?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X18": {
+  "plan": {
+   "type": "engine",
+   "engine": "multivariate",
+   "function": "gap_finder",
+   "params": {
+    "param_high": "go",
+    "param_low": "rpc",
+    "year": 2024,
+    "category": "Engineering"
+   },
+   "title": "Engineering institutions with high Graduation Outcomes and low Research scores in 2024",
+   "assumptions": [
+    "Category: Engineering, as specified in the question",
+    "Year: 2024, as specified in the question",
+    "High parameter: Graduation Outcomes (go)",
+    "Low parameter: Research and Professional Practice (rpc)"
+   ],
+   "follow_ups": [
+    "Which Engineering institutions have high Research scores but low Graduation Outcomes in 2024?",
+    "How have Graduation Outcomes scores changed over time for top Engineering institutions?",
+    "Which Engineering institutions show the largest gap between teaching and research scores?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X19": {
+  "plan": {
+   "type": "engine",
+   "engine": "multivariate",
+   "function": "improved_despite_decline",
+   "params": {
+    "category": "University",
+    "start_year": 2022,
+    "end_year": 2018
+   },
+   "title": "University institutions with improved overall score despite a falling parameter (2022 to 2018)",
+   "assumptions": [
+    "Category: University, as specified in the question",
+    "Start year: 2022, as specified",
+    "End year: 2018, as specified"
+   ],
+   "follow_ups": [
+    "Which University institutions showed the largest overall score increase between 2018 and 2022?",
+    "How have the parameter scores for University institutions changed from 2018 to 2022?",
+    "Which University institutions experienced the largest decline in rank over the same period?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X20": {
+  "plan": {
+   "type": "engine",
+   "engine": "multivariate",
+   "function": "strongest_weakest_gap",
+   "params": {
+    "year": 2025,
+    "category": "Law",
+    "n": 15
+   },
+   "title": "Law institutions with largest parameter gap in 2025",
+   "assumptions": [
+    "Category: Law, as specified in the question",
+    "Year: 2025, as specified in the question"
+   ],
+   "follow_ups": [
+    "How have the parameter gaps for top Law institutions changed over time?",
+    "Which Law institutions have the most balanced parameter profile in 2025?",
+    "What is the score distribution across parameters for Law institutions in 2025?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X21": {
+  "plan": {
+   "type": "engine",
+   "engine": "distribution",
+   "function": "top10_vs_rest",
+   "params": {
+    "year": 2024,
+    "category": "Dental",
+    "top": 5,
+    "view": "violin"
+   },
+   "title": "Top 5 vs Rest Dental Score Distribution 2024",
+   "assumptions": [
+    "Category: Dental, as specified in the question",
+    "Year: 2024, as specified in the question",
+    "Top group: top 5 institutions, as specified in the question",
+    "View: violin plot for distribution comparison"
+   ],
+   "follow_ups": [
+    "How has the score distribution for Dental colleges changed from 2020 to 2025?",
+    "Which Dental colleges have the highest research scores in 2024?",
+    "What is the spread of overall scores across Dental colleges in 2024?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X22": {
+  "plan": {
+   "type": "engine",
+   "engine": "distribution",
+   "function": "dispersion_by_year",
+   "params": {
+    "category": "Overall",
+    "top_n": 50,
+    "view": "box"
+   },
+   "title": "Score dispersion among top 50 in 2017 vs 2025",
+   "assumptions": [
+    "Category: Overall, as specified in the question",
+    "Top N: limited to the top 50 institutions",
+    "Metric: score dispersion measured via box plot (standard deviation and IQR)"
+   ],
+   "follow_ups": [
+    "How have the median scores for the top 50 changed between 2017 and 2025?",
+    "Which parameter shows the highest variability among the top 50 institutions in 2025?",
+    "How does the score spread of the top 50 compare to the rest of the ranked institutions?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X23": {
+  "plan": {
+   "type": "engine",
+   "engine": "distribution",
+   "function": "score_by_state",
+   "params": {
+    "year": 2025,
+    "category": "Overall",
+    "min_institutions": 1
+   },
+   "title": "Overall score distribution across all states in 2025",
+   "assumptions": [
+    "Category: Overall, as specified in the question",
+    "Year: 2025, as specified",
+    "Minimum institutions per state: set to 1 to include states with only a single ranked institution"
+   ],
+   "follow_ups": [
+    "How does the state-wise score distribution compare in the Engineering category for 2025?",
+    "Which states have the highest median Overall scores in 2025?",
+    "How have state-wise score distributions changed over the last 3 years?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X24": {
+  "plan": {
+   "type": "engine",
+   "engine": "mobility",
+   "function": "band_transitions",
+   "params": {
+    "category": "Engineering",
+    "year_a": 2020,
+    "year_b": 2025
+   },
+   "title": "Engineering institutions moving into the top 100",
+   "assumptions": [
+    "Category: Engineering, as specified in the question.",
+    "Years: 2020 to 2025, as specified in the question.",
+    "Top 100 transition is captured via the band transitions matrix between the two years."
+   ],
+   "follow_ups": [
+    "Which Engineering institutions moved from outside the top 50 into the top 50 between 2020 and 2025?",
+    "What percentage of Engineering institutions retained their rank band between 2020 and 2025?",
+    "Which Engineering institutions experienced the largest upward rank movements between 2020 and 2025?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X25": {
+  "plan": {
+   "type": "engine",
+   "engine": "mobility",
+   "function": "biggest_rank_moves",
+   "params": {
+    "category": "Overall",
+    "year_a": 2019,
+    "year_b": 2025,
+    "n": 10
+   },
+   "title": "Largest rank moves in Overall (2019 to 2025)",
+   "assumptions": [
+    "Category: Overall, as specified in the question",
+    "Year A: 2019, as specified",
+    "Year B: 2025, as specified",
+    "Top N: 10 largest upward and downward moves"
+   ],
+   "follow_ups": [
+    "Which institutions remained in the top 10 from 2019 to 2025?",
+    "How has the overall rank trajectory of IIT Madras changed from 2019 to 2025?",
+    "Which states had the most institutions making large rank jumps between 2019 and 2025?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X03_first_reading": {
+  "plan": {
+   "type": "engine",
+   "engine": "trends",
+   "function": "consistent_top_n",
+   "params": {
+    "category": "Agriculture & Allied Sectors",
+    "n": 10,
+    "min_years": 1
+   },
+   "title": "Consistent Top 10 Agriculture Institutions",
+   "assumptions": [
+    "Category: Agriculture & Allied Sectors, as specified by the user",
+    "min_years: set to 1 to find institutions that stayed in the top 10 in every year they were ranked (since the category has published fewer than 5 years of data)"
+   ],
+   "follow_ups": [
+    "How has the ranking of top Agriculture institutions changed over time?",
+    "Which Agriculture institution improved the most in rank?",
+    "What is the score distribution for Agriculture institutions?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X03": {
+  "plan": {
+   "type": "engine",
+   "engine": "trends",
+   "function": "consistent_top_n",
+   "params": {
+    "category": "Agriculture & Allied Sectors",
+    "n": 10,
+    "min_years": 3
+   },
+   "title": "Consistent top 10 Agriculture institutions",
+   "assumptions": [
+    "Category: Agriculture & Allied Sectors, as specified in the question",
+    "Top N: 10 institutions",
+    "Minimum years: 3 (since Agriculture & Allied Sectors has been published from 2023 to 2025, covering all 3 years)"
+   ],
+   "follow_ups": [
+    "How have the ranking trajectories of top Agriculture institutions changed over time?",
+    "Which Agriculture institutions showed the biggest improvement in rank?",
+    "What is the distribution of scores across Agriculture institutions in 2025?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X26": {
+  "plan": {
+   "type": "engine",
+   "engine": "mobility",
+   "function": "band_retention",
+   "params": {
+    "category": "Agriculture & Allied Sectors",
+    "by_band": true
+   },
+   "title": "Rank Band Retention for Agriculture Institutions",
+   "assumptions": [
+    "Category: Agriculture & Allied Sectors, as specified in the question",
+    "by_band: True, to show the retention share for each rank band over time"
+   ],
+   "follow_ups": [
+    "How many Agriculture institutions moved between specific rank bands over the years?",
+    "Which Agriculture institutions entered or exited the top rankings?",
+    "What is the distribution of rank bands for Agriculture institutions in the latest year?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X27": {
+  "plan": {
+   "type": "engine",
+   "engine": "mobility",
+   "function": "top10_entries_exits",
+   "params": {
+    "category": "Overall",
+    "top": 100
+   },
+   "title": "Top 100 Entries and Exits",
+   "assumptions": [
+    "Category: Overall, as specified in the prompt",
+    "Threshold: Top 100, as requested by the user",
+    "Method: Tracks consecutive years of published rankings to identify institutions entering or leaving the top 100 list"
+   ],
+   "follow_ups": [
+    "Which states produced the most new entrants to the top 100 over time?",
+    "Which institutions remained consistently in the top 100 across all years?",
+    "How many institutions moved into the top 50 from the 51-100 band?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X28": {
+  "plan": {
+   "type": "engine",
+   "engine": "outliers",
+   "function": "unusual_score_jumps",
+   "params": {
+    "category": "Engineering",
+    "z_threshold": 2.5
+   },
+   "title": "Engineering institutions with unusual year-to-year score jumps",
+   "assumptions": [
+    "Category: Engineering, explicitly requested",
+    "Z-score threshold: 2.5, explicitly requested"
+   ],
+   "follow_ups": [
+    "Which Engineering institutions improved their scores despite declining parameters?",
+    "How has the average score in Engineering changed over time?",
+    "Which Engineering institutions have the largest year-to-year rank volatility?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X29": {
+  "plan": {
+   "type": "engine",
+   "engine": "outliers",
+   "function": "volatility_vs_peers",
+   "params": {
+    "category": "Pharmacy",
+    "min_years": 6
+   },
+   "title": "Pharmacy institutions with unusually volatile ranks",
+   "assumptions": [
+    "Category: Pharmacy, as specified in the question",
+    "Minimum years required: 6 years, as specified in the question"
+   ],
+   "follow_ups": [
+    "Which Pharmacy institutions have the highest overall ranks in the latest year?",
+    "How have the scores of Pharmacy institutions changed over time?",
+    "Which states have the most Pharmacy institutions in the rankings?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ },
+ "X30": {
+  "plan": {
+   "type": "engine",
+   "engine": "outliers",
+   "function": "strong_param_poor_rank",
+   "params": {
+    "param": "pr",
+    "year": 2023,
+    "category": "University"
+   },
+   "title": "University institutions with strong Perception and poor rank in 2023",
+   "assumptions": [
+    "Category: University",
+    "Year: 2023",
+    "Parameter: Perception (pr)"
+   ],
+   "follow_ups": [
+    "Which University institutions have high research scores but poor ranks in 2023?",
+    "How has the Perception score of top University institutions changed over time?",
+    "Which University institutions have the highest Perception scores in 2023?"
+   ]
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-04"
+ }
+}

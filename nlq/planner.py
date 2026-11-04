@@ -108,6 +108,9 @@ Rules:
 - Years: integers when given. For a time phrase, copy the phrase as a string into the year parameter, e.g.
   "years": "last 3 years", "start_year": "since 2020", "year": "latest". Our code turns it into years.
 - "top N" in the sense "the N best" sets the function's n / top_n / top parameter.
+- "Every year", "always", "each year it was ranked" mean ALL the years the category was published (see the
+  catalog), e.g. min_years = 3 for a category ranked 2023-2025; never 1, which means "at least once".
+- "From 2024 to 2019" (later year first): copy the years as given; our code puts them in order.
 - Understand typos, abbreviations and Hinglish (e.g. "kaun sa", "sabse zyada" = most, "pichhle 5 saal" =
   last 5 years, "badha" = increased, "gira" = fell).
 - Follow-up questions must be answerable with this data and be different from the question asked.
