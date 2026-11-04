@@ -17,7 +17,7 @@ Raw data is messy in ways that silently break charts:
 | Problem we found in the raw files | What would go wrong without cleaning |
 |---|---|
 | "Jammu & Kashmir", "Jammu And Kashmir", "Pondicherry" vs "Puducherry" (49 spellings for 34 states/UTs) | A state count would split one state into several bars; the map would miss states |
-| "Indian Institute of Technology, Delhi" (2022) vs "Indian Institute of Technology Delhi" (other years); UPES renamed; 2,288 spellings for 1,693 institutions | IIT Delhi's 2022 rank would vanish from its line; trends and "new entrant" counts would be wrong |
+| "Indian Institute of Technology, Delhi" (2022) vs "Indian Institute of Technology Delhi" (other years); UPES renamed; 2,288 spellings for 1,692 institutions | IIT Delhi's 2022 rank would vanish from its line; trends and "new entrant" counts would be wrong |
 | "Research" (2021–23) vs "Research Institutions" (2024–25) | A trend line would stop at the rename |
 | Ranks as text: `21A`, ties (two institutions at 100), `Rank Withdrawn`, bands like `101-150` | Ranks could not be sorted, subtracted or filtered ("top 50") |
 | Scores stored as text | No means, medians or correlations possible |
@@ -42,7 +42,7 @@ cleaning rule fixes a problem the audit proved exists.
    | 5  Standard state names       (49 spellings -> 34 states/UTs) + region
    | 6  Text tidy                  (case, spaces, commas, apostrophes, PIN codes)
    | 6b Split: ranked rows stay (11,647) | participant lists go to their own table (63,979)
-   | 7  Institution identity       (2,288 spellings -> 1,693 institutions)
+   | 7  Institution identity       (2,288 spellings -> 1,692 institutions)
    | 8  Ranks, ties and rank bands
    | 9  Numbers to decimals + range check (0-100)
    | 10 Missing values: flagged, NEVER filled in
@@ -78,8 +78,13 @@ Ladder of evidence, from strongest to weakest:
    punctuation removed, "Govt" → "government", "Bangalore" → "Bengaluru". (Plus the city when one name means two
    different colleges in one state, e.g. several "Government College"s.)
 2. **NIRF's own ID code** (stable from 2018): same code core = same institution (210 links).
-3. **Hand-written alias rules** for known renames (55 links).
-4. **"Name = other name + its own city"** (e.g. "X" and "X, Chennai" in Tamil Nadu).
+3. **Hand-written alias rules** in `data/mappings/institution_alias_rules.csv`, each with a note saying why (1 link).
+   Example: in 2017 the Engineering list printed "Indraprastha Institute of Information Technology-New Delhi (IIIT
+   New Delhi, Delhi)" while every other list used "Indraprastha Institute of Information Technology". The similarity
+   was only 81, so the pair waited in the review file and IIIT Delhi had two keys: its 2017 Engineering rank (56)
+   was cut off from its line, and in 2018 it was wrongly counted as a new entrant. Same city, never twice in one
+   list, so one checked rule joins them.
+4. **"Name = other name + its own city"** (e.g. "X" and "X, Chennai" in Tamil Nadu) (55 links).
 5. **Fuzzy matching** (rapidfuzz `token_sort_ratio` ≥ 92, same state): sort the words of each name, then measure
    how many character edits turn one into the other, as a 0–100 similarity (42 links).
 
@@ -169,7 +174,7 @@ to within 0.02 (rounding). So the scores in our table are internally consistent 
 
 **Q1. What were the main data-quality problems, and how did you fix them?**
 Five main ones. (1) The same state spelled many ways: 49 spellings mapped to 34 official states/UTs. (2) The same
-institution named differently across years: 2,288 spellings grouped into 1,693 institutions using a matching key,
+institution named differently across years: 2,288 spellings grouped into 1,692 institutions using a matching key,
 NIRF's ID codes, alias rules and fuzzy matching, with uncertain pairs sent for human review. (3) Category renames:
 a standard name plus the original label. (4) Ranks as text (ties, "21A", "Rank Withdrawn", bands): a clean numeric
 rank, flags and a standard band. (5) Participant lists mixed with rankings: moved to a separate table.

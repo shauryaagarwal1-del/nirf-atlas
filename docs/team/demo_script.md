@@ -47,7 +47,7 @@ never scroll fast · if something is slow, keep talking about the method.
 **Click:** Home (already open).
 **Say:** "NIRF Atlas is a dashboard on India's official NIRF rankings from 2017 to 2025, across all 17 ranking
 categories. We scraped 290 official pages and cleaned them into one master table of 11,647 rows: one institution,
-in one ranking list, in one year. These cards show the scale: 9 years, 17 categories, 1,693 institutions after
+in one ranking list, in one year. These cards show the scale: 9 years, 17 categories, 1,692 institutions after
 name standardisation, 34 states and UTs."
 **Point at** the line chart: "This is today's Overall top 10 followed back in time. Rank 1 is at the top, so up
 means better."
@@ -55,7 +55,7 @@ means better."
 ### 0:45–1:45 · Data & Method: how we cleaned it (Speaker A)
 **Click:** sidebar → Data & Method.
 **Say:** "Four layers: scrape, clean, eight analysis engines, and the dashboard plus the chat. The raw pages had 49
-spellings for 34 states, 2,288 spellings for 1,693 institutions, renamed categories and ranks like '21A' or only a
+spellings for 34 states, 2,288 spellings for 1,692 institutions, renamed categories and ranks like '21A' or only a
 band like 101–150."
 **Click:** in the cleaning steps, choose **step 7, Institution identity**.
 **Say:** "We match names by a normalised key in the same state, NIRF's own ID code, hand-checked alias rules and

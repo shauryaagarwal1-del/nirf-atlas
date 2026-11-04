@@ -212,3 +212,14 @@ def test_master_rows_equal_raw_rows_minus_logged_duplicates(m, std_name):
                          ).fillna(0).astype(int)
     bad = table[table["expected"] != table["master"]]
     assert bad.empty, bad.to_string()
+
+
+def test_iiit_delhi_is_one_institution_across_all_years(m):
+    """Regression: the 2017 Engineering list printed IIIT Delhi under a longer name, which once gave it a
+    second key; its 2017 rank was cut off from its line and 2018 looked like a new entry. One alias rule
+    (data/mappings/institution_alias_rules.csv) joins the two spellings."""
+    rows = m[m["institute_name"].str.startswith("Indraprastha Institute of Information Technology")]
+    assert rows["institution_key"].nunique() == 1
+    engineering = rows[rows["category_std"].eq("Engineering")].set_index("year")
+    assert engineering.loc[2017, "rank"] == 56 and engineering.loc[2018, "rank"] == 66
+    assert not engineering.loc[2018, "is_new_entrant"]

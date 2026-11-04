@@ -126,7 +126,7 @@ ranks only, no parameter scores.
 ## 5. Numbers to quote
 
 9 years (2017–2025) · 17 categories (6 in 2017 → 17 in 2025) · 290 pages · 75,626 raw rows · **11,647 ranked rows**
-(6,974 exact, 4,671 band-only) · **1,693 institutions** from 2,288 spellings · **34 states/UTs** from 49 spellings ·
+(6,974 exact, 4,671 band-only) · **1,692 institutions** from 2,288 spellings · **34 states/UTs** from 49 spellings ·
 spot check of all rows: **0 real differences** · 8 engines · 40/40 questions.
 
 Headline answers (Overall, defaults): IIT Madras rank 1 since 2019 (Q1.1) · biggest climber 2017→2025 Saveetha,
