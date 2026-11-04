@@ -149,8 +149,13 @@ def _note(kind: str, title: str, message: str, fix: str | None = None) -> None:
 
 
 def _alternatives(question: str, i: int, engine: str | None = None) -> None:
-    """Ready-made answers that work without the model: the closest sample questions and their pages."""
-    matches = closest_questions(question, k=2)
+    """Ready-made answers that work without the model: the closest sample questions and their pages.
+
+    After a data problem the analysis is known (engine), so only sample questions of that analysis are offered.
+    """
+    matches = closest_questions(question, k=8 if engine else 2)
+    if engine:
+        matches = [q for q in matches if q.engine == engine][:2]
     st.html("<div class='nirf-ask-next'>Meanwhile, these work without the AI</div>")
     for q in matches:
         c1, c2, c3 = st.columns([3, 1.1, 1.1], vertical_alignment="center")

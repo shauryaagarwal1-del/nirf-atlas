@@ -139,6 +139,15 @@ def test_bad_values_give_messages_not_crashes():
         assert a.kind == "error" and len(a.message) > 20, params
 
 
+def test_unranked_institution_is_left_out_not_fatal():
+    """'IIT Madras and IISc in Engineering': IISc has no Engineering rank, so IIT Madras is charted alone."""
+    a = execute(parse_plan(json.dumps({"type": "engine", "engine": "trends", "function": "rank_trajectory",
+                                       "params": {"institutions": ["iitm", "iisc"], "category": "Engineering"}})))
+    assert a.kind == "chart"
+    assert a.plan["resolved_call"]["params"]["institutions"] == [find_institution("IIT Madras")]
+    assert any("Indian Institute of Science: not ranked in Engineering" in s for s in a.assumptions)
+
+
 def test_unknown_options_are_dropped_and_listed():
     a = execute(parse_plan(json.dumps({"type": "engine", "engine": "geography", "function": "state_counts",
                                        "params": {"colour": "red", "n": 50}})))

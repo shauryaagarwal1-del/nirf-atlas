@@ -20,7 +20,7 @@ import inspect
 from dataclasses import dataclass, field
 
 from core.builder import AGGREGATIONS, CHARTS, DIMENSIONS, MEASURES, build_chart
-from core.data import NirfInputError, fmt_years
+from core.data import NirfInputError, fmt_years, institution_names, load_master
 from core.questions import QUESTION_REGISTRY, get_question
 from core.result import ChartResult
 from core.runner import run
@@ -170,6 +170,28 @@ def _coerce(value, default):
     return value
 
 
+def _keep_ranked(keys: list[str], category, years, notes: list[str]) -> list[str]:
+    """Leave out named institutions that NIRF did not rank in this category (and years), if others remain.
+
+    E.g. "IIT Madras and IISc in Engineering": IISc is not in the Engineering list, so the chart shows IIT
+    Madras alone and says why, instead of no chart at all. If none is ranked, the analysis explains it.
+    """
+    if len(keys) < 2 or not isinstance(category, str):
+        return keys
+    rows = load_master()
+    rows = rows[rows["category_std"].eq(category)]
+    if years:
+        rows = rows[rows["year"].isin(_as_list(years))]
+    ranked = set(rows["institution_key"])
+    kept = [k for k in keys if k in ranked]
+    if not kept or len(kept) == len(keys):
+        return keys
+    names = institution_names([k for k in keys if k not in ranked])
+    when = f" in {fmt_years(sorted(set(_as_list(years))))}" if years else ""
+    notes.append(f"{'; '.join(names.values())}: not ranked in {category}{when}, so left out of this chart.")
+    return kept
+
+
 def engine_call(plan: EnginePlan) -> tuple[dict, list[str] | None, list[str]]:
     """The engine parameters, the state scope and the assumptions for an engine plan."""
     fn = functions()[(plan.engine, plan.function)]
@@ -187,7 +209,7 @@ def engine_call(plan: EnginePlan) -> tuple[dict, list[str] | None, list[str]]:
         keys.append(key)
         notes += [note] if note else []
     if keys and "institutions" in sig:
-        params["institutions"] = keys
+        params["institutions"] = _keep_ranked(keys, category, params.get("years"), notes)
     elif keys and "institution" in sig:
         params["institution"] = keys[0]
         if len(keys) > 1:
