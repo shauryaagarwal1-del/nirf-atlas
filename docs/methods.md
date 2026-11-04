@@ -120,11 +120,43 @@ scores are only compared within the same category unless a visible note says oth
 - **`core/data.py`:** `load_master()` reads the master table once and adds `rank_upper` = the worst rank a row can
   have (the exact rank, or the upper end of NIRF's own band). `filter_df()` narrows it by years, categories, states,
   institutions, `rank_max` and `exact_ranks_only`. Names typed by a person ("IIT Madras", "iisc", small typos) are
-  matched to one `institution_key`: exact name → all typed words appear in the name → name words in the name and
-  the remaining words in its city or state ("Christian Medical College Vellore", "National Law University Delhi") →
-  close spelling (rapidfuzz WRatio ≥ 90 and clearly ahead of the next candidate; only for names of 6+ letters, so an
-  unknown short form such as "LPU" is never matched to a name that merely contains those letters). If several
-  institutions fit, the message lists them.
+  matched to one `institution_key` by `match_institution()` (rules below, under "Institution names").
+- **Institution names (`core/data.py` `match_institution()`, used by every page and by the chat):**
+  - *Question answered:* which institution did the person mean by what they typed?
+  - *Normalising (both the typed text and every name NIRF ever printed):* lower case, "&" = "and", punctuation
+    removed, short forms written out (IIT = Indian Institute of Technology, IIIT, NIT, IIM, IISER, IISc, AIIMS, NLU,
+    IIEST), and one spelling per place (Bengaluru = Bangalore, Mumbai = Bombay, Chennai = Madras, Kolkata =
+    Calcutta, Trichy = Tiruchirappalli, Gurugram = Gurgaon ...).
+  - *Order, the first rule that gives exactly one institution wins:* (1) an institution key typed directly;
+    (2) the exact normalised name; (3) word matching: every typed word is in the name ("IIT Madras"), or the name
+    words are in the name and the rest are its city or state ("Christian Medical College Vellore", "IIT Kerala" =
+    the only IIT in Kerala); (4) close spelling, **last** (rapidfuzz WRatio ≥ 90 on the whole name, or ≥ 80 on the
+    part after the family, e.g. "kharagpr" vs "kharagpur", and at least 3 points ahead of the next candidate;
+    each name is also scored with its city added, so "Christian Medical Colege Vellore" is compared with
+    "christian medical college vellore"). An unknown short form under 6 letters ("LPU") is never matched by spelling.
+    In the chat, the known short forms ("iitb", "LPU", "IIIT Bangalore", "iiitb") are looked up before all of this.
+  - *Family guard:* if the typed text names a family (IIT, IIIT, NIT, IIM, IISER, IISc, AIIMS, NLU, IIEST), every
+    rule may only return an institute of that same family. IIIT covers the Indian, International and Indraprastha
+    Institutes of Information Technology and IIITDM. So "IIIT Bangalore" can never become "Bangalore Institute of
+    Technology" (no family), which is the bug this rule fixed.
+  - *Place guard (spelling step):* every place word typed (a city or state; a misspelt place such as "banglore"
+    counts as the place it is closest to, ratio ≥ 88) must be the candidate's city or state, or be in its name.
+    Otherwise there is no automatic match.
+  - *If nothing matches, in this order:* (5) the never-ranked participants (`data/processed/nirf_participants.parquet`,
+    same normalising and guards): "IIIT Dharwad (Indian Institute of Information Technology, Dharwad) took part in
+    NIRF (Engineering and Overall, 2022-2025) but was not in the published ranked list in any year, so there is no
+    rank or score to chart", plus two similar ranked institutions from the same state and category (same family
+    first, then same city, then the best recent rank); (6) the family swap, when the named institute does not exist:
+    other families in the same city (or, if none, the same state or the state of that city), in the order IIT →
+    IIIT, NIT, IIEST, IISc, IISER, IIM; NIT → IIIT, IIT; IIIT → IIT, NIT; IIM → IIT, IIIT. The first is chosen and
+    the others are offered ("IIT Bangalore" → IIIT Bangalore, with IISc and IIM Bangalore). The dashboard pages do
+    not swap silently; they show "There's no IIT Bangalore in the NIRF rankings. Did you mean IIIT Bangalore, IISc
+    or IIM Bangalore?"; (7) otherwise "No institution called X in the NIRF data" with at most 3 suggestions that
+    pass both guards. If several institutions fit equally well, the message lists them so the person can be more
+    specific.
+  - *Why:* a spelling score alone rewards shared letters, not meaning ("indian institute of information technology
+    bengaluru" looked close to "bangalore institute of technology"). Trying the precise rules first and checking
+    family and place before accepting a spelling match keeps every guess explainable.
 - **Year checks with a state filter:** when the chosen states have no institution in a year that NIRF did publish,
   the message says so ("No institution in Goa is in the Overall ranking of 2025 (they appear in 2017-2022)") instead
   of claiming that NIRF has no ranking that year.
@@ -860,22 +892,30 @@ and checks that the chart drawn is the same answer as the analysis those setting
   `out_of_scope` (e.g. "what's the weather", fees, salaries, years after 2025). The shape and types are checked with
   pydantic, then the names are checked against the code (does `trends.rank_trajectory` exist? is `region` a group?).
   If the JSON is invalid or a name does not exist, the model is asked once more with the error message.
-- **Step 3, name resolution (`nlq/resolve.py`, fixed rules):** institutions: compact forms (iitb, iitkgp, iima, nitt)
-  and city synonyms (Bombay = Mumbai), then the dashboard's institution finder (short forms such as IIT -> Indian
-  Institute of Technology, every spelling NIRF ever used, the words in any order, close spelling with rapidfuzz);
+- **Step 3, name resolution (`nlq/resolve.py`, fixed rules):** institutions: known short forms first (iitb, iitkgp,
+  iima, nitt, LPU, KIIT, IIIT Bangalore, iiitb ...), then the dashboard's institution matcher (see "Institution
+  names" above: exact name, word match, close spelling last, the family and place guards, never-ranked participants,
+  the family swap);
   states: codes and old names (TN, KA, UP, Orissa); parameters: everyday words (research -> RPC, teaching -> TLR,
   placements -> GO, reputation -> PR); categories: engg -> Engineering, B-schools -> Management; years: numbers,
   ranges and phrases ("last 3 years" = the latest 3 years in which that category was published, "since 2020",
-  "latest", "pichhle 5 saal"). Every translation is listed under "How I understood your question".
+  "latest", "pichhle 5 saal"). Every translation is written as a plain sentence ("I read 'TN' as Tamil Nadu.",
+  "I read 'Jadavpur Universty' as Jadavpur University, the closest spelling in the NIRF data.", "There's no IIT
+  Bangalore in the NIRF rankings, so I assumed you meant IIIT Bangalore (International Institute of Information
+  Technology Bangalore).").
 - **Step 4, running (`nlq/executor.py`):** years are fitted to the function (a list, one year = the latest asked for,
   or two years = the first and last asked for; given the wrong way round, "from 2024 to 2019", they are swapped,
   because a change is always measured from the earlier to the later year, and the swap is listed as an assumption); `states` on any analysis limits it to institutions in those states
   (ranks stay national); options a function does not have are dropped and listed. Only the 8 engines' public
   functions or the Chart Builder can be called. Nothing the model writes is run as code (no `exec`/`eval`; a test
   checks the syntax tree of `nlq/`).
-- **What the page shows:** the chart card (chart, one-line answer, method, data + CSV), "How I understood your
-  question" (the assumptions in plain words and the plan JSON, including `resolved_call`, the exact call we ran), and
-  3 follow-up questions as buttons. Six example chips sit above the input; earlier turns are sent with a new question
+- **What the page shows:** the chart card (chart, one-line answer, method, data + CSV), directly under it an
+  **"Assumed:"** box with every assumption as a plain sentence, one-click buttons for the other institutions the person
+  may have meant ("Use IISc instead", "Use IIM Bangalore instead": they re-run the same plan with that institution,
+  without asking the model again), "How I understood your question" (the assumptions again and the plan JSON,
+  including `resolved_call`, the exact call we ran), and 3 follow-up questions as buttons. For an institution that
+  took part but was never ranked, the page shows the "took part, but never ranked" message instead of an error, with
+  buttons for two similar ranked institutions. Six example chips sit above the input; earlier turns are sent with a new question
   so "same for Engineering" works.
 - **When the model cannot be reached:** no key, no internet, a rejected key, a used-up quota, an unknown model name or
   a server problem each get a plain message and a fix. If `GEMINI_API_KEY_2` exists it is tried once first. The page

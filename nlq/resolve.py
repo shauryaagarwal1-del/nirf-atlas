@@ -1,11 +1,13 @@
 """Name resolution: what people type -> the names used in the master table.
 
 The language model copies names and phrases from the question; this module turns them into data
-values with fixed rules, and writes down every translation as a plain-English assumption that the
-chat shows ("'iitb' = Indian Institute of Technology Bombay, Mumbai"). Rules, in order:
-  * institutions: compact short forms (iitb, iitkgp, iima, nitt) -> 'IIT Bombay' ...; city synonyms
-    (Bombay = Mumbai); then core.data.find_institution (short forms, every published spelling, word
-    match in any order, close spelling with rapidfuzz);
+values with fixed rules, and writes down every translation as a plain-English sentence that the
+chat shows under the answer ("I read 'iitb' as Indian Institute of Technology Bombay."). Rules, in order:
+  * institutions: known short forms first (iitb, iitkgp, iima, LPU, IIIT Bangalore ...), then
+    core.data.match_institution: exact name, word match, close spelling last, with two guards (a typed
+    family such as IIIT only matches that family; a typed place must be the institution's city or
+    state), then institutions that took part but were never ranked, then the family swap
+    ("There's no IIT Bangalore in the NIRF rankings, so I assumed you meant IIIT Bangalore ...");
   * states: two-letter codes and old names (TN, KA, UP, Orissa, Pondicherry), then core.data.check_states;
   * parameters: everyday words (research -> rpc, teaching -> tlr, placements -> go, reputation -> pr);
   * categories: everyday words (engg, B-schools, pharma, universities) -> the NIRF category;
@@ -16,10 +18,11 @@ chat shows ("'iitb' = Indian Institute of Technology Bombay, Mumbai"). Rules, in
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
-from core.data import (LATEST_YEAR, PARAMETERS, RESEARCH_PARAMETERS, SHORT, YEARS, NirfInputError,
-                       category_years, check_category, check_states, find_institution, fmt_years,
-                       institution_names)
+from core.data import (LATEST_YEAR, PARAMETERS, PLACE_SYNONYMS, RESEARCH_PARAMETERS, SHORT, YEARS,
+                       NirfInputError, category_years, check_category, check_states, fmt_years,
+                       institution_names, match_institution, short_label)
 
 # ---------- institutions ----------
 
@@ -35,8 +38,9 @@ CAMPUS_CODES = {
             "s": "Silchar", "d": "Durgapur", "j": "Jamshedpur"},
     "iiit": {"h": "Hyderabad", "d": "Delhi", "b": "Bangalore", "a": "Allahabad"},
 }
-CITY_SYNONYMS = {"mumbai": "bombay", "chennai": "madras", "kolkata": "calcutta", "trichy": "tiruchirappalli",
-                 "surathkal": "karnataka", "kgp": "kharagpur", "benaras": "varanasi", "banaras": "varanasi"}
+# Place words used only after IIT / IIM / NIT / IIIT ('NIT Surathkal', 'IIT Banaras'). Spellings of the same
+# place (Mumbai = Bombay, Bengaluru = Bangalore) are handled for every name by core.data.PLACE_SYNONYMS.
+CITY_SYNONYMS = {"surathkal": "karnataka", "kgp": "kharagpur", "benaras": "varanasi", "banaras": "varanasi"}
 FAMOUS = {"iisc": "Indian Institute of Science", "iisc bangalore": "Indian Institute of Science",
           "du": "University of Delhi", "delhi university": "University of Delhi",
           "jadavpur": "Jadavpur University", "manipal": "Manipal Academy of Higher Education",
@@ -62,34 +66,57 @@ FAMOUS = {"iisc": "Indian Institute of Science", "iisc bangalore": "Indian Insti
           "iiitd": "Indraprastha Institute of Information Technology"}
 
 
-def _expand_compact(text: str) -> str:
-    """'iitb' -> 'IIT Bombay', 'IIM-A' -> 'IIM Ahmedabad', 'Bombay IIT' stays (word order is handled later)."""
-    t = re.sub(r"[\s.\-]+", " ", text.strip().lower())
-    if t in FAMOUS:
-        return FAMOUS[t]
+_FAMOUS = {" ".join(PLACE_SYNONYMS.get(w, w) for w in k.split()): v for k, v in FAMOUS.items()}
+
+
+def _short_form(text: str) -> tuple[str, bool]:
+    """(the name to look up, True if it is a known short form). Bengaluru = Bangalore, Mumbai = Bombay here too.
+
+    'iitb' -> 'IIT Bombay'; 'IIM-A' -> 'IIM Ahmadabad'; 'iiitb', 'IIIT Bengaluru' -> International Institute
+    of Information Technology Bangalore; 'NIT Surathkal' -> 'NIT karnataka'; anything else is returned as typed.
+    """
+    t = re.sub(r"[\s.\-]+", " ", text.strip().lower()).strip()
+    places = " ".join(PLACE_SYNONYMS.get(w, w) for w in t.split())
+    if places in _FAMOUS:
+        return _FAMOUS[places], True
     m = re.fullmatch(r"(iiit|iit|iim|nit) ?([a-z()]+)", t)
     if m and m.group(2) in CAMPUS_CODES[m.group(1)]:
         short = f"{m.group(1).upper()} {CAMPUS_CODES[m.group(1)][m.group(2)]}"
-        return FAMOUS.get(short.lower(), short)      # 'iiith' -> IIIT Hyderabad -> International Institute ...
-    words = [CITY_SYNONYMS.get(w, w) for w in t.split()]
-    return " ".join(words)
+        return FAMOUS.get(short.lower(), short), True      # 'iiith' -> IIIT Hyderabad -> International Institute ...
+    words = t.split()
+    if words and words[0] in CAMPUS_CODES:                 # 'NIT Surathkal', 'IIT Banaras', 'IIT KGP'
+        return " ".join(CITY_SYNONYMS.get(w, w) for w in words), False
+    return text, False
 
 
-def resolve_institution(text: str) -> tuple[str, str | None]:
-    """(institution_key, assumption or None). Raises NirfInputError with suggestions when nothing fits."""
+class ResolvedInstitution(NamedTuple):
+    key: str
+    note: str | None                    # the assumption, as a plain sentence (None = taken as typed)
+    alternatives: list[str]             # other institutions the person may have meant (keys)
+
+
+def resolve_institution(text: str) -> ResolvedInstitution:
+    """(institution_key, assumption or None, alternative keys).
+
+    Order: an institution key; the known short forms above (iitb, LPU, IIIT Bangalore ...); then
+    core.data.match_institution: exact name, word match, close spelling last, with the family and place
+    guards, then the never-ranked participants (NotRankedError) and the family swap ('IIT Bangalore' ->
+    IIIT Bangalore, with IISc and IIM Bangalore as alternatives). Raises NirfInputError when nothing fits.
+    """
     text = str(text).strip()
-    attempts = list(dict.fromkeys([text, _expand_compact(text)]))
-    error: NirfInputError | None = None
-    for attempt in attempts:
-        try:
-            key = find_institution(attempt)
-        except NirfInputError as e:
-            error = error or e
-            continue
-        name = institution_names([key])[key]
-        note = None if name.lower() == text.lower() else f"'{text}' = {name}."
-        return key, note
-    raise error
+    target, short = _short_form(text)
+    m = match_institution(target, typed=text)
+    name = institution_names([m.key])[m.key]
+    if m.how == "swap":
+        label = short_label(m.key)
+        meant = label if label == name else f"{label} ({name})"
+        return ResolvedInstitution(m.key, f"There's no {text} in the NIRF rankings, so I assumed you meant {meant}.",
+                                   m.alternatives)
+    if m.how == "key" or name.lower() == text.lower():
+        return ResolvedInstitution(m.key, None, [])
+    if m.how == "spelling" and not short:
+        return ResolvedInstitution(m.key, f"I read '{text}' as {name}, the closest spelling in the NIRF data.", [])
+    return ResolvedInstitution(m.key, f"I read '{text}' as {name}.", [])
 
 
 # ---------- states ----------
@@ -112,7 +139,7 @@ def resolve_state(text: str) -> tuple[str, str | None]:
     t = re.sub(r"[\s.&]+", " ", str(text).strip().lower()).strip()
     official = STATE_CODES.get(t) or STATE_CODES.get(t.replace(" ", ""))
     name = check_states([official or text])[0]
-    return name, (None if name.lower() == str(text).strip().lower() else f"'{text}' = {name}.")
+    return name, (None if name.lower() == str(text).strip().lower() else f"I read '{text}' as {name}.")
 
 
 # ---------- parameters ----------
@@ -144,7 +171,7 @@ def resolve_parameter(text: str) -> tuple[str, str | None]:
                              f"TLR (teaching), RPC (research), GO (graduation outcomes), OI (outreach), "
                              f"PR (perception).")
     plain = t.replace(" ", "")
-    return code, (None if plain == code else f"'{text}' = {SHORT[code]}.")
+    return code, (None if plain == code else f"I read '{text}' as {SHORT[code]}.")
 
 
 # ---------- categories ----------
@@ -170,7 +197,7 @@ def resolve_category(text: str) -> tuple[str, str | None]:
     """(standard category name, assumption or None)."""
     t = " ".join(re.sub(r"[^a-z& ]+", " ", str(text).lower()).split())
     name = check_category(CATEGORY_WORDS.get(t, text))
-    return name, (None if name.lower() == str(text).strip().lower() else f"'{text}' = the {name} ranking.")
+    return name, (None if name.lower() == str(text).strip().lower() else f"I read '{text}' as the {name} ranking.")
 
 
 # ---------- years ----------
@@ -204,17 +231,17 @@ def resolve_years(value, category: str | None = None) -> tuple[list[int], str | 
     if re.fullmatch(r"20[12]\d", text):
         return [int(text)], None
     if re.search(r"\b(all|every|whole|entire)\b", text) and not numbers:
-        return available, f"'{value}' = every {where}year ({fmt_years(available)})."
+        return available, f"I read '{value}' as every {where}year ({fmt_years(available)})."
     if count and not numbers and any(w in text for w in ("last", "past", "recent", "pichhle", "pichle", "latest")):
         n = int(count.group(1)) if count.group(1).isdigit() else _NUMBER_WORDS[count.group(1)]
         years = available[-n:]
-        return years, f"'{value}' = the latest {len(years)} {where}years in the data ({fmt_years(years)})."
+        return years, f"I read '{value}' as the latest {len(years)} {where}years in the data ({fmt_years(years)})."
     if numbers and any(w in text for w in ("since", "from", "after", "onwards", "se ")) and len(numbers) == 1:
         years = [y for y in available if y >= numbers[0]]
-        return years, f"'{value}' = {fmt_years(years)}."
+        return years, f"I read '{value}' as {fmt_years(years)}."
     if numbers and any(w in text for w in ("before", "until", "till", "up to", "upto")) and len(numbers) == 1:
         years = [y for y in available if y <= numbers[0]]
-        return years, f"'{value}' = {fmt_years(years)}."
+        return years, f"I read '{value}' as {fmt_years(years)}."
     if len(numbers) == 2:
         lo, hi = sorted(numbers)
         years = [y for y in available if lo <= y <= hi]
@@ -223,8 +250,8 @@ def resolve_years(value, category: str | None = None) -> tuple[list[int], str | 
         return sorted(set(numbers)), None
     if any(w in text for w in ("latest", "this year", "current", "recent", "now", "newest", "last year")):
         latest = available[-1] if available else LATEST_YEAR
-        return [latest], f"'{value}' = {latest}, the latest {where}ranking in the data."
+        return [latest], f"I read '{value}' as {latest}, the latest {where}ranking in the data."
     if any(w in text for w in ("first", "earliest", "oldest")):
-        return [available[0]], f"'{value}' = {available[0]}, the first {where}ranking in the data."
+        return [available[0]], f"I read '{value}' as {available[0]}, the first {where}ranking in the data."
     raise NirfInputError(f"'{value}' is not a year or a time period I can read. "
                          f"{where or 'NIRF '}rankings exist for {fmt_years(available)}.")

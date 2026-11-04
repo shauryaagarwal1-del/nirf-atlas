@@ -862,6 +862,32 @@
   line-height: 1.5;
   margin-top: 0.45rem;
 }
+.nirf-ask-assumed {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--marigold);
+  border-radius: 10px;
+  background: var(--marigold-soft);
+  padding: 0.6rem 1.05rem 0.65rem;
+  margin: 0.5rem 0 0.3rem;
+}
+.nirf-ask-assumed .title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--marigold-ink);
+}
+.nirf-ask-assumed ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+.nirf-ask-assumed li {
+  color: var(--ink);
+  font-size: 0.93rem;
+  line-height: 1.5;
+  margin: 0.1rem 0;
+}
 .nirf-ai-status {
   display: flex;
   align-items: center;

@@ -6,8 +6,12 @@ How a question is answered (code in nlq/):
      (nlq/planner.py, checked with pydantic; one retry if the JSON is invalid);
   2. our code translates the names ("iitb", "TN", "research", "last 3 years"), checks the plan and runs
      it with the same engines as the rest of the atlas (nlq/resolve.py, nlq/executor.py);
-  3. the page shows the chart card, the one-line answer, "How I understood your question" (assumptions
-     in plain words + the plan JSON) and three follow-up questions as buttons.
+  3. the page shows the chart card with its one-line answer, an "Assumed:" box right under it (every
+     assumption as a plain sentence, e.g. "There's no IIT Bangalore in the NIRF rankings, so I assumed you
+     meant IIIT Bangalore ..."), one-click "Use IISc instead" buttons for the other institutions the person
+     may have meant (they re-run the same plan, without the model), "How I understood your question" (the
+     assumptions again + the plan JSON) and three follow-up questions as buttons. An institution that took
+     part in NIRF but was never ranked gets a clear message and buttons for similar ranked institutions.
 The model never sees the data and never calculates a number. If the model cannot be reached (no
 internet, wrong key, quota), the page says what went wrong and how to fix it, and offers the closest
 sample question, which runs without the model. The sidebar shows whether the Gemini key works.
@@ -24,11 +28,11 @@ from app.components import chart_card, page_header, run_engine
 from core.data import NirfInputError
 from nlq import llm
 from nlq.catalog import closest_questions, page_for
-from nlq.executor import Answer, execute, registry_plan
+from nlq.executor import Answer, execute, registry_plan, with_institution
 from nlq.planner import PLAN, PlanError, plan_question
 
 HISTORY = "ask_history"     # list of turns: {"question": str, "answer": Answer | None, "error": dict | None}
-PENDING = "ask_pending"     # the next question to answer: {"question": str} or {"qid": "Q1.1"}
+PENDING = "ask_pending"     # the next question: {"question": str}, {"qid": "Q1.1"} or {"question", "plan"}
 EXAMPLES = [
     "How has IIT Bombay's rank changed since 2017?",
     "Which states have the most top-100 institutions in 2025?",
@@ -85,6 +89,9 @@ def _answer(pending: dict) -> dict:
         plan = registry_plan(pending["qid"])
         return {"question": plan.title, "answer": execute(plan, run_fn=_run, question=plan.title), "error": None}
     question = pending["question"]
+    if "plan" in pending:      # "Use IISc instead": the same plan with another institution, no model call
+        plan = PLAN.validate_python(pending["plan"])
+        return {"question": question, "answer": execute(plan, run_fn=_run, question=question), "error": None}
     try:
         plan = PLAN.validate_python(_plan(question, json.dumps(_context())))
     except llm.LLMError as e:
@@ -117,11 +124,36 @@ def _pick_example() -> None:
     st.session_state["ask-examples"] = None
 
 
+def _use_instead(i: int, choice: dict) -> None:
+    """Re-run turn i's plan with the institution the person picked (no model call)."""
+    turn = st.session_state[HISTORY][i]
+    plan, question = with_institution(turn["answer"].plan, turn["question"], choice["typed"], choice["key"],
+                                      choice["label"])
+    st.session_state[PENDING] = {"question": question, "plan": plan}
+
+
 def _clear() -> None:
     st.session_state[HISTORY] = []
 
 
 # ---------- drawing ----------
+
+def _assumed(answer: Answer) -> None:
+    """Every assumption as a plain sentence, in a box directly under the answer (not hidden in the expander)."""
+    if answer.assumptions:
+        items = "".join(f"<li>{_esc(a)}</li>" for a in answer.assumptions)
+        st.html(f"<div class='nirf-ask-assumed'><div class='title'>Assumed:</div><ul>{items}</ul></div>")
+
+
+def _instead(answer: Answer, i: int) -> None:
+    """One button per other institution the person may have meant; a click re-runs the question with it."""
+    if not answer.alternatives:
+        return
+    cols = st.columns(max(len(answer.alternatives), 2))
+    for j, choice in enumerate(answer.alternatives):
+        cols[j].button(f"Use {choice['label']} instead", key=f"ask-alt-inst-{i}-{j}", on_click=_use_instead,
+                       args=(i, choice), icon=":material/swap_horiz:", width="stretch")
+
 
 def _understood(answer: Answer) -> None:
     with st.expander("How I understood your question", icon=":material/psychology:"):
@@ -188,11 +220,22 @@ def _assistant(turn: dict, i: int) -> None:
         if a.title and a.title.strip().lower() != turn["question"].strip().lower():
             st.html(f"<div class='nirf-ask-title'>{_esc(a.title)}</div>")
         chart_card(a.result, key=f"ask-{i}")
+        _assumed(a)
+        _instead(a, i)
         _understood(a)
         _follow_ups(a.follow_ups, i)
+    elif a.kind == "not_ranked":
+        _note("info", "Took part in NIRF, but never ranked", a.message)
+        _assumed(a)
+        if a.alternatives:
+            st.html("<div class='nirf-ask-next'>Similar ranked institutions, same state and category</div>")
+        _instead(a, i)
+        _understood(a)
     elif a.kind == "error":
         _note("warn", "The data cannot answer it this way", a.message,
               "Change the institution, years or category in your question, or use the page below.")
+        _assumed(a)
+        _instead(a, i)
         _understood(a)
         _alternatives(turn["question"], i, a.engine)
     elif a.kind == "clarify":

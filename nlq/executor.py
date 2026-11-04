@@ -12,16 +12,22 @@ and checked by nlq/resolve.py:
     the wrong way round, e.g. "from 2024 to 2019", they are swapped and the swap is noted);
   * `states` on a function without its own states parameter limits the analysis to those states;
   * a parameter the function does not have is dropped, and the drop is listed as an assumption.
-Every translation is added to the plan's assumptions, so "How I understood your question" shows them.
+Every translation is added to the answer's assumptions as a plain sentence, shown under the answer.
+Institution names that need a guess come back with alternatives ("There's no IIT Bangalore ...": IISc,
+IIM Bangalore), which the page offers as one-click buttons (with_institution() re-runs the same plan with
+the other institution, without the model). An institution that took part but was never ranked gives a
+'not_ranked' answer: a clear message and similar ranked institutions instead of an error.
 """
 
 from __future__ import annotations
 
+import copy
 import inspect
+import re
 from dataclasses import dataclass, field
 
 from core.builder import AGGREGATIONS, CHARTS, DIMENSIONS, MEASURES, build_chart
-from core.data import NirfInputError, fmt_years, institution_names, load_master
+from core.data import NirfInputError, NotRankedError, fmt_years, institution_names, load_master, short_label
 from core.questions import QUESTION_REGISTRY, get_question
 from core.result import ChartResult
 from core.runner import run
@@ -46,7 +52,7 @@ CHART_WORDS = {"bar chart": "bar", "column": "bar", "column chart": "bar", "grou
 
 @dataclass
 class Answer:
-    kind: str                                   # chart | clarify | out_of_scope | error
+    kind: str                                   # chart | clarify | out_of_scope | not_ranked | error
     plan: dict
     title: str = ""
     result: ChartResult | None = None
@@ -55,6 +61,8 @@ class Answer:
     options: list[str] = field(default_factory=list)
     follow_ups: list[str] = field(default_factory=list)
     engine: str | None = None                   # for "open the matching page" links ("builder" = custom)
+    # Other institutions the person may have meant: {"typed": name in the plan, "key": ..., "label": "IISc"}.
+    alternatives: list[dict] = field(default_factory=list)
 
 
 def _as_list(value) -> list:
@@ -197,7 +205,42 @@ def _keep_ranked(keys: list[str], category, years, notes: list[str]) -> list[str
     return kept
 
 
-def engine_call(plan: EnginePlan) -> tuple[dict, list[str] | None, list[str]]:
+def _institutions(names, notes: list[str], alternatives: list[dict] | None,
+                  swaps: dict[str, str] | None) -> list[str]:
+    """Institution keys for the names in a plan; assumptions go to `notes`, other options to `alternatives`,
+    and each family swap to `swaps` as {name typed: short name used} ('IIT Bangalore': 'IIIT Bangalore').
+
+    A NotRankedError is passed on with the name as typed, so the page can offer similar ranked institutions.
+    """
+    keys = []
+    for n in dict.fromkeys(names):
+        try:
+            key, note, others = resolve_institution(n)
+        except NotRankedError as e:
+            e.typed = str(n)
+            raise
+        keys.append(key)
+        notes += [note] if note else []
+        if alternatives is not None:
+            alternatives += [{"typed": str(n), "key": k, "label": short_label(k)} for k in others]
+        if swaps is not None and note and note.startswith("There's no "):
+            swaps[str(n)] = short_label(key)
+    return keys
+
+
+def _apply_swaps(answer: Answer, swaps: dict[str, str], model_notes: list[str]) -> None:
+    """After 'IIT Bangalore' became IIIT Bangalore: the title and follow-ups name the institution actually shown,
+    and the model's own notes about the name it was given ("Institution: IIT Bangalore, as named") are dropped,
+    because our sentence ("There's no IIT Bangalore ...") replaces them."""
+    for typed, label in swaps.items():
+        pattern = re.compile(re.escape(typed), re.IGNORECASE)
+        answer.title = pattern.sub(label, answer.title)
+        answer.follow_ups = [pattern.sub(label, q) for q in answer.follow_ups]
+        answer.assumptions = [a for a in answer.assumptions if not (a in model_notes and pattern.search(a))]
+
+
+def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None,
+                swaps: dict[str, str] | None = None) -> tuple[dict, list[str] | None, list[str]]:
     """The engine parameters, the state scope and the assumptions for an engine plan."""
     fn = functions()[(plan.engine, plan.function)]
     sig = inspect.signature(fn).parameters
@@ -208,11 +251,7 @@ def engine_call(plan: EnginePlan) -> tuple[dict, list[str] | None, list[str]]:
     params.update(_fit_years(raw, sig, category if isinstance(category, str) else None, notes))
 
     names = _as_list(raw.pop("institutions", None)) + _as_list(raw.pop("institution", None))
-    keys = []
-    for n in dict.fromkeys(names):
-        key, note = resolve_institution(n)
-        keys.append(key)
-        notes += [note] if note else []
+    keys = _institutions(names, notes, alternatives, swaps)
     if keys and "institutions" in sig:
         params["institutions"] = _keep_ranked(keys, category, params.get("years"), notes)
     elif keys and "institution" in sig:
@@ -259,7 +298,8 @@ def engine_call(plan: EnginePlan) -> tuple[dict, list[str] | None, list[str]]:
 
 # ---------- custom plans ----------
 
-def custom_call(plan: CustomPlan) -> tuple[dict, list[str]]:
+def custom_call(plan: CustomPlan, alternatives: list[dict] | None = None,
+                swaps: dict[str, str] | None = None) -> tuple[dict, list[str]]:
     """The build_chart() arguments and the assumptions for a custom plan."""
     notes: list[str] = []
     f = plan.filters
@@ -284,11 +324,7 @@ def custom_call(plan: CustomPlan) -> tuple[dict, list[str]]:
         if key not in known_regions:
             raise NirfInputError(f"'{r}' is not a region. Regions: {', '.join(known_regions.values())}.")
         regions.append(known_regions[key])
-    keys = []
-    for n in f.institutions:
-        key, note = resolve_institution(n)
-        keys.append(key)
-        notes += [note] if note else []
+    keys = _institutions(f.institutions, notes, alternatives, swaps)
 
     chart = _chart(plan.chart)
     groups = [_group(g) for g in plan.group_by]
@@ -359,26 +395,58 @@ def execute(plan, run_fn=None, question: str = "") -> Answer:
     function = plan.function if isinstance(plan, EnginePlan) else None
     answer = Answer("chart", dump, title=plan.title, assumptions=list(plan.assumptions), engine=engine,
                     follow_ups=_follow_ups(plan.follow_ups, engine, function, question))
+    swaps: dict[str, str] = {}
     try:
         if isinstance(plan, EnginePlan):
-            params, scope, notes = engine_call(plan)
+            params, scope, notes = engine_call(plan, answer.alternatives, swaps)
             answer.assumptions += notes
             answer.plan["resolved_call"] = {"engine": plan.engine, "function": plan.function, "params": params,
                                             "states": scope}
             answer.result = run_fn(plan.engine, plan.function, params, scope)
         else:
-            args, notes = custom_call(plan)
+            args, notes = custom_call(plan, answer.alternatives, swaps)
             answer.assumptions += notes
             answer.plan["resolved_call"] = {"builder": "build_chart", **args}
             answer.result = build_chart(**args)
+    except NotRankedError as e:
+        answer.kind, answer.message = "not_ranked", str(e)
+        answer.alternatives = [{"typed": getattr(e, "typed", ""), "key": k, "label": short_label(k)}
+                               for k in e.similar]
     except NirfInputError as e:
         answer.kind, answer.message = "error", str(e)
     except Exception as e:  # a plan our checks let through but the analysis cannot draw
         answer.kind = "error"
         answer.message = (f"The analysis could not be drawn with these settings ({type(e).__name__}: "
                           f"{str(e)[:160]}). Try asking in other words, or use the matching page below.")
+    _apply_swaps(answer, swaps, list(plan.assumptions))
     answer.assumptions = list(dict.fromkeys(a for a in answer.assumptions if a))
     return answer
+
+
+def with_institution(plan: dict, question: str, typed: str, key: str, label: str) -> tuple[dict, str]:
+    """The same plan and question with the institution `typed` replaced by `key` (shown as `label`).
+
+    Used by the "Use IISc instead" buttons: the plan is re-run as it is, without asking the model again.
+    Returns (new plan, new question text).
+    """
+    new = copy.deepcopy({k: v for k, v in plan.items() if k != "resolved_call"})
+    holder = new["filters"] if new.get("type") == "custom" else new.get("params", {})
+    for k in ("institutions", "institution"):
+        value = holder.get(k)
+        if isinstance(value, list):
+            holder[k] = [key if str(v).strip() == typed else v for v in value]
+        elif value is not None and str(value).strip() == typed:
+            holder[k] = key
+    pattern = re.compile(re.escape(typed), re.IGNORECASE)
+    if new.get("title"):
+        new["title"] = pattern.sub(label, new["title"])
+    if "assumptions" in new:      # the model's notes about the old name no longer apply
+        new["assumptions"] = [a for a in new["assumptions"] if not pattern.search(a)]
+        new["assumptions"].append(f"You chose {label} instead of {typed}.")
+    if new.get("follow_ups"):
+        new["follow_ups"] = [pattern.sub(label, q) for q in new["follow_ups"]]
+    asked = pattern.sub(label, question) if pattern.search(question) else f"{question} (using {label})"
+    return new, asked
 
 
 def registry_plan(qid: str) -> EnginePlan:

@@ -62,8 +62,11 @@ language models is that they *make things up* (hallucinate), including numbers. 
    The shape and types are checked (with the pydantic library), then every name is checked against our code. If
    something is wrong, the model is asked once more with the error message.
 3. **Name resolution (fixed rules, no model):**
-   - institutions: compact forms (iitb, iitkgp, iima, nitt), city synonyms (Bombay = Mumbai), every spelling NIRF
-     ever used, words in any order, close spellings;
+   - institutions, in this order: known short forms (iitb, iitkgp, iima, nitt, LPU, IIIT Bangalore), the exact name,
+     word matching ("IIT Madras", "Christian Medical College Vellore"), and close spelling **last**. Bengaluru =
+     Bangalore, Mumbai = Bombay and so on everywhere. Two guards (see "How institution names are matched" below);
+   - institutions that took part but were never ranked, and institutes that do not exist ("IIT Bangalore"), get a
+     clear answer instead of a wrong match (also below);
    - states: codes and old names (TN, KA, UP, Orissa);
    - parameters: everyday words (research → RPC, teaching → TLR, placements → GO, reputation → PR);
    - categories: engg → Engineering, B-schools → Management;
@@ -74,10 +77,35 @@ language models is that they *make things up* (hallucinate), including numbers. 
    public functions or the Chart Builder can be called; **nothing the model writes is ever run as code** (a test
    checks that the chat code contains no `exec` or `eval`).
 
-**What the page shows:** the chart card (chart, one-line answer, method, data + CSV), "How I understood your
-question" (assumptions in plain words, every translation, and the exact plan we ran) and three follow-up questions
-as buttons. Six example questions sit above the input box. Earlier turns are sent along, so "same for Engineering"
-works.
+**What the page shows:** the chart card (chart, one-line answer, method, data + CSV), directly under it an
+**"Assumed:"** box with every assumption as a plain sentence, buttons for the other institutions the person may have
+meant ("Use IISc instead"), "How I understood your question" (the assumptions again and the exact plan we ran) and
+three follow-up questions as buttons. Six example questions sit above the input box. Earlier turns are sent along,
+so "same for Engineering" works.
+
+### How institution names are matched (and the bugs this fixed)
+
+We tested the chat and found that "IIIT Bangalore" was matched to *Bangalore Institute of Technology*, a different
+college. The old finder expanded "IIIT" to "Indian Institute of Information Technology", and a spelling score
+(which only counts shared letters) found "Bangalore ... Institute of Technology" close enough. The new rules:
+
+1. **Order:** known short forms first, then the exact name, then word matching, and the spelling match **last**.
+2. **Family guard:** if you type a family (IIT, IIIT, NIT, IIM, IISER, IISc, AIIMS, NLU, IIEST), the answer must be
+   from that family. IIIT includes the Indian, International and Indraprastha Institutes of Information Technology.
+   A name without a family, like "Bangalore Institute of Technology", can never match "IIIT Bangalore".
+3. **Place guard:** for a spelling match, every city or state you type must be the institution's city or state.
+4. **Took part, never ranked:** "IIIT Dharwad" is in NIRF's participant lists (Engineering and Overall, 2022-2025)
+   but never in a ranked list. The chat says exactly that, with buttons for two similar ranked institutions in the
+   same state and category (IIIT Bangalore, IIT Dharwad), instead of "no such institution".
+5. **Family swap:** "IIT Bangalore" does not exist. The chat looks for other families in the same city (or state)
+   in a fixed order (for IIT: IIIT, NIT, IIEST, IISc, IISER, IIM), picks the first and says so in the Assumed box:
+   *"There's no IIT Bangalore in the NIRF rankings, so I assumed you meant IIIT Bangalore (International Institute
+   of Information Technology Bangalore)."* The others are buttons: "Use IISc instead", "Use IIM Bangalore instead".
+   A click re-runs the same plan with that institution, without asking the model again.
+6. **Otherwise:** "No institution called X in the NIRF data", with at most 3 suggestions that pass both guards.
+
+Every guess is shown as a sentence: "I read 'iitb' as Indian Institute of Technology Bombay.", "I read 'Jadavpur
+Universty' as Jadavpur University, the closest spelling in the NIRF data." Tests: `tests/test_resolve_names.py`.
 
 ---
 
@@ -91,6 +119,8 @@ works.
 | The question is ambiguous | The plan is `clarify`: a question back with buttons |
 | The question is outside the data | The plan is `out_of_scope`: a polite explanation |
 | A named institution is not in the chosen category | It is left out and the page says so, instead of failing |
+| A named institution took part in NIRF but was never ranked ("IIIT Dharwad") | Says so, with the years and categories, and offers two similar ranked institutions |
+| A named institute does not exist ("IIT Bangalore") | Uses the nearest other family in that city, says so in the Assumed box, and offers the others as buttons |
 
 The sidebar shows a green or red dot: is a key loaded, and does Gemini accept it (checked without generating text).
 
@@ -162,7 +192,15 @@ exec or eval.
 The model handles the language ("kaun se institutes hamesha top 10 mein rahe" means "which institutions stayed in
 the top 10"). Our own rules then translate names: institution short forms and every NIRF spelling, close spellings,
 state codes, everyday words for parameters, and phrases like "last 3 years" into real years for that category.
-Every translation is listed under "How I understood your question".
+Every translation is written as a plain sentence in the "Assumed:" box under the answer.
+
+**Q4b. Someone types "IIT Bangalore". What happens, and why not just pick the closest spelling?**
+There is no IIT in Bangalore. A spelling score alone once matched "IIIT Bangalore" to Bangalore Institute of
+Technology, because it only counts shared letters. Now the precise rules run first (short forms, exact name, word
+match), a typed family (IIT, IIIT, NIT ...) can only match that family, and a typed city must be the institution's
+city. When the institute does not exist, we take the next family in a fixed order in the same city (IIIT, then NIT,
+IIEST, IISc, IISER, IIM), here IIIT Bangalore, write "There's no IIT Bangalore in the NIRF rankings, so I assumed you
+meant IIIT Bangalore ...", and offer IISc and IIM Bangalore as one-click buttons.
 
 **Q5. What if the question is ambiguous or outside the data?**
 For an ambiguous question the model returns a "clarify" plan: it asks back, with options as buttons. For something
