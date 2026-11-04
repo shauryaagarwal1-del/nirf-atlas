@@ -30,3 +30,7 @@ python -m playwright install chromium
 ```
 
 Then copy `.env.example` to `.env` and put your own Gemini API key in it. Never commit `.env`.
+The key is only needed for the **Ask NIRF** chat page; every other page works without it (and offline).
+Optional settings in `.env`: `GEMINI_API_KEY_2` (a spare key, tried once when the first fails) and `GEMINI_MODEL`.
+
+Check the chat's understanding of 25 test questions with your key: `python -m scripts.nlq_accuracy`.

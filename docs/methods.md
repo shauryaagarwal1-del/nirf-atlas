@@ -784,3 +784,49 @@ lies wholly inside one of these four, so institutions known only by band can be 
 `docs/level2_questions.md` lists 15 questions that are not in Annexure A, the page and controls that answer each, and
 the answer the dashboard gives. `tests/test_level2.py` sets exactly those controls in the real app for each question
 and checks that the chart drawn is the same answer as the analysis those settings stand for.
+
+## Ask NIRF (Level 3: a typed question becomes a chart)
+
+- **Where:** `nlq/` (logic) and `app/pages/ask_nirf.py` (chat page). Tests: `tests/test_nlq.py` with the 25 questions in
+  `tests/nlq_questions.py`; live accuracy report: `python -m scripts.nlq_accuracy` (needs a Gemini key).
+- **Question answered:** any question about the NIRF data that one of our analyses (or a simple group-and-summarise
+  chart) can answer, typed in plain English or Hinglish, with typos and short forms.
+- **Who does what (the key point for the viva):** the language model (Google Gemini, temperature 0) only *reads* the
+  question and writes a small JSON plan saying which analysis to run with which settings. It never sees the data
+  and never calculates a number. Our code checks the plan, translates the names and runs the same engine functions as
+  the rest of the dashboard, so every number comes from the cleaned master table.
+- **Step 1, the catalog (`nlq/catalog.py`):** the model is given a text description generated from our code: the
+  columns and their meanings, the years, the categories with the years each one exists, the states, regions and
+  parameter codes, and every engine function with its parameters, its docstring (definition and method) and the
+  Annexure A questions that use it. A new engine function appears in the chat automatically.
+- **Step 2, the plan (`nlq/planner.py`):** the model must answer with ONE JSON object of four allowed shapes:
+  `engine` (engine, function, params, title, assumptions, follow-ups), `custom` (filters, group_by, metric,
+  aggregation, chart: for questions no analysis covers), `clarify` (a question back, with options as buttons) or
+  `out_of_scope` (e.g. "what's the weather", fees, salaries, years after 2025). The shape and types are checked with
+  pydantic, then the names are checked against the code (does `trends.rank_trajectory` exist? is `region` a group?).
+  If the JSON is invalid or a name does not exist, the model is asked once more with the error message.
+- **Step 3, name resolution (`nlq/resolve.py`, fixed rules):** institutions: compact forms (iitb, iitkgp, iima, nitt)
+  and city synonyms (Bombay = Mumbai), then the dashboard's institution finder (short forms such as IIT -> Indian
+  Institute of Technology, every spelling NIRF ever used, the words in any order, close spelling with rapidfuzz);
+  states: codes and old names (TN, KA, UP, Orissa); parameters: everyday words (research -> RPC, teaching -> TLR,
+  placements -> GO, reputation -> PR); categories: engg -> Engineering, B-schools -> Management; years: numbers,
+  ranges and phrases ("last 3 years" = the latest 3 years in which that category was published, "since 2020",
+  "latest", "pichhle 5 saal"). Every translation is listed under "How I understood your question".
+- **Step 4, running (`nlq/executor.py`):** years are fitted to the function (a list, one year = the latest asked for,
+  or two years = the first and last asked for); `states` on any analysis limits it to institutions in those states
+  (ranks stay national); options a function does not have are dropped and listed. Only the 8 engines' public
+  functions or the Chart Builder can be called. Nothing the model writes is run as code (no `exec`/`eval`; a test
+  checks the syntax tree of `nlq/`).
+- **What the page shows:** the chart card (chart, one-line answer, method, data + CSV), "How I understood your
+  question" (the assumptions in plain words and the plan JSON, including `resolved_call`, the exact call we ran), and
+  3 follow-up questions as buttons. Six example chips sit above the input; earlier turns are sent with a new question
+  so "same for Engineering" works.
+- **When the model cannot be reached:** no key, no internet, a rejected key, a used-up quota, an unknown model name or
+  a server problem each get a plain message and a fix. If `GEMINI_API_KEY_2` exists it is tried once first. The page
+  then offers the closest sample questions, found without any model: the share of the typed words (filler words
+  removed, synonyms such as most/highest merged) that also appear in the sample question. "Run Qx.y here" answers
+  it in the chat; links open it in the Question Bank and the matching Explore page. The sidebar shows a green or red
+  dot: is a key loaded, and does Gemini accept it (checked by asking for the model's description, no text generated).
+- **Accuracy test:** 25 varied questions (typos, Hinglish, abbreviations, informal phrasing, a custom chart and an
+  out-of-scope question), each with the acceptable analyses. Offline, each reference plan must give a chart from the
+  expected analysis; live, the model's plan must name an expected analysis. Accuracy = correct plans / 25.

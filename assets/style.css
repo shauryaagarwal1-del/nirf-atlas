@@ -654,3 +654,72 @@
   -webkit-box-orient: vertical;
   margin-top: 4px;
 }
+
+/* ---------- Ask NIRF chat ---------- */
+.nirf-ask-steps {
+  margin: 0.4rem 0 1.4rem;
+}
+.nirf-ask-title {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0.1rem 0 0.4rem;
+}
+.nirf-ask-next {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0.7rem 0 0.1rem;
+}
+.nirf-ask-note {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--indigo);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 0.8rem 1.05rem 0.85rem;
+  margin: 0.1rem 0 0.4rem;
+}
+.nirf-ask-note.bad { border-left-color: #c8443a; }
+.nirf-ask-note.warn { border-left-color: var(--marigold); }
+.nirf-ask-note .title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.nirf-ask-note .msg {
+  color: var(--ink-2);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  margin-top: 0.2rem;
+}
+.nirf-ask-note .fix {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-top: 0.45rem;
+}
+.nirf-ai-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border-top: 1px solid rgba(232, 234, 246, 0.14);
+  padding-top: 0.8rem;
+  margin-top: 0.4rem;
+}
+.nirf-ai-status .dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e0574b;
+  box-shadow: 0 0 0 3px rgba(224, 87, 75, 0.22);
+}
+.nirf-ai-status.ok .dot {
+  background: #2fbf8f;
+  box-shadow: 0 0 0 3px rgba(47, 191, 143, 0.22);
+}
