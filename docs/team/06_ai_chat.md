@@ -54,11 +54,13 @@ language models is that they *make things up* (hallucinate), including numbers. 
    every engine function with its settings, its definition and method, and the Annexure questions that use it. A new
    analysis appears in the chat automatically.
 2. **The plan.** The model must answer with exactly one JSON object of one of four shapes:
-   - `engine`: run one of our analyses (engine, function, settings, title, assumptions, follow-ups);
+   - `engine`: run one of our analyses (engine, function, settings, title, assumptions, follow-ups, and an
+     optional `notice` shown above the chart, e.g. for a prediction answered with past data);
    - `custom`: a simple group-and-summarise chart through the Chart Builder (filters, group by, metric, aggregation,
      chart type) for questions no ready-made analysis covers;
    - `clarify`: ask the user back, with options as buttons (e.g. "Which category do you mean?");
-   - `out_of_scope`: politely decline ("what's the weather", fees, salaries, years after 2025).
+   - `out_of_scope`: politely decline ("what's the weather", fees, salaries). A prediction ("who will be #1 in
+     2026?") is *not* declined: see "When the data does not fit the question" below.
    The shape and types are checked (with the pydantic library), then every name is checked against our code. If
    something is wrong, the model is asked once more with the error message.
 3. **Name resolution (fixed rules, no model):**
@@ -107,6 +109,27 @@ college. The old finder expanded "IIIT" to "Indian Institute of Information Tech
 Every guess is shown as a sentence: "I read 'iitb' as Indian Institute of Technology Bombay.", "I read 'Jadavpur
 Universty' as Jadavpur University, the closest spelling in the NIRF data." Tests: `tests/test_resolve_names.py`.
 
+### When the data does not fit the question (`nlq/adapt.py`)
+
+The model only reads the words; it does not know which lists an institution is in or in which years. So after the
+names are resolved, fixed rules fit the plan to what the data really has, and every change is written in the
+Assumed box. The chat never shows an empty chart for a year that does not exist and never invents a value.
+
+| The question | What the data says | What the chat does |
+|---|---|---|
+| "Give me the line chart for rankings of IIIT Bangalore from 2017-2025" (no category) | IIIT Bangalore is not in the Overall ranking, only in Engineering (2018-2025) | Uses Engineering: *"IIIT Bangalore is not in the Overall ranking; it is ranked in Engineering (2018-2025), so I used Engineering."* Rule: Overall if every named institution is there in every year asked, else the category it is ranked in the most years (ties: the most recent). Several institutions: the category they share for the most years; none shared: one chart each |
+| "IIT Dharwad Engineering rank 2017-2025" | Ranked only 2023-2025 | Shows 2023-2025: *"You asked for 2017-2025; IIT Dharwad is ranked in Engineering only in 2023-2025, so the chart shows those years."* |
+| "SDG rankings in 2019" | SDG exists only in 2025 (Dental from 2020, Research 2021, Agriculture/Innovation 2023, Open/Skill/State Public University 2024) | Uses the nearest year that exists: *"SDG rankings exist only for 2025, so 2025 is shown (the nearest to 2019)."* |
+| "Bangalore Institute of Technology rank" | Only bands: 201-250 (2020), 251-300 (2021), no exact rank, no score | Draws the **band chart** (point plot with error bars): each bar spans the band, no line, because a line through a band would invent a rank |
+| "Bangalore Institute of Technology parameter scores" | NIRF published no scores for it | Says so, lists its bands, and offers a button "Show the rank bands chart" |
+| "Will IIT Mandi overtake IIT Jodhpur?" / "Which is better, IIT Madras or IIT Bombay?" | We have no future data and no "better" | Not refused: the rank chart of the past, with a highlighted notice *"I can't predict future rankings; here is how they have done so far."* The answer states the plain fact: *"In 2025, IIT Mandi (rank 26) was ahead of IIT Jodhpur (rank 27) by 1 place; in 2017 ... by 37 places."* No forecast line |
+| "NIT rank trend", "Christian Medical College" | 31 NITs; two CMC campuses (Vellore, Ludhiana) | "Which one did you mean?" with up to 4 buttons of real institutions, best known first |
+| "Bangalore colleges", "colleges in Pune" | We filter by state, not city | *"'Bangalore' = Karnataka (we filter by state, not city)."* |
+| Two questions in one message | | Answers the first; the second is the first follow-up button |
+
+In a rank line (`rank_trajectory`) a year with only a band is a short vertical bar (no line through it) and the
+answer lists it: *"In 2024 it was placed only in the 101-150 band."* Tests: `tests/test_edge_cases.py`.
+
 ---
 
 ## 3. When things go wrong (and why the demo is still safe)
@@ -121,13 +144,20 @@ Universty' as Jadavpur University, the closest spelling in the NIRF data." Tests
 | A named institution is not in the chosen category | It is left out and the page says so, instead of failing |
 | A named institution took part in NIRF but was never ranked ("IIIT Dharwad") | Says so, with the years and categories, and offers two similar ranked institutions |
 | A named institute does not exist ("IIT Bangalore") | Uses the nearest other family in that city, says so in the Assumed box, and offers the others as buttons |
+| No category named and the institution is not in Overall ("IIIT Bangalore") | Uses the category it is actually ranked in, and says so |
+| Years asked that the institution or category does not have | Shows the years that exist (nearest year for a single year), and says so |
+| A band-only college (no exact rank, no score) | Band chart for a rank question; "NIRF did not publish scores" + band-chart button for a score question |
+| A prediction or opinion | The past as a chart, with a highlighted "I can't predict future rankings ..." notice |
+| A vague name ("NIT") | "Which one did you mean?" with buttons of real institutions |
 
 The sidebar shows a green or red dot: is a key loaded, and does Gemini accept it (checked without generating text).
 
-**Accuracy test:** 25 varied questions (typos, Hinglish, abbreviations, informal phrasing, one custom chart, one
-out-of-scope question), each with the analyses we accept as correct. Offline, each reference plan must produce a
-chart from the expected analysis; live, the model's plan must name an expected analysis. Accuracy = correct plans
-÷ 25 (`python -m scripts.nlq_accuracy`). The live part never runs inside a normal `pytest` (only with
+**Accuracy test:** 33 varied questions (typos, Hinglish, abbreviations, informal phrasing, one custom chart, one
+out-of-scope question, and 8 edge cases: not in Overall, missing years, a band-only college, two predictions, an
+opinion, a vague name, a city), each with the analyses we accept as correct. Offline, each reference plan must
+produce a chart from the expected analysis (or the "which one?" buttons); live, the model's plan must name an
+expected analysis, and a prediction or opinion must carry its notice. Accuracy = correct plans ÷ 33
+(`python -m scripts.nlq_accuracy`). The live part never runs inside a normal `pytest` (only with
 `NIRF_LIVE_TESTS=1`), so testing on the demo day does not use up the free quota.
 
 **Exam simulation:** 30 further examiner questions with tricky cases (`docs/exam_simulation.md`). The live model's
@@ -203,9 +233,11 @@ IIEST, IISc, IISER, IIM), here IIIT Bangalore, write "There's no IIT Bangalore i
 meant IIIT Bangalore ...", and offer IISc and IIM Bangalore as one-click buttons.
 
 **Q5. What if the question is ambiguous or outside the data?**
-For an ambiguous question the model returns a "clarify" plan: it asks back, with options as buttons. For something
-outside the data (fees, salaries, the weather, 2026 rankings) it returns "out of scope" with a short explanation. If
-a named institution is not in the chosen category, it is left out and the page says so.
+For an ambiguous question the model returns a "clarify" plan: it asks back, with options as buttons; a vague name
+like "NIT" gets buttons of real NITs from our own code. For something outside the data (fees, salaries, the weather)
+it returns "out of scope" with a short explanation. A prediction ("who will be #1 in 2026?") is answered with the
+past and a notice instead of a refusal. If a named institution is not in the chosen category, it is left out and the
+page says so.
 
 **Q6. What if the internet or the API fails during the demo?**
 The page explains the problem and the fix. If one model's free quota is used up, the next model is tried, and a spare
@@ -213,12 +245,33 @@ key if set. If no model can be reached, the page offers the closest of the 40 sa
 overlap, which runs without any model. Every other page of the dashboard works offline.
 
 **Q7. How accurate is it, and how did you test it?**
-We wrote 25 varied test questions with typos, Hinglish, abbreviations, informal phrasing, a custom chart and an
-out-of-scope question, each with the analyses we accept as correct. Offline tests check that each reference plan
-produces the expected chart; a live script asks Gemini all 25 and reports accuracy as correct plans out of 25.
+We wrote 33 varied test questions with typos, Hinglish, abbreviations, informal phrasing, a custom chart, an
+out-of-scope question and 8 edge cases (an institution not in Overall, missing years, a band-only college,
+predictions, an opinion, a vague name, a city), each with the analyses we accept as correct. Offline tests check
+that each reference plan produces the expected chart; a live script asks Gemini all 33 and reports accuracy as
+correct plans out of 33 (a prediction only counts if the notice is there).
 
 **Q8. Can it answer a question that none of your analyses covers?**
 Partly: for simple group-and-summarise questions the model returns a "custom" plan, which runs through our Chart
 Builder (filters, a grouping, a number, count/mean/median, an allowed chart type), for example "average TLR per
 region in Engineering over the years". It cannot invent a new statistical method; that is deliberate, because every
 method must be one we can explain.
+
+**Q9. Someone asks "Will IIT Mandi overtake IIT Jodhpur?". Why not refuse, and why not predict?**
+We cannot predict: there is no 2026 data, and drawing a trend line into the future would be a guess dressed up as a
+result. But refusing helps nobody. So the chat shows the closest facts, the two rank lines up to 2025, with a
+highlighted notice "I can't predict future rankings; here is how they have done so far", and the answer states who
+is ahead in the latest year and how the gap changed. The examiner gets facts, clearly labelled as the past.
+
+**Q10. Why does "IIIT Bangalore from 2017-2025" show Engineering 2018-2025 and not Overall 2017-2025?**
+IIIT Bangalore is not in the Overall ranking at all; it is ranked only in Engineering, from 2018. Defaulting to
+Overall would give an error, and showing 2017 would show an empty year. Our rule: when no category is named, use
+Overall only if every named institution is there in every year asked, otherwise the category it is ranked in for
+the most years; then show only the years it is actually listed. Both choices are written in the Assumed box.
+
+**Q11. Some colleges have no exact rank and no score. How do you show them?**
+Below its exact-rank list NIRF publishes only a band, like 201-250, and no score; about 1,225 institution-category
+pairs in our data only ever have a band. A line chart would need a number, and taking the middle of the band would
+invent one. So we draw a point plot with error bars: each bar runs from the band's best to its worst rank, and an
+exact rank, if any, is a dot. A score question about such a college says clearly that NIRF did not publish scores,
+gives its bands and offers the band chart as a button.

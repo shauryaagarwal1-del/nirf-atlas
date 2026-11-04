@@ -205,6 +205,7 @@ that exact name and `tests/test_engines.py` fails if an engine returns anything 
 |---|---|---|
 | `trends.rank_trajectory` | one line with markers per institution, rank axis reversed; band-only years as a faint range bar | `multi-series line chart` (`line chart` for one institution) |
 | `trends.parameter_trends` | one line per parameter of one institution by year, dashed line = overall score | `multi-series line chart` |
+| `trends.band_history` | per institution and year: a bar from the band's best to worst rank (band-only years) or a dot (exact rank); rank axis reversed, no lines | `point plot with error bars` |
 | `trends.biggest_movers` | horizontal bars of improvement, sorted, teal right of zero / coral left | `bar chart` (ranked, horizontal) |
 | `trends.average_score_over_time` | one line with markers per category; `show_spread=True`: point + Q1-Q3 error bar | `multi-series line chart` (`line chart` for one category) / `point plot with error bars` |
 | `trends.consistent_top_n` | institution × year grid of coloured cells, rank written in the cell | `matrix heatmap` |
@@ -262,9 +263,15 @@ of one category-year (default: its latest year).
   year with only a band (e.g. 101-150) is drawn as a faint bar covering the band (no invented mid-point); a year
   without a rank is a gap. Change = first exact rank − last exact rank (positive = moved up).
 - **Chart and why:** line chart, because the question is change over time; the rank axis is reversed so "up = better".
-- **Gaps and bands in the answer:** for one institution the insight names the years with only a band and the years it
-  was not in the list (e.g. IIM Calcutta, Overall: ranked 2017-2019 and 2023 only). With a single exact rank no change
-  is claimed ("had an exact rank only in 2018").
+- **Gaps and bands in the answer:** for one institution the insight names the years it was not in the list (e.g. IIM
+  Calcutta, Overall: ranked 2017-2019 and 2023 only) and lists each band-only year with its band ("In 2024 it was
+  placed only in the 101-150 band." for IIT Dharwad, Engineering). With several institutions the band-only years are
+  listed per institution ("Years placed only in a NIRF band: IIT Dharwad 2024 (101-150)"). With a single exact rank no
+  change is claimed ("had an exact rank only in 2018").
+- **Who is ahead:** with two institutions the insight also says who was ahead in the latest year both had an exact rank
+  and by how many places, and the gap in the first such year ("In 2025, IIT Mandi (rank 26) was ahead of IIT Jodhpur
+  (rank 27) by 1 place; in 2017 ... IIT Mandi was ahead by 37 places"). With three or more: who had the best rank in
+  the latest year. This is the plain fact the chat gives for "Will X overtake Y?" (no forecast).
 - **Filters the user can change:** institutions (up to 8, default the top 5 of the latest year that has a ranked
   institution, by exact rank and then by band, so a state whose only institution is band-only, such as Mizoram, still
   gets a chart), category, years.
@@ -798,6 +805,27 @@ lies wholly inside one of these four, so institutions known only by band can be 
   score are gaps, never filled in.
 - **Filters the user can change:** category, institution, year range.
 
+### Extra: Where was a college placed when NIRF published only a rank band?
+- **Engine / function:** `core/engines/trends.py :: band_history(institutions, category, years)` (Trends page, "Rank
+  bands of colleges without an exact rank"; the chat uses it automatically for band-only institutions).
+- **Why it exists:** below its exact-rank list NIRF publishes only a rank band (e.g. 201-250) and no score. In our data
+  1,225 of the 2,768 institution-category pairs only ever have a band, so a rank line cannot be drawn for them.
+- **Definition used:** the band NIRF published for each institution in the chosen category, year by year (a band = a
+  range of ranks inside which NIRF does not say the exact position), and the exact rank in years that have one.
+- **Calculation (plain words):** read the band text ("201-250") and split it into its best rank (201) and worst rank
+  (250). Nothing is averaged or estimated: the band is drawn as it was published.
+- **Chart and why:** point plot with error bars (an allowed chart). For a band year the bar runs from the band's best
+  to its worst rank, with no visible point inside, because NIRF gives no number there; an exact rank is a plain dot.
+  Nothing is joined by a line, since a line through the middle of a band would invent a rank. Rank axis reversed
+  (rank 1 at the top); several institutions are shifted slightly sideways so their bars do not overlap. A box plot
+  or a line chart would both suggest a number we do not have; an error bar is exactly "somewhere in this range".
+- **Insight:** lists the bands in time order, e.g. "Bangalore Institute of Technology, Bangalore was placed in
+  Engineering band 201-250 in 2020 and 251-300 in 2021. NIRF publishes only a rank range and no score beyond the top
+  list, so an exact rank line cannot be drawn."
+- **Filters the user can change:** institutions (default: up to 5 from the best band of the latest year, those with no
+  exact rank first, then alphabetical),
+  category, years, states. Several institutions are shifted sideways so their bars stand side by side.
+
 ### Extra: Home page overview, today's top N followed back in time
 - **Engine / function:** `core/engines/trends.py :: top_n_race(category, years, n, highlight, depth)` (Home page and
   Trends page, "Today's top N, followed back in time").
@@ -874,8 +902,9 @@ and checks that the chart drawn is the same answer as the analysis those setting
 
 ## Ask NIRF (Level 3: a typed question becomes a chart)
 
-- **Where:** `nlq/` (logic) and `app/views/ask_nirf.py` (chat page). Tests: `tests/test_nlq.py` with the 25 questions in
-  `tests/nlq_questions.py`; live accuracy report: `python -m scripts.nlq_accuracy` (needs a Gemini key).
+- **Where:** `nlq/` (logic) and `app/views/ask_nirf.py` (chat page). Tests: `tests/test_nlq.py` with the 33 questions in
+  `tests/nlq_questions.py`, and `tests/test_edge_cases.py`; live accuracy report: `python -m scripts.nlq_accuracy`
+  (needs a Gemini key).
 - **Question answered:** any question about the NIRF data that one of our analyses (or a simple group-and-summarise
   chart) can answer, typed in plain English or Hinglish, with typos and short forms.
 - **Who does what (the key point for the viva):** the language model (Google Gemini, temperature 0) only *reads* the
@@ -889,7 +918,7 @@ and checks that the chart drawn is the same answer as the analysis those setting
 - **Step 2, the plan (`nlq/planner.py`):** the model must answer with ONE JSON object of four allowed shapes:
   `engine` (engine, function, params, title, assumptions, follow-ups), `custom` (filters, group_by, metric,
   aggregation, chart: for questions no analysis covers), `clarify` (a question back, with options as buttons) or
-  `out_of_scope` (e.g. "what's the weather", fees, salaries, years after 2025). The shape and types are checked with
+  `out_of_scope` (e.g. "what's the weather", fees, salaries; a prediction is not out of scope, see below). The shape and types are checked with
   pydantic, then the names are checked against the code (does `trends.rank_trajectory` exist? is `region` a group?).
   If the JSON is invalid or a name does not exist, the model is asked once more with the error message.
 - **Step 3, name resolution (`nlq/resolve.py`, fixed rules):** institutions: known short forms first (iitb, iitkgp,
@@ -923,10 +952,51 @@ and checks that the chart drawn is the same answer as the analysis those setting
   removed, synonyms such as most/highest merged) that also appear in the sample question. "Run Qx.y here" answers
   it in the chat; links open it in the Question Bank and the matching Explore page. The sidebar shows a green or red
   dot: is a key loaded, and does Gemini accept it (checked by asking for the model's description, no text generated).
-- **Accuracy test:** 25 varied questions (typos, Hinglish, abbreviations, informal phrasing, a custom chart and an
-  out-of-scope question), each with the acceptable analyses. Offline, each reference plan must give a chart from the
-  expected analysis; live, the model's plan must name an expected analysis. Accuracy = correct plans / 25. The live
-  test is opt-in (`NIRF_LIVE_TESTS=1`), so a normal test run never uses up the free daily quota the demo needs.
+- **Accuracy test:** 33 varied questions (typos, Hinglish, abbreviations, informal phrasing, a custom chart, an
+  out-of-scope question, and 8 edge cases: an institution not in Overall, years before an institution existed, a
+  band-only college, two predictions, an opinion, a vague name and a city), each with the acceptable analyses.
+  Offline, each reference plan must give a chart from the expected analysis (or the "which one?" buttons); live, the
+  model's plan must name an expected analysis, and a prediction or opinion must also carry its notice. Accuracy =
+  correct plans / 33. The live test is opt-in (`NIRF_LIVE_TESTS=1`), so a normal test run never uses up the free
+  daily quota the demo needs.
+
+### Ask NIRF adapts to what the data actually has (`nlq/adapt.py`)
+The model only reads the question; it does not know which lists an institution is in, or in which years. After the
+names are resolved, fixed rules fit the plan to the data, and every change is written in the "Assumed:" box.
+- **Category auto-pick:** when the question names institutions but no category, Overall is used if every named
+  institution is in the Overall ranking in every year asked. Otherwise: one institution -> the category it is ranked
+  in for the most years (ties: the most recent, then Overall); several -> the category they share for the most years
+  (years in which all of them are listed count first); none shared -> each is shown in its own category, one chart
+  each, with the note that ranks from different lists are not comparable. Example: "Give me the line chart for
+  rankings of IIIT Bangalore from 2017-2025" -> "IIIT Bangalore is not in the Overall ranking; it is ranked in
+  Engineering (2018-2025), so I used Engineering." If the model still wrote Overall but the question never said
+  "overall", the rule is applied anyway.
+- **Years the institution actually has:** the asked years are cut to the span from the first to the last year the
+  institutions are listed in that category; a year inside the span where one is missing stays as a gap. "You asked for
+  2017-2025; IIT Dharwad is ranked in Engineering only in 2023-2025, so the chart shows those years." Missing years are
+  never filled in.
+- **Years a category does not have:** a typed year outside a category's years becomes the nearest year it has, and the
+  answer says so ("SDG rankings exist only for 2025, so 2025 is shown (the nearest to 2019)."). Categories that start
+  later: Dental 2020, Research Institutions 2021, Agriculture and Innovation 2023, Open / Skill / State Public
+  University 2024, SDG 2025. A range that starts too early is cut ("Research Institutions rankings exist only for
+  2021-2025, so 2021-2025 are shown.").
+- **Band-only colleges:** a rank question about an institution that has no exact rank in the chosen category and years
+  is drawn with `trends.band_history` (see above), with the assumption saying why. A score or parameter question about
+  such an institution does not draw an empty chart: the answer says "NIRF did not publish scores for ..." with its
+  bands, and a button runs the band chart.
+- **Predictions and opinions:** "Will IIT Mandi overtake IIT Jodhpur?", "Who will be #1 in 2026?", "Which is better,
+  IIT Madras or IIT Bombay?" are not refused. The plan has an optional `notice` field; the model answers with the
+  closest factual analysis (usually the rank line of the named institutions, or the top of the latest ranking) and the
+  notice "I can't predict future rankings; here is how they have done so far.", shown in a highlighted box above the
+  chart. The insight states the plain fact (who is ahead in the latest year and how the gap changed). No forecast line
+  is ever drawn.
+- **Vague names:** "NIT", "IIT", "IISER" (only a family typed) or "Christian Medical College" (two campuses) get "Which
+  one did you mean?" with up to 4 buttons of real institutions, best known first (best Overall rank in their latest
+  year). A click re-runs the same plan with that institution, without the model.
+- **Cities as places:** "Bangalore colleges", "colleges in Pune": the city goes in `states` and becomes its state, with
+  the assumption "'Bangalore' = Karnataka (we filter by state, not city)." (The state of a city is read from the
+  institutions located there, plus a short list of big cities.)
+- **Two questions in one message:** the first is answered; the second becomes the first follow-up button.
 
 ## Exam simulation (Phase 14): 30 new questions, UI path and chat
 

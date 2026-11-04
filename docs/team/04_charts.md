@@ -14,6 +14,7 @@ How to *read* each chart type is in `viva_cheatsheet.md`. The full per-question 
 | If the question is about... | We use | Example |
 |---|---|---|
 | **Change over time** | line chart / multi-series line chart, point plot with error bars | Q1.1 rank by year, Q1.4 average score by year |
+| **A rank that is only a range** (band-only colleges) | point plot with error bars: bar = the NIRF band, dot = an exact rank, no line | Bangalore Institute of Technology, Engineering 201-250 (2020), 251-300 (2021) |
 | **Comparing amounts across groups** | bar chart (sorted, horizontal), grouped or stacked bar | Q2.1 states with most top-100 institutions |
 | **A ranked list of winners and losers** | ranked bar chart or lollipop chart around zero | Q1.2 biggest climbers, Q7.4 largest moves |
 | **Parts of a whole** | 100% stacked bar (pie chart only in the Chart Builder) | Q3.4 share in each score quartile |
@@ -92,6 +93,7 @@ coordinates, treemap, sunburst, waterfall, funnel, slope and dumbbell charts. Ou
 | Slope / dumbbell for "old vs new rank" | Not taught | Ranked bar or lollipop chart of the change, labelled "old → new" | The change itself is the answer; both ranks are in the label |
 | 100% stacked area for Q2.2 | In a stacked area only the bottom layer has a flat baseline | Multi-series line chart | Every state's share starts from the same 0% axis |
 | Shaded Q1–Q3 band around a line | A band is not a taught type | Point plot with error bars | The error bar shows the same Q1–Q3 range |
+| Line through the middle of a rank band (101-150 drawn as 125) | Invents a rank NIRF never published | Point plot with error bars (`trends.band_history`) | The bar spans the whole band, so it says exactly "somewhere in here" |
 
 A test (`tests/test_engines.py`) reads the allowed list and fails if any engine returns a chart type not on it.
 
@@ -176,7 +178,9 @@ also use shapes (diamonds, triangles), not just colour; titles state the answer;
 on hover; a white surface for the projector and a dark-mode version.
 
 **Q8. How do you show a chart honestly when data is missing or limited?**
-We never fill gaps: a year with only a band (e.g. 101–150) is a faint range bar in the rank line, not a fake point;
-years without a rank are gaps. When the number of institutions changes between years, the insight warns, and a
+We never fill gaps: a year with only a band (e.g. 101–150) is a faint range bar in the rank line, not a fake point,
+and the answer lists it ("In 2024 it was placed only in the 101-150 band."); years without a rank are gaps. A college
+that only ever has bands gets the band chart: a point plot with error bars where each bar spans its band and no line
+is drawn. The chat never draws a forecast: a prediction question gets the past with a notice. When the number of institutions changes between years, the insight warns, and a
 "top 100 only" option makes years comparable. Charts mixing categories carry a visible note that their scores are
 on different scales.

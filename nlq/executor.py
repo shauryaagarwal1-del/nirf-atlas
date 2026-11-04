@@ -16,7 +16,15 @@ Every translation is added to the answer's assumptions as a plain sentence, show
 Institution names that need a guess come back with alternatives ("There's no IIT Bangalore ...": IISc,
 IIM Bangalore), which the page offers as one-click buttons (with_institution() re-runs the same plan with
 the other institution, without the model). An institution that took part but was never ranked gives a
-'not_ranked' answer: a clear message and similar ranked institutions instead of an error.
+'not_ranked' answer: a clear message and similar ranked institutions instead of an error. A name that fits
+several institutions ("NIT", "Christian Medical College") gives a 'clarify' answer with up to 4 real
+institutions as buttons.
+After the names are resolved, nlq/adapt.py fits the plan to what the data has: it picks the category the
+named institutions are actually ranked in when none was named, cuts the years to those the institutions
+are listed in, moves a year a category does not have to the nearest one, draws rank bands for institutions
+NIRF placed only in bands, and answers a score question about such an institution with a 'no_scores'
+message and a button for its band chart. A plan's "notice" (a prediction answered with past data) is
+shown above the chart.
 """
 
 from __future__ import annotations
@@ -27,10 +35,13 @@ import re
 from dataclasses import dataclass, field
 
 from core.builder import AGGREGATIONS, CHARTS, DIMENSIONS, MEASURES, build_chart
-from core.data import NirfInputError, NotRankedError, fmt_years, institution_names, load_master, short_label
+from core.data import (AmbiguousInstitutionError, NirfInputError, NotRankedError, category_years, fmt_years,
+                       institution_names, load_master, short_label)
 from core.questions import QUESTION_REGISTRY, get_question
 from core.result import ChartResult
 from core.runner import run
+from nlq.adapt import (INSTITUTION_FUNCTIONS, SCORE_FUNCTIONS, NoScores, category_year_note, institution_years,
+                       missing_scores, only_bands, pick_category)
 from nlq.catalog import data_facts, functions
 from nlq.planner import ClarifyPlan, CustomPlan, EnginePlan, OutOfScopePlan
 from nlq.resolve import (resolve_category, resolve_institution, resolve_parameter, resolve_state,
@@ -52,7 +63,7 @@ CHART_WORDS = {"bar chart": "bar", "column": "bar", "column chart": "bar", "grou
 
 @dataclass
 class Answer:
-    kind: str                                   # chart | clarify | out_of_scope | not_ranked | error
+    kind: str                                   # chart | clarify | out_of_scope | not_ranked | no_scores | error
     plan: dict
     title: str = ""
     result: ChartResult | None = None
@@ -63,6 +74,10 @@ class Answer:
     engine: str | None = None                   # for "open the matching page" links ("builder" = custom)
     # Other institutions the person may have meant: {"typed": name in the plan, "key": ..., "label": "IISc"}.
     alternatives: list[dict] = field(default_factory=list)
+    notice: str = ""                            # shown above the chart (a prediction answered with past data)
+    more: list[ChartResult] = field(default_factory=list)   # one more chart per extra category (no shared one)
+    next_plan: dict | None = None               # no_scores: the chart to offer as a button ...
+    next_label: str = ""                        # ... and the button's text
 
 
 def _as_list(value) -> list:
@@ -134,7 +149,15 @@ def _fit_years(raw: dict, sig, category: str | None, notes: list[str]) -> dict:
     asked: dict[str, list[int]] = {}
     for k in YEAR_KEYS:
         if k in raw:
-            years, note = resolve_years(raw.pop(k), category)
+            value = raw.pop(k)
+            years, note = resolve_years(value, category)
+            if category:            # a year the category does not have -> the nearest one it has (SDG 2019 -> 2025)
+                try:
+                    typed = resolve_years(value)[0]
+                except NirfInputError:
+                    typed = years
+                years, fixed = category_year_note(value, years, typed, category)
+                note = fixed or note
             if not years:
                 raise NirfInputError(f"No {category or 'NIRF'} ranking falls in the years you asked for.")
             asked[k] = years
@@ -216,7 +239,7 @@ def _institutions(names, notes: list[str], alternatives: list[dict] | None,
     for n in dict.fromkeys(names):
         try:
             key, note, others = resolve_institution(n)
-        except NotRankedError as e:
+        except (NotRankedError, AmbiguousInstitutionError) as e:
             e.typed = str(n)
             raise
         keys.append(key)
@@ -239,19 +262,67 @@ def _apply_swaps(answer: Answer, swaps: dict[str, str], model_notes: list[str]) 
         answer.assumptions = [a for a in answer.assumptions if not (a in model_notes and pattern.search(a))]
 
 
-def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None,
-                swaps: dict[str, str] | None = None) -> tuple[dict, list[str] | None, list[str]]:
-    """The engine parameters, the state scope and the assumptions for an engine plan."""
+def _asked_years(raw: dict) -> list[int] | None:
+    """Every year named in the plan, read without a category (used to pick the category)."""
+    years: set[int] = set()
+    for k in YEAR_KEYS:
+        if k in raw:
+            try:
+                years |= set(resolve_years(raw[k])[0])
+            except NirfInputError:
+                pass
+    return sorted(years) or None
+
+
+def _overall_not_asked(raw: dict, question: str) -> bool:
+    """The plan says Overall but the question never did (the model's default, not the person's choice)."""
+    given = _as_list(raw.get("category")) + _as_list(raw.get("categories"))
+    if len(given) != 1 or not question:
+        return False
+    try:
+        return resolve_category(given[0])[0] == "Overall" and "overall" not in question.lower()
+    except NirfInputError:
+        return False
+
+
+def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None, swaps: dict[str, str] | None = None,
+                question: str = "", info: dict | None = None) -> tuple[dict, list[str] | None, list[str]]:
+    """The engine parameters, the state scope and the assumptions for an engine plan.
+
+    `info` (if given) receives what nlq/adapt.py changed: "function" (band_history instead of rank_trajectory),
+    "category_picked", "no_scores" (a NoScores) and "more" (extra (function, params) calls, one per category,
+    for institutions that share no category).
+    """
     fn = functions()[(plan.engine, plan.function)]
     sig = inspect.signature(fn).parameters
     raw = {k: v for k, v in plan.params.items() if v is not None and v != ""}
     notes: list[str] = []
-
-    params, category = _fit_category(raw, sig, plan.function, notes)
-    params.update(_fit_years(raw, sig, category if isinstance(category, str) else None, notes))
+    info = {} if info is None else info
+    function = plan.function
+    follows = (plan.engine, plan.function) in INSTITUTION_FUNCTIONS
 
     names = _as_list(raw.pop("institutions", None)) + _as_list(raw.pop("institution", None))
     keys = _institutions(names, notes, alternatives, swaps)
+
+    # Category auto-pick: institutions named, no category named (rules in nlq/adapt.py).
+    if follows and keys and "category" in sig and _overall_not_asked(raw, question):
+        raw.pop("category", None)
+        raw.pop("categories", None)
+    named_category = "category" in raw or "categories" in raw
+    params, category = _fit_category(raw, sig, plan.function, notes)
+    others: list[tuple[str, list[str]]] = []
+    if follows and keys and "category" in sig and not named_category:
+        pick = pick_category(keys, _asked_years(raw))
+        params["category"] = category = pick.category
+        if pick.note:
+            notes.append(pick.note)
+            info["category_picked"] = True
+        others = pick.others
+        keys = [k for k in keys if all(k not in ks for _, ks in others)]
+    explicit_years = any(k in raw for k in YEAR_KEYS)
+    params.update(_fit_years(raw, sig, category if isinstance(category, str) else None, notes))
+    asked_years = params.get("years")
+
     if keys and "institutions" in sig:
         params["institutions"] = _keep_ranked(keys, category, params.get("years"), notes)
     elif keys and "institution" in sig:
@@ -293,7 +364,55 @@ def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None,
                 else v
         except (TypeError, ValueError):
             raise NirfInputError(f"'{v}' is not a valid value for {target}.") from None
+
+    if follows and isinstance(category, str):
+        chosen = _as_list(params.get("institutions")) or _as_list(params.get("institution"))
+        function = _fit_to_institutions(plan.engine, function, params, chosen, category, sig, explicit_years, notes,
+                                        info)
+        more = []
+        for other_category, other_keys in others:      # institutions that share no category: one chart each
+            extra = {k: v for k, v in params.items() if k not in ("years", "institution", "institutions")}
+            extra["category"] = other_category
+            extra["institutions" if "institutions" in sig else "institution"] = (
+                other_keys if "institutions" in sig else other_keys[0])
+            if asked_years:
+                kept = [y for y in asked_years if y in category_years(other_category)]
+                if kept:
+                    extra["years"] = kept
+            extra_fn = _fit_to_institutions(plan.engine, plan.function, extra, other_keys, other_category, sig,
+                                            explicit_years, notes, {})
+            more.append((extra_fn, extra))
+        info["more"] = more
+    info["function"] = function
     return params, scope, notes
+
+
+def _fit_to_institutions(engine: str, function: str, params: dict, keys: list[str], category: str, sig,
+                         explicit_years: bool, notes: list[str], info: dict) -> str:
+    """Years the institutions actually have, band chart for band-only institutions, no-scores check.
+
+    Changes `params` in place and returns the function to run (band_history instead of rank_trajectory when
+    NIRF published only bands for these institutions)."""
+    if not keys:
+        return function
+    if "years" in sig:
+        years, note = institution_years(keys, category, params.get("years"), explicit_years)
+        if note:
+            params["years"] = years
+            # No years asked and the category note already gave the years: the cut needs no second sentence.
+            if explicit_years or not info.get("category_picked"):
+                notes.append(note)
+    years = params.get("years") or ([params["year"]] if "year" in params else None)
+    if function == "rank_trajectory" and only_bands(keys, category, years):
+        names = ", ".join(short_label(k) for k in keys)
+        notes.append(f"NIRF published no exact {category} rank for {names} in these years, only rank bands, so the "
+                     f"chart shows the bands instead of a rank line.")
+        function = "band_history"
+    if (engine, function) in SCORE_FUNCTIONS:
+        missing = missing_scores(keys, category, years)
+        if missing:
+            info["no_scores"] = missing
+    return function
 
 
 # ---------- custom plans ----------
@@ -394,20 +513,38 @@ def execute(plan, run_fn=None, question: str = "") -> Answer:
     engine = plan.engine if isinstance(plan, EnginePlan) else "builder"
     function = plan.function if isinstance(plan, EnginePlan) else None
     answer = Answer("chart", dump, title=plan.title, assumptions=list(plan.assumptions), engine=engine,
-                    follow_ups=_follow_ups(plan.follow_ups, engine, function, question))
+                    follow_ups=_follow_ups(plan.follow_ups, engine, function, question), notice=plan.notice.strip())
     swaps: dict[str, str] = {}
     try:
         if isinstance(plan, EnginePlan):
-            params, scope, notes = engine_call(plan, answer.alternatives, swaps)
+            info: dict = {}
+            params, scope, notes = engine_call(plan, answer.alternatives, swaps, question, info)
+            if info.get("category_picked"):     # the model's "Category: Overall, as none was named" no longer holds
+                answer.assumptions = [a for a in answer.assumptions if not re.search(r"categor", a, re.I)]
             answer.assumptions += notes
-            answer.plan["resolved_call"] = {"engine": plan.engine, "function": plan.function, "params": params,
+            function = info.get("function", plan.function)
+            answer.plan["resolved_call"] = {"engine": plan.engine, "function": function, "params": params,
                                             "states": scope}
-            answer.result = run_fn(plan.engine, plan.function, params, scope)
+            missing: NoScores | None = info.get("no_scores")
+            if missing:
+                answer.kind, answer.message = "no_scores", missing.message
+                answer.next_plan, answer.next_label = missing.plan, missing.label
+            else:
+                answer.result = run_fn(plan.engine, function, params, scope)
+                answer.more = [run_fn(plan.engine, f, p, scope) for f, p in info.get("more", [])]
         else:
             args, notes = custom_call(plan, answer.alternatives, swaps)
             answer.assumptions += notes
             answer.plan["resolved_call"] = {"builder": "build_chart", **args}
             answer.result = build_chart(**args)
+    except AmbiguousInstitutionError as e:
+        typed = getattr(e, "typed", "")
+        answer.kind = "clarify"
+        answer.message = (f"'{typed}' fits {e.total} institutions in the NIRF data. Which one did you mean? "
+                          f"The best known are below; you can also type the full name.")
+        answer.alternatives = [{"typed": typed, "key": k, "label": option_label(k), "picked": True}
+                               for k in e.options]
+        answer.options = [c["label"] for c in answer.alternatives]
     except NotRankedError as e:
         answer.kind, answer.message = "not_ranked", str(e)
         answer.alternatives = [{"typed": getattr(e, "typed", ""), "key": k, "label": short_label(k)}
@@ -423,10 +560,21 @@ def execute(plan, run_fn=None, question: str = "") -> Answer:
     return answer
 
 
-def with_institution(plan: dict, question: str, typed: str, key: str, label: str) -> tuple[dict, str]:
+def option_label(key: str) -> str:
+    """A button label that tells campuses apart: 'Christian Medical College (Vellore)', 'NIT Rourkela'."""
+    label = short_label(key)
+    rows = load_master()
+    city = rows.loc[rows["institution_key"].eq(key), "city"].dropna()
+    city = str(city.iloc[-1]).title() if len(city) else ""
+    return f"{label} ({city})" if city and city.lower() not in label.lower() else label
+
+
+def with_institution(plan: dict, question: str, typed: str, key: str, label: str,
+                     picked: bool = False) -> tuple[dict, str]:
     """The same plan and question with the institution `typed` replaced by `key` (shown as `label`).
 
-    Used by the "Use IISc instead" buttons: the plan is re-run as it is, without asking the model again.
+    Used by the "Use IISc instead" buttons and by the buttons that answer "which NIT did you mean?"
+    (picked=True): the plan is re-run as it is, without asking the model again.
     Returns (new plan, new question text).
     """
     new = copy.deepcopy({k: v for k, v in plan.items() if k != "resolved_call"})
@@ -437,12 +585,13 @@ def with_institution(plan: dict, question: str, typed: str, key: str, label: str
             holder[k] = [key if str(v).strip() == typed else v for v in value]
         elif value is not None and str(value).strip() == typed:
             holder[k] = key
-    pattern = re.compile(re.escape(typed), re.IGNORECASE)
+    pattern = re.compile(r"(?<!\w)" + re.escape(typed) + r"(?!\w)", re.IGNORECASE)
     if new.get("title"):
         new["title"] = pattern.sub(label, new["title"])
     if "assumptions" in new:      # the model's notes about the old name no longer apply
         new["assumptions"] = [a for a in new["assumptions"] if not pattern.search(a)]
-        new["assumptions"].append(f"You chose {label} instead of {typed}.")
+        new["assumptions"].append(f"You picked {label} for '{typed}'." if picked else
+                                  f"You chose {label} instead of {typed}.")
     if new.get("follow_ups"):
         new["follow_ups"] = [pattern.sub(label, q) for q in new["follow_ups"]]
     asked = pattern.sub(label, question) if pattern.search(question) else f"{question} (using {label})"

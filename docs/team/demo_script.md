@@ -109,7 +109,9 @@ Nadu, and runs the same engine as the dashboard."
 Question Bank's default settings, 8 institutions were in the Overall top 10 in all 9 years). Click one
 **follow-up** button if time allows.
 *(If the examiner wants to type, let them type. Good test questions: "which pharmacy colleges climbed the most in
-the last 3 years", "IIT Bombay rank since 2017".)*
+the last 3 years", "IIT Bombay rank since 2017". If they try a trick question, read the "Assumed:" box aloud:
+"IIIT Bangalore from 2017-2025" → Engineering 2018-2025, because it is not in Overall and not ranked in 2017;
+"Will IIT Mandi overtake IIT Jodhpur?" → the past with a notice, no forecast; "NIT" → buttons to pick which one.)*
 
 ### 6:30–7:00 · Wrap-up (Speaker C)
 **Say:** "So: all 40 questions in one click, any new question by changing filters or in the Chart Builder, and typed
@@ -143,6 +145,9 @@ explain any step."
   was checked against the original NIRF pages.
 - **"Why this chart?"** The Question Bank shows a "Why this chart?" note for every question (see `04_charts.md`).
 - **"What if an institution only has a band?"** It counts for "certainly in the top N" questions but is left out of
-  rank arithmetic; we never invent a mid-point.
+  rank arithmetic; we never invent a mid-point. Its history is drawn as the band chart (Trends → "Rank bands of
+  colleges without an exact rank"): each bar spans the published band.
+- **"Will X overtake Y?" / "Who will be #1 next year?"** "We don't forecast: the chat shows how they have done so
+  far, says who is ahead now and how the gap changed, and labels it clearly as the past."
 - **"Can scores be compared across categories?"** No: each category has its own weights; charts that mix them carry
   a visible note.

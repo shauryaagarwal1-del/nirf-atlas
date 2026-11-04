@@ -9,6 +9,8 @@ Functions
   top_n_race()              how this year's top N got there (multi-series line chart, top 3 highlighted)
   parameter_trends()        one institution's parameter scores and overall score year by year (multi-series
                             line chart)
+  band_history()            the rank band NIRF placed chosen institutions in, year by year, for institutions
+                            that (mostly) have no exact rank (point plot with error bars, rank 1 on top)
 
 Every chart type is one of the types listed in docs/allowed_charts.md.
 
@@ -24,7 +26,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from core.data import (LABELS, SHORT, NirfInputError, category_years, chart_labels, check_category, check_year,
-                       check_years, filter_df, find_institutions, fmt_years, load_master, parameters_of)
+                       check_years, filter_df, find_institutions, fmt_years, load_master, parameters_of,
+                       short_label)
 from core.result import ChartResult
 from core.stats import places, signed
 from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_MUTED, INK_SECONDARY, OTHER,
@@ -39,6 +42,80 @@ def _where_ranked(df: pd.DataFrame, key: str) -> str:
         return "it is not in any NIRF ranking list"
     parts = [f"{c} ({fmt_years(g['year'])})" for c, g in rows.groupby("category_std")]
     return "it is ranked in " + "; ".join(parts)
+
+
+def _band_limits(bands: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """(best rank, worst rank) of NIRF band labels such as '101-150' (NaN where there is no band)."""
+    parts = bands.astype("string").str.extract(r"^(\d+)-(\d+)$").astype(float)
+    return parts[0], parts[1]
+
+
+def _band_runs(rows: pd.DataFrame, col: str = "rank_band_nirf") -> list[tuple[list[int], str]]:
+    """Band-only years of one institution, grouped by band in time order: [([2019, 2020], '101-150'), ...]."""
+    runs: list[tuple[list[int], str]] = []
+    for year, band in zip(rows["year"], rows[col]):
+        if runs and runs[-1][1] == band:
+            runs[-1][0].append(int(year))
+        else:
+            runs.append(([int(year)], str(band)))
+    return runs
+
+
+def _band_sentence(rows: pd.DataFrame, who: str = "it") -> str:
+    """'In 2019 it was placed only in the 101-150 band; in 2021 in the 151-200 band.' ('' when no band years)."""
+    b = rows[rows["rank_status"].eq("band")].sort_values("year")
+    if b.empty:
+        return ""
+    runs = _band_runs(b)
+    first = f"In {fmt_years(runs[0][0])} {who} was placed only in the {runs[0][1]} band"
+    rest = [f"in {fmt_years(ys)} in the {band} band" for ys, band in runs[1:]]
+    return "; ".join([first] + rest) + "."
+
+
+def _and(items: list[str]) -> str:
+    """['a'] -> 'a'; ['a', 'b', 'c'] -> 'a, b and c'."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _n_places(n: int) -> str:
+    return f"{n} place{'' if n == 1 else 's'}"
+
+
+def _ahead_sentence(table: pd.DataFrame, keys: list[str], labels: dict[str, str]) -> str:
+    """Who is ahead in the latest year with exact ranks, and (for two institutions) how the gap changed."""
+    ranks = table.pivot_table(index="year", columns="institution_key", values="rank", aggfunc="min")
+    ranks = ranks.reindex(columns=keys)
+    if len(keys) == 2:
+        both = ranks.dropna()
+        if both.empty:
+            return ""
+        a, b = keys
+
+        def gap(year) -> tuple[str, str, int, int, int]:
+            ra, rb = int(both.at[year, a]), int(both.at[year, b])
+            lead, other = (a, b) if ra <= rb else (b, a)
+            return labels[lead], labels[other], min(ra, rb), max(ra, rb), abs(ra - rb)
+
+        y1 = int(both.index.max())
+        lead, other, r_lead, r_other, g1 = gap(y1)
+        if g1 == 0:
+            text = f" In {y1}, {lead} and {other} shared rank {r_lead}"
+        else:
+            text = f" In {y1}, {lead} (rank {r_lead}) was ahead of {other} (rank {r_other}) by {_n_places(g1)}"
+        y0 = int(both.index.min())
+        if y0 != y1:
+            lead0, _, r0a, r0b, g0 = gap(y0)
+            then = (f"they shared rank {r0a}" if g0 == 0 else
+                    f"{lead0} was ahead by {_n_places(g0)} ({r0a} vs {r0b})")
+            text += f"; in {y0}, the first year both had an exact rank, {then}"
+        return text + "."
+    latest = ranks.dropna(how="all")
+    if latest.empty:
+        return ""
+    y = int(latest.index.max())
+    row = latest.loc[y].dropna()
+    best = row.idxmin()
+    return f" In {y}, {labels[best]} had the best rank of these ({int(row[best])})."
 
 
 def rank_trajectory(institutions=None, category: str = "Overall", years=None) -> ChartResult:
@@ -72,6 +149,7 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
         raise NirfInputError(f"Please choose at most {MAX_LINES} institutions so every line keeps its own colour "
                              f"(you chose {len(keys)}).")
     labels = chart_labels(keys)
+    names = {k: short_label(k) for k in keys}       # for the text: never cut short
     present = set(cat["institution_key"])
     for k in keys:
         if k not in present:
@@ -122,18 +200,16 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
         t = table[table["institution_key"].eq(k) & table["rank"].notna()].sort_values("year")
         if len(t):
             first, last = t.iloc[0], t.iloc[-1]
-            moves.append(dict(name=labels[k], y0=int(first.year), r0=int(first["rank"]), y1=int(last.year),
+            moves.append(dict(name=names[k], y0=int(first.year), r0=int(first["rank"]), y1=int(last.year),
                               r1=int(last["rank"]), change=int(first["rank"]) - int(last["rank"]),
                               best=int(t["rank"].min()), best_year=int(t.loc[t["rank"].idxmin(), "year"]),
                               n=int(len(t))))
     span = f"{min(years)}–{max(years)}" if len(years) > 1 else str(years[0])
     if len(keys) == 1:
         status = table.set_index("year")["rank_status"]
-        banded = [y for y in years if status.get(y) == "band"]
         missing = [y for y in years if status.get(y) == "not ranked"]
-        gaps = "".join([
-            f"; in {fmt_years(banded)} NIRF published only a band" if banded else "",
-            f"; it was not in the {category} list in {fmt_years(missing)}" if missing else ""])
+        gaps = f"; it was not in the {category} list in {fmt_years(missing)}" if missing else ""
+        bands = _band_sentence(table)
         if moves and moves[0]["n"] == 1:
             m = moves[0]
             title = f"{m['name']}: rank {m['r0']} in {m['y0']}, its only exact {category} rank in {span}"
@@ -147,9 +223,10 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
                        f"(first reached in {m['best_year']}) and it had an exact rank in {m['n']} of {len(years)} "
                        f"years{gaps}.")
         else:
-            title = f"{labels[keys[0]]} appears in {category} only as a rank band"
-            insight = (f"{labels[keys[0]]} never has an exact {category} rank in {span}; NIRF published only its "
-                       f"rank band ({', '.join(table['rank_band_nirf'].dropna().unique())}).")
+            title = f"{names[keys[0]]} appears in {category} only as a rank band"
+            insight = (f"{names[keys[0]]} never has an exact {category} rank in {span}{gaps}; NIRF published only "
+                       f"a rank band.")
+        insight += f" {bands}" if bands else ""
     else:
         up = max(moves, key=lambda m: m["change"]) if moves else None
         down = min(moves, key=lambda m: m["change"]) if moves else None
@@ -165,6 +242,12 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
                         f"{places(down['change'])}).")
         else:
             insight += ", and none of them fell."
+        insight += _ahead_sentence(table, keys, names)
+        banded = [f"{names[k]} {'; '.join(f'{fmt_years(ys)} ({band})' for ys, band in _band_runs(b))}"
+                  for k in keys
+                  if not (b := table[table["institution_key"].eq(k) & table["rank_status"].eq("band")]).empty]
+        if banded:
+            insight += f" Years placed only in a NIRF band: {' · '.join(banded)}."
 
     # Reversed rank axis (1 at the top) with a little padding so the best/worst markers are not cut off.
     bands = table["rank_band_nirf"].dropna().str.extract(r"^(\d+)-(\d+)$").astype(float)
@@ -263,6 +346,150 @@ def parameter_trends(institution: str = "IIT Madras", category: str = "Overall",
               f"{category}'s own weights, so a parameter with a large weight moves it more. Change = last published "
               f"value - first published value; years without a score are gaps, never filled in.")
     return ChartResult(fig, table, insight, method, "multi-series line chart")
+
+
+def band_history(institutions=None, category: str = "Overall", years=None) -> ChartResult:
+    """Answers questions like: "Where was Bangalore Institute of Technology ranked in Engineering?" for
+    institutions NIRF placed only in rank bands (e.g. 101-150), with no exact rank and no score.
+
+    Definition: the rank band NIRF published for each institution in the chosen category, year by
+    year (a band = a range of ranks, e.g. 201-250, inside which NIRF does not say the exact position).
+    Method: a point plot with error bars. For a band year the bar runs from the band's best rank to
+    its worst rank and has no point inside it, because NIRF gives no number there; a year with an
+    exact rank is drawn as a plain point. Nothing is joined by a line (a line through the middle of
+    a band would invent a rank). The y-axis is reversed so rank 1 is at the top. Several institutions
+    are moved a little sideways so their bars do not hide each other. Default institutions: up to
+    5 institutions in the best band of the latest year that has bands (those with no exact rank first, then
+    alphabetical).
+    """
+    df = load_master()
+    category = check_category(category, df)
+    years = check_years(years, category, df)
+    cat = filter_df(df, years=years, categories=category)
+    cat = cat[cat["rank"].notna() | cat["rank_band_nirf"].notna()]
+
+    if institutions is None or (not isinstance(institutions, str) and len(list(institutions)) == 0):
+        banded = cat[cat["rank_band_nirf"].notna()]
+        if banded.empty:
+            raise NirfInputError(f"NIRF published no rank bands in {category} in {fmt_years(years)}: every "
+                                 f"institution there has an exact rank.")
+        year = int(banded["year"].max())
+        last = banded[banded["year"].eq(year)].assign(best=lambda d: _band_limits(d["rank_band_nirf"])[0])
+        top_band = last.sort_values("best")["rank_band_nirf"].iloc[0]
+        # Institutions that never had an exact rank in these years first: they are who this chart is for.
+        exact = set(cat.loc[cat["rank"].notna(), "institution_key"])
+        pool = last[last["rank_band_nirf"].eq(top_band)].assign(had_exact=lambda d: d["institution_key"].isin(exact))
+        keys = pool.sort_values(["had_exact", "canonical_name"])["institution_key"].head(5).tolist()
+        chosen = f"{len(keys)} institutions placed in the {top_band} band in {year}"
+    else:
+        keys = find_institutions(institutions)
+        chosen = None
+    if len(keys) > MAX_LINES:
+        raise NirfInputError(f"Please choose at most {MAX_LINES} institutions so every one keeps its own colour "
+                             f"(you chose {len(keys)}).")
+    labels = chart_labels(keys)
+    for k in keys:
+        if k not in set(cat["institution_key"]):
+            raise NirfInputError(f"{labels[k]} is not ranked in {category} in {fmt_years(years)}; "
+                                 f"{_where_ranked(df, k)}.")
+
+    rows = cat[cat["institution_key"].isin(keys)].copy()
+    rows["band_best"], rows["band_worst"] = _band_limits(rows["rank_band_nirf"])
+    rows["shown_as"] = np.where(rows["rank"].notna(), "exact rank", "band")
+    table = rows[["institution_key", "year", "rank_raw", "rank", "rank_band_nirf", "band_best", "band_worst",
+                  "shown_as", "score"]].rename(columns={"rank_band_nirf": "band"})
+    table.insert(1, "institution", table["institution_key"].map(labels))
+    table = table.sort_values(["institution", "year"]).reset_index(drop=True)
+
+    colors = color_map([labels[k] for k in keys])
+    # Several institutions are spread over 60% of a year so their bars sit side by side; thinner bars when many.
+    dodge = min(0.15, 0.6 / (len(keys) - 1)) if len(keys) > 1 else 0.0
+    bar = 6 if len(keys) <= 2 else 4
+    fig = go.Figure()
+    for i, k in enumerate(keys):
+        t = table[table["institution_key"].eq(k)]
+        name, c = labels[k], colors[labels[k]]
+        offset = (i - (len(keys) - 1) / 2) * dodge
+        b = t[t["shown_as"].eq("band")]
+        e = t[t["shown_as"].eq("exact rank")]
+        if len(b):
+            half = (b["band_worst"] - b["band_best"]) / 2
+            # The point sits invisibly in the middle of the bar only so the hover has somewhere to appear.
+            fig.add_trace(go.Scatter(
+                x=b["year"] + offset, y=b["band_best"] + half, mode="markers", name=name, legendgroup=name,
+                marker=dict(color=c, size=14, opacity=0), showlegend=False,
+                error_y=dict(type="data", array=half, arrayminus=half, color=c, thickness=bar, width=bar + 3),
+                customdata=np.stack([b["year"], b["band"]], axis=1),
+                hovertemplate=(f"<b>{name}</b><br>%{{customdata[0]}}: band %{{customdata[1]}}<br>NIRF published no "
+                               f"exact rank and no score<extra></extra>")))
+        if len(e):
+            fig.add_trace(go.Scatter(
+                x=e["year"] + offset, y=e["rank"].astype(float), mode="markers", name=name, legendgroup=name,
+                marker=dict(color=c, size=11, line=dict(color=SURFACE, width=1.5)), showlegend=False,
+                customdata=np.stack([e["year"], e["rank_raw"],
+                                     [f" · score {s:.2f}" if pd.notna(s) else "" for s in e["score"]]], axis=1),
+                hovertemplate=f"<b>{name}</b><br>%{{customdata[0]}}: exact rank %{{customdata[1]}}%{{customdata[2]}}"
+                              f"<extra></extra>"))
+        # One legend entry per institution, drawn as a short vertical bar in its colour.
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=name, legendgroup=name,
+                                 marker=dict(symbol="line-ns-open", size=16, color=c, line=dict(color=c, width=5))))
+
+    # Insight: every institution's bands in time order, then its exact ranks (if any).
+    names = {k: short_label(k) for k in keys}       # not cut short like the chart labels
+    parts = []
+    for k in keys:
+        t = table[table["institution_key"].eq(k)]
+        runs = _band_runs(t[t["shown_as"].eq("band")], "band")
+        text = ""
+        if runs:
+            text = f"{names[k]} was placed in {category} band {_and([f'{b} in {fmt_years(ys)}' for ys, b in runs])}"
+        e = t[t["shown_as"].eq("exact rank")]
+        if len(e):
+            exact = _and([f"{r} in {y}" for y, r in zip(e["year"], e["rank_raw"])])
+            text = (f"{text}, and had an exact rank of {exact}" if text
+                    else f"{names[k]} had an exact {category} rank of {exact} and no band-only year")
+        parts.append(text)
+    insight = "; ".join(parts) + "."
+    if (table["shown_as"] == "band").any():
+        insight += (" NIRF publishes only a rank range and no score beyond the top list, so an exact rank line "
+                    "cannot be drawn.")
+
+    shown_years = sorted(table["year"].unique())
+    span = fmt_years(shown_years)
+    if len(keys) == 1:
+        t = table.sort_values("year")
+        runs = _band_runs(t[t["shown_as"].eq("band")], "band")
+        name = names[keys[0]]
+        if not runs:
+            title = f"{name} has an exact {category} rank in every year shown ({span})"
+        elif len(runs) == 1:
+            title = f"{name} was placed in the {category} band {runs[0][1]} ({fmt_years(runs[0][0])})"
+        else:
+            first, last = runs[0], runs[-1]
+            better = _band_limits(pd.Series([last[1]]))[0][0] < _band_limits(pd.Series([first[1]]))[0][0]
+            verb = "moved up" if better else "slipped"
+            title = (f"{name} {verb} from {category} band {first[1]} ({fmt_years(first[0])}) to {last[1]} "
+                     f"({fmt_years(last[0])})")
+    else:
+        title = f"Rank bands of {len(keys)} institutions in {category}, {span}"
+
+    worst = np.nanmax([table["band_worst"].max(), table["rank"].astype(float).max()])
+    best = np.nanmin([table["band_best"].min(), table["rank"].astype(float).min()])
+    pad = max(2.0, 0.08 * (worst - best))
+    fig.update_yaxes(title_text="Rank (1 = best, shown at the top)", range=[worst + pad, max(best - pad, 0.4)],
+                     tickformat="d")
+    fig.update_xaxes(title_text="Year", dtick=1, range=[min(shown_years) - 0.5, max(shown_years) + 0.5])
+    fig.update_layout(hovermode="closest")
+    subtitle = f"{category} ranking, {span}" + (f" · {chosen}" if chosen else "")
+    finish(fig, title, subtitle, legend_title="Institution",
+           note="Bar = the rank band NIRF published (no exact rank inside it); dot = an exact rank.")
+    method = (f"For each chosen institution we take what NIRF published in {category} for {span}. A year with only "
+              f"a rank band (e.g. 201-250) is drawn as an error bar from the band's best rank to its worst rank, with "
+              f"no point inside, because NIRF gives no exact position and no score there; a year with an exact rank is "
+              f"a plain point. Nothing is joined by a line, since a line through the middle of a band would invent a "
+              f"rank. Years in which the institution is not in the {category} list are left empty. The y-axis is "
+              f"reversed so rank 1 is at the top.")
+    return ChartResult(fig, table.drop(columns="institution_key"), insight, method, "point plot with error bars")
 
 
 def biggest_movers(category: str = "Overall", start_year: int | None = None, end_year: int | None = None,

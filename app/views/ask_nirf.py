@@ -12,6 +12,10 @@ How a question is answered (code in nlq/):
      may have meant (they re-run the same plan, without the model), "How I understood your question" (the
      assumptions again + the plan JSON) and three follow-up questions as buttons. An institution that took
      part in NIRF but was never ranked gets a clear message and buttons for similar ranked institutions.
+  4. edge cases (nlq/adapt.py): a prediction or opinion gets a highlighted notice above the chart ("I can't
+     predict future rankings; here is how they have done so far."); a vague name ("NIT") gets up to 4 buttons
+     of real institutions; a score question about a band-only college gets a clear "NIRF did not publish
+     scores" message with a button for its band chart; institutions that share no category get one chart each.
 The model never sees the data and never calculates a number. If the model cannot be reached (no
 internet, wrong key, quota), the page says what went wrong and how to fix it, and offers the closest
 sample question, which runs without the model. The sidebar shows whether the Gemini key works.
@@ -128,7 +132,12 @@ def _use_instead(i: int, choice: dict) -> None:
     """Re-run turn i's plan with the institution the person picked (no model call)."""
     turn = st.session_state[HISTORY][i]
     plan, question = with_institution(turn["answer"].plan, turn["question"], choice["typed"], choice["key"],
-                                      choice["label"])
+                                      choice["label"], picked=choice.get("picked", False))
+    st.session_state[PENDING] = {"question": question, "plan": plan}
+
+
+def _run_plan(question: str, plan: dict) -> None:
+    """Run a plan our code wrote (e.g. the band chart offered after 'NIRF published no scores'), no model call."""
     st.session_state[PENDING] = {"question": question, "plan": plan}
 
 
@@ -151,8 +160,16 @@ def _instead(answer: Answer, i: int) -> None:
         return
     cols = st.columns(max(len(answer.alternatives), 2))
     for j, choice in enumerate(answer.alternatives):
-        cols[j].button(f"Use {choice['label']} instead", key=f"ask-alt-inst-{i}-{j}", on_click=_use_instead,
-                       args=(i, choice), icon=":material/swap_horiz:", width="stretch")
+        label = choice["label"] if choice.get("picked") else f"Use {choice['label']} instead"
+        cols[j].button(label, key=f"ask-alt-inst-{i}-{j}", on_click=_use_instead, args=(i, choice),
+                       icon=":material/school:" if choice.get("picked") else ":material/swap_horiz:", width="stretch")
+
+
+def _notice(answer: Answer) -> None:
+    """The plan's notice (a prediction or opinion answered with past data), highlighted above the chart."""
+    if answer.notice:
+        st.html(f"<div class='nirf-ask-notice'><div class='title'>Please note</div>"
+                f"<div class='msg'>{_esc(answer.notice)}</div></div>")
 
 
 def _understood(answer: Answer) -> None:
@@ -219,9 +236,22 @@ def _assistant(turn: dict, i: int) -> None:
     if a.kind == "chart":
         if a.title and a.title.strip().lower() != turn["question"].strip().lower():
             st.html(f"<div class='nirf-ask-title'>{_esc(a.title)}</div>")
+        _notice(a)
         chart_card(a.result, key=f"ask-{i}")
+        for j, more in enumerate(a.more):      # institutions that share no category: one chart each
+            chart_card(more, key=f"ask-{i}-more-{j}")
         _assumed(a)
         _instead(a, i)
+        _understood(a)
+        _follow_ups(a.follow_ups, i)
+    elif a.kind == "no_scores":
+        _notice(a)
+        _note("info", "NIRF published no scores here", a.message)
+        _assumed(a)
+        if a.next_plan:
+            st.button(a.next_label, key=f"ask-next-{i}", on_click=_run_plan,
+                      args=(a.next_plan.get("title") or a.next_label, a.next_plan), icon=":material/bar_chart:",
+                      type="primary")
         _understood(a)
         _follow_ups(a.follow_ups, i)
     elif a.kind == "not_ranked":
@@ -238,6 +268,10 @@ def _assistant(turn: dict, i: int) -> None:
         _instead(a, i)
         _understood(a)
         _alternatives(turn["question"], i, a.engine)
+    elif a.kind == "clarify" and a.alternatives:     # a vague name: buttons of real institutions, no model call
+        _note("info", "Which one did you mean?", a.message)
+        _instead(a, i)
+        _assumed(a)
     elif a.kind == "clarify":
         _note("info", "Could you say a bit more?", a.message)
         cols = st.columns(max(len(a.options), 1))

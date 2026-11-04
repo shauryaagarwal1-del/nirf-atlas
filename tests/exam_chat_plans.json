@@ -239,14 +239,6 @@
   "model": "gemini-flash-lite-latest",
   "date": "2026-11-04"
  },
- "X11": {
-  "plan": {
-   "type": "out_of_scope",
-   "message": "Agriculture & Allied Sectors rankings were only published starting from 2023, so data for 2020 is not available. Please choose a year from 2023 to 2025."
-  },
-  "model": "gemini-flash-lite-latest",
-  "date": "2026-11-04"
- },
  "X12": {
   "plan": {
    "type": "engine",
@@ -777,5 +769,29 @@
   },
   "model": "gemini-flash-lite-latest",
   "date": "2026-11-04"
+ },
+ "X11": {
+  "plan": {
+   "type": "engine",
+   "engine": "univariate",
+   "function": "score_distribution",
+   "params": {
+    "year": 2020,
+    "category": "Agriculture & Allied Sectors"
+   },
+   "title": "Score distribution of Agriculture institutions in 2020",
+   "assumptions": [
+    "Category: Agriculture & Allied Sectors, as named in the question.",
+    "Year: 2020. Note that Agriculture & Allied Sectors rankings were first published in 2023, so the engine will move this request to the nearest available year (2023) automatically."
+   ],
+   "follow_ups": [
+    "What is the average, median, minimum, and maximum score for Agriculture institutions in 2023?",
+    "How do the parameter scores compare across Agriculture institutions in 2023?",
+    "Which states have the most Agriculture institutions in the top 100?"
+   ],
+   "notice": ""
+  },
+  "model": "gemini-flash-lite-latest",
+  "date": "2026-11-05"
  }
 }

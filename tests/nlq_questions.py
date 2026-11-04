@@ -1,11 +1,14 @@
-"""25 varied questions for the Ask NIRF chat, with the analysis each one should be planned as.
+"""33 varied questions for the Ask NIRF chat, with the analysis each one should be planned as.
 
 Mixed on purpose: typos ("imporved", "corelation"), informal and Hinglish phrasing ("Kaun se institutes
 hamesha top 10 mein rahe?"), short forms (iitb, TN, engg, yrs), a custom group-and-summarise question
-and an out-of-scope one. For each:
+and an out-of-scope one. N26-N33 are the edge cases of Phase 15c: an institution not in the Overall
+ranking, years before an institution existed, a band-only college, predictions and opinions, a vague name
+and a city used as a place. For each:
   expected   the acceptable plans: "engine.function" names, or "custom" / "out_of_scope" / "clarify";
   golden     a correct plan as the model should write it (names and phrases copied from the question),
-             used offline to check that our resolver and executor answer it.
+             used offline to check that our resolver and executor answer it;
+  answer     what our code answers with it: "chart" (default), "clarify" or "out_of_scope".
 tests/test_nlq.py runs the golden plans always, and the live model on every question when a Gemini key
 is available; scripts/nlq_accuracy.py prints the accuracy report.
 """
@@ -22,11 +25,16 @@ class NLQ:
     expected: tuple[str, ...]
     golden: dict
     style: str          # what makes the question hard: typo, hinglish, abbreviation, informal, plain ...
+    answer: str = "chart"
 
 
-def _e(engine_function: str, **params) -> dict:
+def _e(engine_function: str, notice: str = "", **params) -> dict:
     engine, function = engine_function.split(".")
-    return {"type": "engine", "engine": engine, "function": function, "params": params}
+    return {"type": "engine", "engine": engine, "function": function, "params": params, "notice": notice}
+
+
+PREDICT = "I can't predict future rankings; here is how they have done so far."
+OPINION = "I can't judge which is better; here is how they compare in the NIRF rankings."
 
 
 NLQ_QUESTIONS = [
@@ -83,6 +91,26 @@ NLQ_QUESTIONS = [
          "metric": "score", "agg": "mean", "chart": "bar"}, "custom"),
     NLQ("N25", "what's the weather in Delhi today?", ("out_of_scope",),
         {"type": "out_of_scope", "message": "The weather is not part of the NIRF data."}, "out of scope"),
+    # ---------- edge cases (Phase 15c) ----------
+    NLQ("N26", "Give me the line chart for rankings of IIIT Bangalore from 2017-2025", ("trends.rank_trajectory",),
+        _e("trends.rank_trajectory", institutions=["IIIT Bangalore"], years="2017-2025"), "not in Overall"),
+    NLQ("N27", "IIT Dharwad engineering rank from 2017 to 2025", ("trends.rank_trajectory",),
+        _e("trends.rank_trajectory", institutions=["IIT Dharwad"], category="engineering", years="2017-2025"),
+        "years missing"),
+    NLQ("N28", "How has Bangalore Institute of Technology's rank changed?", ("trends.rank_trajectory",
+        "trends.band_history"), _e("trends.rank_trajectory", institutions=["Bangalore Institute of Technology"]),
+        "band only"),
+    NLQ("N29", "Will IIT Mandi overtake IIT Jodhpur?", ("trends.rank_trajectory",),
+        _e("trends.rank_trajectory", notice=PREDICT, institutions=["IIT Mandi", "IIT Jodhpur"]), "prediction"),
+    NLQ("N30", "Who will be #1 in 2026?", ("trends.top_n_race", "trends.rank_trajectory", "trends.consistent_top_n"),
+        _e("trends.top_n_race", notice=PREDICT, n=5), "prediction"),
+    NLQ("N31", "Which is better, IIT Madras or IIT Bombay?", ("trends.rank_trajectory",
+        "multivariate.parameter_profile"),
+        _e("trends.rank_trajectory", notice=OPINION, institutions=["IIT Madras", "IIT Bombay"]), "opinion"),
+    NLQ("N32", "rank trend of NIT", ("trends.rank_trajectory", "clarify"),
+        _e("trends.rank_trajectory", institutions=["NIT"]), "vague name", answer="clarify"),
+    NLQ("N33", "How have Bangalore colleges' ranks changed?", ("trends.rank_trajectory",),
+        _e("trends.rank_trajectory", states=["Bangalore"]), "city as place"),
 ]
 
 

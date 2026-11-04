@@ -12,6 +12,12 @@ VIEWS = [
     View("Rank of chosen institutions, year by year", "trends", "rank_trajectory",
          (CATEGORY, INSTITUTIONS, YEARS_RANGE, SCOPE),
          hint="No institutions chosen = the top 5 of the last year (of the chosen states, if any)."),
+    View("Rank bands of colleges without an exact rank", "trends", "band_history",
+         (CATEGORY, INSTITUTIONS, YEARS_RANGE, SCOPE),
+         why="A point plot with error bars: each bar spans the rank band NIRF published (e.g. 201-250) and a dot is "
+             "an exact rank. No line joins them, because a line through a band would invent a rank.",
+         hint="For colleges NIRF placed only in rank bands (no exact rank, no score). No institutions chosen = up to "
+              "5 from the best band of the last year."),
     View("Parameter scores of one institution, year by year", "trends", "parameter_trends",
          (CATEGORY, C("institution"), YEARS_RANGE),
          why="A multi-series line chart puts each parameter's path over time on one score axis (all are out of "

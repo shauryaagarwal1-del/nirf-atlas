@@ -120,7 +120,9 @@ Take five scores: **50, 52, 55, 60, 83**.
 ## 4. Methods per engine (one paragraph each)
 
 - **Trends:** look up each institution's rank per year and join exact ranks with a line (band years drawn as a faint
-  range, never a point). Biggest movers: improvement between two years among institutions with an exact rank in both.
+  range, never a point, and listed in the answer). For band-only colleges, `band_history` draws each year's band as
+  an error bar from its best to its worst rank (nothing averaged, nothing joined). With two institutions the answer
+  says who is ahead in the latest year and how the gap changed. Biggest movers: improvement between two years among institutions with an exact rank in both.
   Average score over time: mean or median per category-year, optionally with Q1–Q3; `top_n = 100` keeps lists of
   different lengths comparable. Consistency: count years in the top N.
 - **Geography:** count institutions certainly in the top N per state; share = count ÷ all × 100; change = end count −

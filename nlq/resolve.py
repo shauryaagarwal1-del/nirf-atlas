@@ -135,10 +135,19 @@ STATE_CODES = {
 
 
 def resolve_state(text: str) -> tuple[str, str | None]:
-    """(official state name, assumption or None)."""
+    """(official state name, assumption or None). A city typed as a place becomes its state ('Bangalore' ->
+    Karnataka), because the data is filtered by state, and the answer says so."""
+    from nlq.adapt import city_state          # imported here: adapt needs the master table, resolve does not
+
     t = re.sub(r"[\s.&]+", " ", str(text).strip().lower()).strip()
     official = STATE_CODES.get(t) or STATE_CODES.get(t.replace(" ", ""))
-    name = check_states([official or text])[0]
+    try:
+        name = check_states([official or text])[0]
+    except NirfInputError:
+        state = city_state(text)
+        if state is None:
+            raise
+        return state, f"'{str(text).strip()}' = {state} (we filter by state, not city)."
     return name, (None if name.lower() == str(text).strip().lower() else f"I read '{text}' as {name}.")
 
 

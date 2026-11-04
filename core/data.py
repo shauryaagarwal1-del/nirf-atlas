@@ -131,6 +131,18 @@ class NotRankedError(NirfInputError):
         self.similar = similar
 
 
+class AmbiguousInstitutionError(NirfInputError):
+    """What was typed fits several ranked institutions ('NIT', 'Christian Medical College': two campuses).
+
+    `options` holds up to 4 of them, best known first (best recent rank), so the app can offer them as
+    buttons instead of guessing.
+    """
+
+    def __init__(self, message: str, options: list[str], total: int):
+        super().__init__(message)
+        self.options, self.total = options, total
+
+
 # ---------- loading ----------
 
 @lru_cache(maxsize=1)
@@ -644,6 +656,20 @@ def _not_ranked(pkey: str, typed: str, family: str | None) -> NotRankedError:
     return NotRankedError(message, _similar_ranked(rows, family))
 
 
+def _best_known(keys) -> list[str]:
+    """Institution keys, best known first: by Overall rank in the latest year they were ranked (exact rank,
+    else the band's worst rank), then by their best rank in any category that year, then by name."""
+    df = _master()
+    rows = df[df["institution_key"].isin(list(keys))]
+    latest = rows[rows["year"].eq(rows.groupby("institution_key")["year"].transform("max"))]
+    overall = latest[latest["category_std"].eq("Overall")].groupby("institution_key")["rank_upper"].min()
+    anywhere = latest.groupby("institution_key")["rank_upper"].min()
+    names = rows.drop_duplicates("institution_key").set_index("institution_key")["canonical_name"]
+    return sorted(dict.fromkeys(keys), key=lambda k: (overall.get(k, 10_000) if pd.notna(overall.get(k)) else 10_000,
+                                                      anywhere.get(k, 10_000) if pd.notna(anywhere.get(k)) else 10_000,
+                                                      names.get(k, k)))
+
+
 def match_institution(name: str, typed: str | None = None) -> InstitutionMatch:
     """Turn what a person typed into one institution key, and say which rule found it.
 
@@ -662,6 +688,8 @@ def match_institution(name: str, typed: str | None = None) -> InstitutionMatch:
       6. a family that has no institute in that place ('IIT Bangalore') -> the other families there
          (how='swap': the first is chosen, the others are `alternatives`);
       7. otherwise NirfInputError with at most 3 suggestions that pass the guards.
+    A name that fits several institutions (only a family typed, such as 'NIT', or two campuses with the same
+    name, such as 'Christian Medical College') raises AmbiguousInstitutionError with the 4 best known ones.
     The short forms the chat knows ('iitb', 'LPU') are handled before this, in nlq/resolve.py.
     `typed` is the text quoted in messages (default: `name`).
     """
@@ -676,16 +704,27 @@ def match_institution(name: str, typed: str | None = None) -> InstitutionMatch:
     family, rest = family_of(q)
     places = _places_in((rest if family else q).split())      # the family phrase never names a place
 
+    # Only a family typed ('NIT', 'IIT', 'IISER'), unless it is one institute's full name ('Indraprastha
+    # Institute of Information Technology' is IIIT Delhi).
+    if family and not rest and idx.loc[idx["norm"].eq(q), "institution_key"].nunique() != 1:
+        members = idx.loc[idx["family"].eq(family), "institution_key"].unique()
+        if len(members) > 1:
+            found = _best_known(members)
+            raise AmbiguousInstitutionError(
+                f"'{typed}' fits {len(found)} institutions, e.g. {_describe(found[:6])}. Please be more specific, "
+                f"e.g. '{short_label(found[0])}'.", found[:4], len(found))
     key, how, found = _search(idx, q, family, rest, places)
     if key:
         return InstitutionMatch(key, how)
     if how == "ambiguous-exact":
+        found = _best_known(found)
         city = _master().set_index("institution_key").loc[found[0], "city"].iloc[0]
-        raise NirfInputError(f"'{typed}' matches {len(found)} institutions: {_describe(found[:6])}. "
-                             f"Please add the city (e.g. '{text} {city}').")
+        raise AmbiguousInstitutionError(f"'{typed}' matches {len(found)} institutions: {_describe(found[:6])}. "
+                                        f"Please add the city (e.g. '{text} {city}').", found[:4], len(found))
     if how == "ambiguous":
-        raise NirfInputError(f"'{typed}' fits {len(found)} institutions, e.g. {_describe(found[:6])}. "
-                             f"Please be more specific.")
+        found = _best_known(found)
+        raise AmbiguousInstitutionError(f"'{typed}' fits {len(found)} institutions, e.g. {_describe(found[:6])}. "
+                                        f"Please be more specific.", found[:4], len(found))
 
     pkey, _, _ = _search(_participant_index(), q, family, rest, places)
     if pkey:

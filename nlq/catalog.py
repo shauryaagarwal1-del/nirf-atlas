@@ -56,7 +56,8 @@ COLUMNS = {
     "is_new_entrant": "first year the institution appears in that category's list",
 }
 NOT_IN_DATA = ("fees, salaries or placement packages, student numbers, cut-offs, QS/THE world rankings, NIRF 2016 "
-               "or any year after 2025, and anything not about NIRF")
+               "or published rankings after 2025 (a prediction is answered with past data, see the rules), and "
+               "anything not about NIRF")
 
 
 def functions() -> dict[tuple[str, str], object]:

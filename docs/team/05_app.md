@@ -26,7 +26,7 @@ How to start it: `python -m streamlit run app/Home.py` (exact commands in the RE
 |---|---|---|
 | | **Home** | What NIRF Atlas is; key numbers (9 years, 17 categories, 1,692 institutions, 34 states/UTs, 11,647 rows); "today's top N followed back in time" chart; cards linking every page |
 | | **Question Bank** | The 40 Annexure A questions. Tabs: Trends, Geospatial, Univariate, Bivariate, Multivariate, Distribution, Mobility, Outliers. Each question: the question, a "Why this chart?" note, its own controls, the chart card. "Run all 40" grid with ticks and previews |
-| Explore | **Trends** | Rank lines, parameter lines of one institution, climbers, fallers, average/median score per year, who stayed in the top N, today's top N back in time |
+| Explore | **Trends** | Rank lines, rank bands of band-only colleges, parameter lines of one institution, climbers, fallers, average/median score per year, who stayed in the top N, today's top N back in time |
 | Explore | **Geography** | Tabs: India map (year slider + play), State vs State, New entrants, More views |
 | Explore | **Distributions** | Score histogram, rank bands, summary statistics, quartile shares, top N vs rest, spread per year, median & IQR over time, most variable parameter, scores by state, spread across categories |
 | Explore | **Relationships** | "Select any two variables": scatterplot + Pearson r, Spearman ρ, R², p-value, n; correlogram; correlation over the years |

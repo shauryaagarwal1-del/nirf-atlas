@@ -4,7 +4,7 @@ Steps:
   1. build the instructions: the rules below + the catalog (nlq/catalog.py) + the last few turns of the
      chat (so "same for Engineering" can be understood);
   2. ask the model (nlq/llm.py) for ONLY a JSON object of one of four shapes:
-       engine        {"type": "engine", "engine", "function", "params", "title", "assumptions"}
+       engine        {"type": "engine", "engine", "function", "params", "title", "assumptions", "notice"}
        custom        {"type": "custom", "filters", "group_by", "metric", "agg", "chart", ...}
        clarify       {"type": "clarify", "question", "options"}   when the question is truly ambiguous
        out_of_scope  {"type": "out_of_scope", "message"}          when the data cannot answer it
@@ -12,6 +12,9 @@ Steps:
      function, parameter names, groups and chart types really exist;
   4. if the JSON is invalid or the check fails, ask once more, sending the error message back.
 Names, places and years are copied as the person typed them; nlq/resolve.py translates them later.
+A prediction or an opinion ("Will IIT Mandi overtake IIT Jodhpur?", "Which is better?") is not refused:
+the plan is the closest factual analysis, with an optional "notice" that the page shows in a highlighted
+box above the chart ("I can't predict future rankings; here is how they have done so far.").
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ class EnginePlan(_Plan):
     title: str = ""
     assumptions: list[str] = Field(default_factory=list)
     follow_ups: list[str] = Field(default_factory=list)
+    notice: str = ""            # shown above the chart, e.g. for a prediction answered with past data
 
 
 class CustomFilters(_Plan):
@@ -61,6 +65,7 @@ class CustomPlan(_Plan):
     title: str = ""
     assumptions: list[str] = Field(default_factory=list)
     follow_ups: list[str] = Field(default_factory=list)
+    notice: str = ""
 
 
 class ClarifyPlan(_Plan):
@@ -83,7 +88,7 @@ numbers: our own code runs the analysis you choose. Shapes:
 
 1. {{"type": "engine", "engine": "<engine>", "function": "<function>", "params": {{...}},
     "title": "<the question restated in a few words>", "assumptions": ["<each choice you made>", ...],
-    "follow_ups": ["<3 short questions the user could ask next>"]}}
+    "follow_ups": ["<3 short questions the user could ask next>"], "notice": "<optional, see the rules>"}}
 2. {{"type": "custom", "filters": {{"categories": [], "years": ..., "states": [], "regions": [],
     "institutions": [], "rank_max": null}}, "group_by": ["<x>", "<colour, optional>"], "metric": "<number or count>",
     "agg": "<mean|median|min|max|count>", "chart": "<chart>", "limit": null, "title": "...",
@@ -98,15 +103,31 @@ Rules:
 - Use shape 3 only when you cannot pick a sensible reading. Otherwise choose sensible defaults and list each
   one in "assumptions" in plain English (e.g. "Category: Overall, because none was named").
 - Use shape 4 for anything not about NIRF rankings or not in the data ({NOT_IN_DATA}).
+- Predictions and opinions ("Will IIT Mandi overtake IIT Jodhpur?", "Who will be #1 in 2026?", "Which is
+  better, IIT Madras or IIT Bombay?") are NOT shape 4: answer with the closest factual analysis (usually
+  trends.rank_trajectory of the named institutions, or trends.top_n_race / the top of the latest ranking) and
+  set "notice": "I can't predict future rankings; here is how they have done so far." (for an opinion: "I can't
+  judge which is better; here is how they compare in the NIRF rankings."). Never add a forecast.
 - Category: Overall unless the question names or clearly implies one ("engineering colleges" -> Engineering,
   "B-schools" -> Management, "universities" -> University). "colleges"/"institutes" in general mean Overall.
+  EXCEPTION: when the question names institutions but no category, leave "category" out of params; our code
+  picks the ranking those institutions are actually in (e.g. IIIT Bangalore is ranked only in Engineering).
 - Institutions: write names as the user typed them or their common short name (e.g. "IIT Bombay", "iitb").
+  A vague name ("NIT", "IIT", "Christian Medical College", which has two campuses) is still written as typed
+  in an engine plan: our code offers the real institutions to choose from.
+- A rank question about one institution (any institution, even one ranked only in bands such as 101-150) is
+  trends.rank_trajectory; our code draws its rank bands when NIRF published no exact rank. Its score or
+  parameters is trends.parameter_trends.
 - States: write them as typed (e.g. "TN", "Karnataka"). Any analysis can be limited to institutions of some
-  states by adding "states": [...] to params, even if the function has no states parameter.
+  states by adding "states": [...] to params, even if the function has no states parameter. A city used as
+  a place ("Bangalore colleges", "colleges in Pune") goes in "states" as typed; our code turns it into its
+  state.
+- Two questions in one message: plan the first and put the second, written out in full, FIRST in follow_ups.
 - Parameters: use codes score, tlr (teaching), rpc (research), go (graduation outcomes, placements),
   oi (outreach, inclusivity), pr (perception, reputation).
-- Years: integers when given. For a time phrase, copy the phrase as a string into the year parameter, e.g.
-  "years": "last 3 years", "start_year": "since 2020", "year": "latest". Our code turns it into years.
+- Years: integers when given, even a year the category does not have (e.g. SDG 2019, or 2026): our code moves
+  it to the nearest year that exists and says so. For a time phrase, copy the phrase as a string into the year
+  parameter, e.g. "years": "last 3 years", "start_year": "since 2020", "year": "latest".
 - "top N" in the sense "the N best" sets the function's n / top_n / top parameter.
 - "Every year", "always", "each year it was ranked" mean ALL the years the category was published (see the
   catalog), e.g. min_years = 3 for a category ranked 2023-2025; never 1, which means "at least once".

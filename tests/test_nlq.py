@@ -1,14 +1,14 @@
 """Tests for the Ask NIRF chat (Level 3): name resolution, plan checks, the executor, the model wrapper and the page.
 
 Offline (always run, no API key needed):
-  * the 25 questions of tests/nlq_questions.py: each golden plan is checked and run, and gives a chart
-    from the expected analysis (or the out-of-scope message);
+  * the 33 questions of tests/nlq_questions.py: each golden plan is checked and run, and gives a chart
+    from the expected analysis (or the out-of-scope message, or the "which one did you mean?" buttons);
   * name resolution: 'IIT Bombay' / 'iitb' / 'Bombay IIT' -> one institution, 'TN' -> Tamil Nadu,
     'research' -> rpc, 'teaching' -> tlr, 'last 3 years' -> the latest 3 years;
   * the planner retries once with the error message, and the model wrapper falls back to GEMINI_API_KEY_2;
   * friendly messages for no key, no internet, an invalid key and a used-up quota;
   * the page draws a chart, the assumptions and 3 follow-ups, and survives a failed model call.
-Live (only when asked for, with NIRF_LIVE_TESTS=1, and a Gemini key is set): every one of the 25 questions
+Live (only when asked for, with NIRF_LIVE_TESTS=1, and a Gemini key is set): every one of the 33 questions
 is sent to the model and the plan must name an expected analysis. Opt-in because the free tier allows only
 about 20 questions per model per day: a normal test run must not use up the quota the demo needs.
 Accuracy report: python -m scripts.nlq_accuracy
@@ -43,12 +43,13 @@ HAS_KEY = bool(llm.settings().keys)
 LIVE = HAS_KEY and os.environ.get("NIRF_LIVE_TESTS") == "1"
 
 
-# ---------- the 25 questions ----------
+# ---------- the 33 questions ----------
 
-def test_twenty_five_varied_questions():
-    assert len(NLQ_QUESTIONS) == 25 and len({q.id for q in NLQ_QUESTIONS}) == 25
+def test_thirty_three_varied_questions():
+    assert len(NLQ_QUESTIONS) == 33 and len({q.id for q in NLQ_QUESTIONS}) == 33
     styles = {q.style for q in NLQ_QUESTIONS}
-    assert {"typo", "hinglish", "abbreviation", "informal", "out of scope", "custom"} <= styles
+    assert {"typo", "hinglish", "abbreviation", "informal", "out of scope", "custom", "not in Overall",
+            "band only", "prediction", "opinion", "vague name", "city as place"} <= styles
 
 
 @pytest.mark.parametrize("q", NLQ_QUESTIONS, ids=[q.id for q in NLQ_QUESTIONS])
@@ -59,7 +60,12 @@ def test_golden_plan_is_answered(q):
     if plan.type == "out_of_scope":
         assert answer.kind == "out_of_scope" and answer.message and len(answer.follow_ups) == 3
         return
+    if q.answer == "clarify":
+        assert answer.kind == "clarify" and answer.alternatives, answer.message
+        return
     assert answer.kind == "chart", answer.message
+    if q.golden.get("notice"):
+        assert answer.notice == q.golden["notice"]
     assert answer.result.chart_type in allowed_chart_types()
     assert not answer.result.table.empty and answer.result.insight
     assert len(answer.follow_ups) == 3
@@ -346,5 +352,7 @@ def test_page_survives_a_failed_model_call(monkeypatch):
 def test_live_model_plans_the_expected_analysis(q):
     plan = plan_question(q.question)
     assert plan_label(plan) in q.expected, f"{q.question!r} -> {plan_label(plan)}"
+    if q.golden.get("notice"):                      # a prediction / opinion must come with its notice
+        assert getattr(plan, "notice", ""), f"{q.question!r}: no notice"
     answer = execute(plan, question=q.question)
     assert answer.kind in ("chart", "out_of_scope", "clarify"), answer.message

@@ -44,7 +44,7 @@ Example data for the numbers below: scores **50, 52, 55, 60, 83**.
 | **Multi-series line chart** | One line per group on shared axes; compare slopes and crossings. | Q1.4, Q2.2, Q4.5, top-N race |
 | **Vertically aligned time-series charts** | Stacked panels sharing one year axis; read the same year straight down. | State vs State (count + median rank) |
 | **Time-series dot plot** | One row per item, a dot per year it qualifies; gaps = not qualifying. Triangle = entered, cross = left. | Q7.2 |
-| **Point plot with error bars** | Point = median (or mean), bar = Q1 to Q3; longer bar = more spread. | Q6.4, Q1.4 spread view |
+| **Point plot with error bars** | Point = median (or mean), bar = Q1 to Q3; longer bar = more spread. **Band chart:** bar = the rank band NIRF published (e.g. 201-250, best to worst rank), dot = an exact rank, no line (a line through a band would invent a rank); rank 1 at the top. | Q6.4, Q1.4 spread view, rank bands of band-only colleges (Trends, chat) |
 | **Bar chart** (sorted, horizontal) | Bar length = amount; sorted top to bottom = a ranking. Bars left of zero = negative (coral = down/lost, teal = up/gained). | Q1.2, Q1.3, Q2.1, Q2.3, Q6.3, Q8.2 |
 | **Grouped bar chart** | Groups on x, one bar per series inside each group; compare bars within a group. | Q5.1 (parameters × institutions) |
 | **Stacked bar chart** | Bar = total, segments = parts; a 100% bar shows shares. Compare the bottom segment easily, middle ones less so. | Q2.5, Q3.2, Q3.4, Q7.5 |
@@ -119,15 +119,34 @@ ranks only, no parameter scores.
 | Same 8 engines behind Question Bank, Explore pages, Chart Builder and chat | Pages can never disagree |
 | Chat: the model writes a JSON plan, our code computes every number | No hallucinated numbers; safe (nothing the model writes is run as code) |
 | Chat fallbacks: next model, spare key, offline closest-question match | The live demo cannot depend on one quota or the internet |
-| Automated tests: data checks, all 40 questions, the real app headless, 15 Level 2, 25 chat and 30 exam-simulation questions | Confidence that it works live |
+| Chat adapts to the data and says so: category the institution is really in, only the years it is listed, nearest year a category has, band chart for band-only colleges | Never an empty chart, never an invented value, every choice in the "Assumed:" box |
+| Predictions and opinions get the past + a notice, never a forecast | Helpful but honest: "I can't predict future rankings; here is how they have done so far." |
+| Automated tests: data checks, all 40 questions, the real app headless, 15 Level 2, 33 chat, 30 exam-simulation questions and the chat edge cases | Confidence that it works live |
 
 ---
 
-## 5. Numbers to quote
+## 5. Ask NIRF edge cases (one line each)
+
+| Typed | What the chat does |
+|---|---|
+| "IIIT Bangalore rankings 2017-2025" (no category) | Not in Overall → uses **Engineering**, and shows only **2018-2025**, the years it is listed; both said in "Assumed:" |
+| "IIT Dharwad Engineering 2017-2025" | "You asked for 2017-2025; IIT Dharwad is ranked in Engineering only in 2023-2025, so the chart shows those years." |
+| "SDG 2019" | SDG exists only in 2025 → nearest year **2025**, said. (Dental from 2020, Research 2021, Agriculture/Innovation 2023, Open/Skill/State Public Univ. 2024) |
+| "Bangalore Institute of Technology rank" | Band-only → **band chart** (point plot with error bars): 201-250 in 2020, 251-300 in 2021 |
+| A score question about a band-only college | "NIRF did not publish scores for ..." + its bands + a button for the band chart |
+| "Will IIT Mandi overtake IIT Jodhpur?" | Rank lines up to 2025 + notice "I can't predict future rankings ..."; answer: IIT Mandi 26 vs IIT Jodhpur 27 in 2025 |
+| "NIT", "Christian Medical College" | "Which one did you mean?" + up to 4 buttons of real institutions |
+| "Bangalore colleges" | "'Bangalore' = Karnataka (we filter by state, not city)." |
+| Two questions at once | Answers the first; the second becomes the first follow-up button |
+
+---
+
+## 6. Numbers to quote
 
 9 years (2017–2025) · 17 categories (6 in 2017 → 17 in 2025) · 290 pages · 75,626 raw rows · **11,647 ranked rows**
 (6,974 exact, 4,671 band-only) · **1,692 institutions** from 2,288 spellings · **34 states/UTs** from 49 spellings ·
-spot check of all rows: **0 real differences** · 8 engines · 40/40 questions.
+spot check of all rows: **0 real differences** · 8 engines · 40/40 questions · 1,225 institution-category
+pairs only ever have a rank band (no exact rank, no score).
 
 Headline answers (Overall, defaults): IIT Madras rank 1 since 2019 (Q1.1) · biggest climber 2017→2025 Saveetha,
 91 → 23 (Q1.2) · 8 institutions in the top 10 every year (Q1.5) · Tamil Nadu most top-100 institutions in 2025, 17
