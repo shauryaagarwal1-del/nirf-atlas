@@ -13,6 +13,8 @@ Rank conventions used everywhere (same as the cleaning pipeline):
 State scope: inside `with only_states(["Kerala"]):` every load_master() call returns only the rows of
 institutions located in those states, so ANY engine analysis can be asked "for Kerala only" without
 each engine needing its own state filter. Ranks stay the national NIRF ranks.
+Institute-type scope works the same way: inside `with only_types(["IIT"]):` only IITs are returned
+("Which IITs improved the most?"). The type comes from the cleaned name (institute_types()).
 """
 
 from __future__ import annotations
@@ -60,6 +62,16 @@ NUMERIC_COLUMNS = list(LABELS)
 # Standard rank bands in order (from the pipeline), plus NIRF's own 11-50 band used by Innovation/SDG.
 BAND_ORDER = ["1-10", "11-25", "11-50", "26-50", "51-100", "101-150", "151-200", "201-300"]
 
+# India's 28 states and 8 union territories (official names). Two have no NIRF-ranked institution
+# (Ladakh, Lakshadweep): typing one gets "No institution from Ladakh appears ..." instead of "not a state".
+INDIA_STATES = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+    "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+    "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+    "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
+]
+
 # Common short forms people type for institutions -> the words NIRF uses.
 ABBREVIATIONS = {
     "iit": "indian institute of technology",
@@ -80,6 +92,7 @@ ABBREVIATIONS = {
     "nlsiu": "national law school of india university",
     "iiest": "indian institute of engineering science and technology",
     "nlu": "national law university",
+    "niper": "national institute of pharmaceutical education and research",
     "univ": "university",
     "govt": "government",
 }
@@ -103,6 +116,7 @@ FAMILIES = [
     ("NIT", r"\bnational institute of technology\b"),
     ("IIM", r"\bindian institute of management\b(?! and commerce)"),
     ("AIIMS", r"\ball india institute of medical sciences\b"),
+    ("NIPER", r"\bnational institute of pharmaceutical education and research\b|\bniper\b"),
     ("NLU", r"\bnational law\b|\bnational university of (?:law|juridical|advanced legal|study and research in law)\b"
             r"|\bnalsar\b|\bnujs\b|\bnuals\b"),
 ]
@@ -157,6 +171,8 @@ def _master() -> pd.DataFrame:
 
 # The states the current analysis is limited to (None = every state); set only through only_states().
 _STATE_SCOPE: ContextVar[tuple[str, ...] | None] = ContextVar("state_scope", default=None)
+# The institute types it is limited to (None = every institution); set only through only_types().
+_TYPE_SCOPE: ContextVar[tuple[str, ...] | None] = ContextVar("type_scope", default=None)
 
 
 def load_master() -> pd.DataFrame:
@@ -169,12 +185,20 @@ def load_master() -> pd.DataFrame:
     scope = _STATE_SCOPE.get()
     if scope:
         df = df[df["state"].isin(scope)]
+    types = _TYPE_SCOPE.get()
+    if types:
+        df = df[df["institution_key"].map(institute_types()).isin(types)]
     return df.copy()
 
 
 def current_states() -> tuple[str, ...] | None:
     """The states the running analysis is limited to, or None for all of India."""
     return _STATE_SCOPE.get()
+
+
+def current_types() -> tuple[str, ...] | None:
+    """The institute types the running analysis is limited to, or None for every institution."""
+    return _TYPE_SCOPE.get()
 
 
 @contextmanager
@@ -190,6 +214,95 @@ def only_states(states) -> Iterator[tuple[str, ...] | None]:
         yield scope
     finally:
         _STATE_SCOPE.reset(token)
+
+
+@contextmanager
+def only_types(types) -> Iterator[tuple[str, ...] | None]:
+    """Limit every load_master() inside this block to institutes of these types ('IIT', 'NIT' ...).
+
+    types=None or empty means no limit. Words such as 'IITs' or 'all IIMs' are accepted (check_types).
+    """
+    scope = tuple(check_types(types)) if types else None
+    token = _TYPE_SCOPE.set(scope)
+    try:
+        yield scope
+    finally:
+        _TYPE_SCOPE.reset(token)
+
+
+# ---------- institute types ----------
+
+# The institute types the type filter offers, with what each covers. Each is found from the cleaned name with
+# the FAMILIES patterns ('Indian Institute of Technology ...' = IIT). Central / state universities are not
+# offered: NIRF does not publish that status and it cannot be read reliably from a name.
+INSTITUTE_TYPES = {
+    "IIT": "Indian Institutes of Technology (incl. IIT (BHU) Varanasi and IIT (ISM) Dhanbad)",
+    "NIT": "National Institutes of Technology (incl. VNIT Nagpur, MNIT Jaipur, SVNIT Surat ...)",
+    "IIIT": "Institutes of Information Technology (Indian, International and Indraprastha IIITs, IIITDM)",
+    "IIM": "Indian Institutes of Management",
+    "IISER": "Indian Institutes of Science Education and Research",
+    "AIIMS": "All India Institutes of Medical Sciences",
+    "NLU": "National law universities and law schools (NLSIU, NALSAR, NUJS, NLU Delhi ...)",
+    "NIPER": "National Institutes of Pharmaceutical Education and Research",
+}
+
+
+@lru_cache(maxsize=1)
+def institute_types() -> pd.Series:
+    """institution_key -> its institute type (IIT, NIT, IIIT, IIM, IISER, AIIMS, NLU, NIPER) or None.
+
+    Read from the canonical (most recent) name with the same family patterns the name search uses, e.g.
+    'Indian Institute of Technology (Indian School of Mines)' -> IIT, 'Visvesvaraya National Institute of
+    Technology, Nagpur' -> NIT, 'Indian Institute of Management and Commerce' -> none.
+    """
+    names = _master().drop_duplicates("institution_key").set_index("institution_key")["canonical_name"]
+    fam = names.map(lambda n: family_of(_expand(n))[0])
+    return fam.where(fam.isin(list(INSTITUTE_TYPES)))
+
+
+def institute_type_code(text) -> str | None:
+    """'IITs', 'all IIMs', 'the NITs', 'Indian Institutes of Technology', 'iiser' -> the type code, else None."""
+    t = _norm(str(text))
+    t = re.sub(r"^(?:all|the|every|only|all the)\s+", "", t)
+    t = re.sub(r"\s+(?:only|institutes|campuses)$", "", t)
+    codes = {c.lower(): c for c in INSTITUTE_TYPES}
+    if t in codes:
+        return codes[t]
+    if t.endswith("s") and t[:-1] in codes:
+        return codes[t[:-1]]
+    t = re.sub(r"\binstitutes\b", "institute", t)
+    t = re.sub(r"\buniversities\b", "university", t)
+    family, rest = family_of(_expand(t))
+    return family if family in INSTITUTE_TYPES and not rest else None
+
+
+def check_types(types) -> list[str]:
+    """Type codes for what was typed ('IITs' -> 'IIT'); a NirfInputError lists the types on offer."""
+    out = []
+    for t in _as_list(types):
+        code = institute_type_code(t)
+        if code is None:
+            raise NirfInputError(f"'{t}' is not an institute type we can filter by. Choose from: "
+                                 f"{', '.join(INSTITUTE_TYPES)}.")
+        out.append(code)
+    return list(dict.fromkeys(out))
+
+
+def type_plural(code: str) -> str:
+    """'IIT' -> 'IITs'; 'AIIMS' stays 'AIIMS'."""
+    return code if code.endswith("S") else code + "s"
+
+
+def scope_phrase(states=None, types=None, singular: bool = False) -> str:
+    """Who an analysis covers: 'institutions in Kerala', 'IITs', 'IITs in Kerala' (singular: 'IIT in Kerala')."""
+    def join(items):
+        items = list(items)
+        return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+    who = (join(types if singular else [type_plural(t) for t in types]) if types
+           else ("institution" if singular else "institutions"))
+    if singular and types and len(types) > 1:
+        who = "institute of type " + join(types)
+    return who + (f" in {join(states)}" if states else "")
 
 
 # ---------- input checks ----------
@@ -225,6 +338,32 @@ def category_years(category: str, df: pd.DataFrame | None = None) -> list[int]:
     return sorted(df.loc[df["category_std"].eq(category), "year"].unique().tolist())
 
 
+def n_years(n: int) -> str:
+    """'1 year', '3 years'."""
+    return f"{n} year{'' if n == 1 else 's'}"
+
+
+def change_years(category: str, df: pd.DataFrame | None = None) -> list[int]:
+    """category_years() for an analysis of change over time (movers, transitions, volatility ...).
+
+    A category NIRF ranked in only one year (SDG: 2025) has no change to show; this says so in one
+    clear sentence instead of "the start year (2025) must be before the end year (2025)". Checked on
+    the whole table, so a state filter never changes the reason.
+    """
+    national = category_years(category)
+    if len(national) == 1:
+        raise NirfInputError(f"{category} was ranked only in {national[0]}, so there is no change over time to show.")
+    return category_years(category, df)
+
+
+def list_sizes(category: str, years) -> pd.Series:
+    """year -> the number of places in NIRF's national list of that category-year (the worst certain rank:
+    200 for Overall, 40 for Law 2025), whatever state or institute-type filter is on."""
+    df = _master()
+    rows = df[df["category_std"].eq(category) & df["year"].isin(list(years))]
+    return rows.groupby("year")["rank_upper"].max().dropna()
+
+
 def check_year(year, category: str, df: pd.DataFrame | None = None) -> int:
     """Return `year` as an int, or explain which years the category exists in."""
     available = category_years(category, df)
@@ -233,12 +372,12 @@ def check_year(year, category: str, df: pd.DataFrame | None = None) -> int:
     except (TypeError, ValueError):
         raise NirfInputError(f"'{year}' is not a year. {category} rankings exist for {fmt_years(available)}.")
     if y not in available:
-        scope = _STATE_SCOPE.get()
-        if scope and y in category_years(category, _master()):
-            # NIRF did publish this year; only the chosen states have no institution in it.
-            where = scope[0] if len(scope) == 1 else ", ".join(scope[:-1]) + " and " + scope[-1]
+        scope, types = _STATE_SCOPE.get(), _TYPE_SCOPE.get()
+        if (scope or types) and y in category_years(category, _master()):
+            # NIRF did publish this year; only the chosen states / institute types have no institution in it.
             seen = (f"they appear in {fmt_years(available)}" if available else "none appears in any year")
-            raise NirfInputError(f"No institution in {where} is in the {category} ranking of {y} ({seen}).")
+            raise NirfInputError(f"No {scope_phrase(scope, types, singular=True)} is in the {category} ranking of "
+                                 f"{y} ({seen}).")
         raise NirfInputError(f"NIRF has no {category} ranking for {y}. "
                              f"{category} rankings exist for {fmt_years(available)}.")
     return y
@@ -282,9 +421,25 @@ def check_states(states, df: pd.DataFrame | None = None) -> list[str]:
         if best:
             out.append(lookup[best[0]])
             continue
+        # A one-letter slip ('Telengana'): plain similarity >= 87 and clearly ahead of the next state
+        # (the closest two real states, Andhra / Madhya Pradesh, are 86 apart, so they never mix).
+        close = process.extract(k, list(lookup), scorer=fuzz.ratio, score_cutoff=87, limit=5)
+        firsts = list(dict.fromkeys(lookup[c] for c, _, _ in close))
+        if close and (len(firsts) == 1 or close[0][1] - max(sc for c, sc, _ in close if lookup[c] != firsts[0]) >= 5):
+            out.append(firsts[0])
+            continue
+        real = next((r for r in INDIA_STATES if _norm(r) == k), None)
+        if real:                                  # a real state or UT that simply has no ranked institution
+            raise NirfInputError(f"No institution from {real} appears in any NIRF ranking.")
         raise NirfInputError(f"'{s}' is not a state or union territory in the NIRF data. "
                              f"Known states: {', '.join(known)}.")
     return list(dict.fromkeys(out))
+
+
+def region_states(region: str) -> list[str]:
+    """The states of one region of the cleaned data ('South' -> Andhra Pradesh, Karnataka, Kerala ...)."""
+    df = _master()
+    return sorted(df.loc[df["region"].eq(region), "state"].unique())
 
 
 def check_column(column: str, category: str, df: pd.DataFrame) -> str:
@@ -447,6 +602,19 @@ def institution_names(keys: Iterable[str]) -> dict[str, str]:
     return {k: names[k] for k in keys}
 
 
+def institution_keys_named(name: str) -> list[str]:
+    """Every institution key whose canonical name is `name` (two 'National Law University': Delhi, Cuttack)."""
+    df = _master()
+    return df.loc[df["canonical_name"].eq(name), "institution_key"].unique().tolist()
+
+
+def institution_city(key: str) -> str:
+    """The city of an institution in its most recent year (its state if no city was published)."""
+    rows = _master().loc[lambda d: d["institution_key"].eq(key)].sort_values("year")
+    city = rows["city"].dropna().iloc[-1] if rows["city"].notna().any() else ""
+    return city or rows["state"].iloc[-1]
+
+
 _SHORT_FORMS = [
     (r"^Indian Institute of Technology\s*\(?Banaras Hindu University\)?\s*", "IIT (BHU) "),
     (r"^Indian Institute of Technology\b", "IIT"),
@@ -455,6 +623,8 @@ _SHORT_FORMS = [
     (r"^Indian Institute of Information Technology\b", "IIIT"),
     (r"^National Institute of Technology\b", "NIT"),
     (r"^All India Institute of Medical Sciences\b", "AIIMS"),
+    (r"^National Institute of Pharmaceutical Education (?:&|and) Research\b", "NIPER"),
+    (r"^(IIT|IIM|IISER|IIIT|NIT|AIIMS|NIPER),\s*", r"\1 "),        # 'IISER, Mohali' -> 'IISER Mohali'
     (r"\s*\((?:Deemed[- ]to[- ]be[- ]University)\)", ""),
 ]
 
@@ -590,7 +760,14 @@ def _search(idx: pd.DataFrame, q: str, family: str | None, rest: str,
     long_enough = len(query.replace(" ", "")) >= (3 if family else 6)
     if long_enough and ranked[0][1] >= cutoff and (len(ranked) == 1 or ranked[0][1] - ranked[1][1] >= 3):
         return ranked[0][0], "spelling", []
-    return None, "none", [k for k, score in ranked[:3] if score >= 80]
+    # Suggestions: WRatio also scores partial matches high ('JU' in 'B. V. Raju College', 'goa' in 'Goa
+    # University'), so a suggestion must also be similar as a whole name (token_sort_ratio >= 70) and the
+    # query long enough to be a name rather than an unknown short form.
+    if not long_enough:
+        return None, "none", []
+    whole = {k: max(fuzz.token_sort_ratio(query, v) for c in columns
+                    for v in pool.loc[pool["institution_key"].eq(k), c]) for k, _ in ranked[:3]}
+    return None, "none", [k for k, score in ranked[:3] if score >= 80 and whole[k] >= 70]
 
 
 def _join(items: list[str]) -> str:
@@ -656,13 +833,20 @@ def _not_ranked(pkey: str, typed: str, family: str | None) -> NotRankedError:
     return NotRankedError(message, _similar_ranked(rows, family))
 
 
-def _best_known(keys) -> list[str]:
+def _best_known(keys, by_main_category: bool = False) -> list[str]:
     """Institution keys, best known first: by Overall rank in the latest year they were ranked (exact rank,
-    else the band's worst rank), then by their best rank in any category that year, then by name."""
+    else the band's worst rank), then by their best rank in any category that year, then by name.
+
+    by_main_category=True (a family such as 'IIM'): the category most of them are ranked in (Management for
+    the IIMs) is used instead of Overall, so the options are the family's best known members.
+    """
     df = _master()
     rows = df[df["institution_key"].isin(list(keys))]
     latest = rows[rows["year"].eq(rows.groupby("institution_key")["year"].transform("max"))]
-    overall = latest[latest["category_std"].eq("Overall")].groupby("institution_key")["rank_upper"].min()
+    main = "Overall"
+    if by_main_category and not rows.empty:
+        main = rows.groupby("category_std")["institution_key"].nunique().sort_values(ascending=False).index[0]
+    overall = latest[latest["category_std"].eq(main)].groupby("institution_key")["rank_upper"].min()
     anywhere = latest.groupby("institution_key")["rank_upper"].min()
     names = rows.drop_duplicates("institution_key").set_index("institution_key")["canonical_name"]
     return sorted(dict.fromkeys(keys), key=lambda k: (overall.get(k, 10_000) if pd.notna(overall.get(k)) else 10_000,
@@ -705,11 +889,13 @@ def match_institution(name: str, typed: str | None = None) -> InstitutionMatch:
     places = _places_in((rest if family else q).split())      # the family phrase never names a place
 
     # Only a family typed ('NIT', 'IIT', 'IISER'), unless it is one institute's full name ('Indraprastha
-    # Institute of Information Technology' is IIIT Delhi).
-    if family and not rest and idx.loc[idx["norm"].eq(q), "institution_key"].nunique() != 1:
+    # Institute of Information Technology' is IIIT Delhi). The short code itself ('IISER') always asks, even
+    # though one IISER was listed in 2017 under the bare family name.
+    code_only = _norm(text) in {c.lower() for c, _ in FAMILIES} | {c.lower() + "s" for c, _ in FAMILIES}
+    if family and not rest and (code_only or idx.loc[idx["norm"].eq(q), "institution_key"].nunique() != 1):
         members = idx.loc[idx["family"].eq(family), "institution_key"].unique()
         if len(members) > 1:
-            found = _best_known(members)
+            found = _best_known(members, by_main_category=True)
             raise AmbiguousInstitutionError(
                 f"'{typed}' fits {len(found)} institutions, e.g. {_describe(found[:6])}. Please be more specific, "
                 f"e.g. '{short_label(found[0])}'.", found[:4], len(found))

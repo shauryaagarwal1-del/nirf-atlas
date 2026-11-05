@@ -111,16 +111,17 @@ def empty_state(message: str, title: str = "Nothing to show for this selection",
 # ---------- running engines ----------
 
 @st.cache_data(show_spinner=False, max_entries=512)
-def run_engine(engine: str, function: str, params: dict, states: tuple[str, ...] | None = None
-               ) -> tuple[ChartResult | None, str | None]:
+def run_engine(engine: str, function: str, params: dict, states: tuple[str, ...] | None = None,
+               types: tuple[str, ...] | None = None) -> tuple[ChartResult | None, str | None]:
     """Call core.engines.<engine>.<function>(**params), cached per parameter set (core/runner.py).
 
-    states: only institutions in these states are analysed. Returns (result, None), or (None, message)
-    when the engine explains that the selection cannot be answered (NirfInputError); the message is
-    written for the dashboard user.
+    states: only institutions in these states are analysed; types: only these institute types (IIT, NIT ...).
+    Returns (result, None), or (None, message) when the engine explains that the selection cannot be
+    answered (NirfInputError); the message is written for the dashboard user.
     """
     try:
-        return run(engine, function, params, states=list(states) if states else None), None
+        return run(engine, function, params, states=list(states) if states else None,
+                   types=list(types) if types else None), None
     except NirfInputError as e:
         return None, str(e)
 
@@ -161,15 +162,17 @@ def _display_table(table: pd.DataFrame) -> pd.DataFrame:
     return table.rename(columns=names)
 
 
-def show(engine: str, function: str, key: str, why: str | None = None, scope=None,
+def show(engine: str, function: str, key: str, why: str | None = None, scope=None, types=None,
          **params) -> ChartResult | None:
     """Run an engine function with these parameters and draw its chart card (or a friendly empty state).
 
     scope: limit the analysis to institutions in these states (None = all of India).
+    types: limit it to these institute types, e.g. ("IIT",) (None = every institution).
     """
     try:
         with st.spinner("Drawing the chart…"):
-            result, error = run_engine(engine, function, params, tuple(scope) if scope else None)
+            result, error = run_engine(engine, function, params, tuple(scope) if scope else None,
+                                       tuple(types) if types else None)
     except Exception as e:  # an unexpected bug must not break the whole page during a demo
         with st.container(border=True, key=f"card-{key}"):
             empty_state("Something went wrong while drawing this chart. The rest of the page still works.",

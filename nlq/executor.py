@@ -19,6 +19,9 @@ the other institution, without the model). An institution that took part but was
 'not_ranked' answer: a clear message and similar ranked institutions instead of an error. A name that fits
 several institutions ("NIT", "Christian Medical College") gives a 'clarify' answer with up to 4 real
 institutions as buttons.
+"Institute_types" (or a name such as "IITs" / "all IIMs" in the institutions list, or "IITs" in the question
+of an analysis that covers every institution) limits the analysis to those institute types (core.runner);
+the answer then starts with "Among IITs only".
 After the names are resolved, nlq/adapt.py fits the plan to what the data has: it picks the category the
 named institutions are actually ranked in when none was named, cuts the years to those the institutions
 are listed in, moves a year a category does not have to the nearest one, draws rank bands for institutions
@@ -35,8 +38,9 @@ import re
 from dataclasses import dataclass, field
 
 from core.builder import AGGREGATIONS, CHARTS, DIMENSIONS, MEASURES, build_chart
-from core.data import (AmbiguousInstitutionError, NirfInputError, NotRankedError, category_years, fmt_years,
-                       institution_names, load_master, short_label)
+from core.data import (INSTITUTE_TYPES, AmbiguousInstitutionError, NirfInputError, NotRankedError, category_years,
+                       check_types, fmt_years, institute_type_code, institution_names, load_master, short_label,
+                       type_plural)
 from core.questions import QUESTION_REGISTRY, get_question
 from core.result import ChartResult
 from core.runner import run
@@ -44,10 +48,14 @@ from nlq.adapt import (INSTITUTION_FUNCTIONS, SCORE_FUNCTIONS, NoScores, categor
                        missing_scores, only_bands, pick_category)
 from nlq.catalog import data_facts, functions
 from nlq.planner import ClarifyPlan, CustomPlan, EnginePlan, OutOfScopePlan
-from nlq.resolve import (resolve_category, resolve_institution, resolve_parameter, resolve_state,
+from nlq.resolve import (resolve_category, resolve_institution, resolve_parameter, resolve_region, resolve_state,
                          resolve_years)
 
 YEAR_KEYS = ("years", "year", "start_year", "end_year", "year_a", "year_b")
+TYPE_KEYS = ("institute_types", "institute_type", "types", "type")
+# Plural institute-type words in a question ("Which IITs ...", "all IIMs"): the analysis is about that type.
+_TYPE_WORDS = re.compile(r"\b(?:all\s+(?:the\s+)?)?(IITs|NITs|IIMs|IIITs|IISERs|NLUs|NIPERs)\b|\ball\s+(?:the\s+)?"
+                         r"(IIT|NIT|IIM|IIIT|IISER|AIIMS|NLU|NIPER)s?\b", re.IGNORECASE)
 YEAR_PAIRS = (("start_year", "end_year"), ("year_a", "year_b"))
 PARAMETER_KEYS = ("x", "y", "param", "param_high", "param_low")
 COUNT_ALIASES = {"n": ("top_n", "top"), "top_n": ("n", "top"), "top": ("top_n", "n")}
@@ -150,10 +158,10 @@ def _fit_years(raw: dict, sig, category: str | None, notes: list[str]) -> dict:
     for k in YEAR_KEYS:
         if k in raw:
             value = raw.pop(k)
-            years, note = resolve_years(value, category)
+            years, note = resolve_years(value, category, check=False)
             if category:            # a year the category does not have -> the nearest one it has (SDG 2019 -> 2025)
                 try:
-                    typed = resolve_years(value)[0]
+                    typed = resolve_years(value, check=False)[0]
                 except NirfInputError:
                     typed = years
                 years, fixed = category_year_note(value, years, typed, category)
@@ -268,7 +276,7 @@ def _asked_years(raw: dict) -> list[int] | None:
     for k in YEAR_KEYS:
         if k in raw:
             try:
-                years |= set(resolve_years(raw[k])[0])
+                years |= set(resolve_years(raw[k], check=False)[0])
             except NirfInputError:
                 pass
     return sorted(years) or None
@@ -302,6 +310,9 @@ def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None, swaps:
     follows = (plan.engine, plan.function) in INSTITUTION_FUNCTIONS
 
     names = _as_list(raw.pop("institutions", None)) + _as_list(raw.pop("institution", None))
+    types = _types(raw, names, sig, question, notes)
+    info["types"] = types
+    names = [n for n in names if not _is_type_word(n, sig)]
     keys = _institutions(names, notes, alternatives, swaps)
 
     # Category auto-pick: institutions named, no category named (rules in nlq/adapt.py).
@@ -333,22 +344,30 @@ def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None, swaps:
         notes.append("This analysis covers all institutions, so the institutions named were not singled out.")
 
     states = []
-    for s in _as_list(raw.pop("states", None)) + _as_list(raw.pop("state", None)):
+    for s in (_as_list(raw.pop("states", None)) + _as_list(raw.pop("state", None))
+              + _as_list(raw.pop("regions", None)) + _as_list(raw.pop("region", None))):
+        region = resolve_region(s)
+        if region:                                   # 'South India' -> the states of the South region
+            states += region[1]
+            notes.append(region[2])
+            continue
         name, note = resolve_state(s)
         states.append(name)
         notes += [note] if note else []
+    states = list(dict.fromkeys(states))
     scope = None
     if states and "states" in sig:
         params["states"] = states
     elif states:
         scope = states
-        notes.append(f"Only institutions located in {', '.join(states)} are included (ranks stay national).")
+        if not any(n.startswith("'") and " region in our data" in n for n in notes):
+            notes.append(f"Only institutions located in {', '.join(states)} are included (ranks stay national).")
 
     for k in PARAMETER_KEYS:
         if k in raw:
             value = raw.pop(k)
             if k in sig:
-                params[k], note = resolve_parameter(value)
+                params[k], note = resolve_parameter(value, category if isinstance(category, str) else None)
                 notes += [note] if note else []
             else:
                 notes.append(f"The option {k} = '{value}' does not apply to this chart and was ignored.")
@@ -385,6 +404,32 @@ def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None, swaps:
         info["more"] = more
     info["function"] = function
     return params, scope, notes
+
+
+def _is_type_word(name, sig) -> bool:
+    """'IITs', 'all IIMs', 'the NITs' always name a type; a bare 'IIT' only for an analysis of every institution
+    (for a chart of named institutions, 'IIT' is a vague name and the person is asked which one)."""
+    code = institute_type_code(name)
+    if code is None:
+        return False
+    t = str(name).strip().lower()
+    plural = t != code.lower() or code == "AIIMS" and t.startswith("all")
+    return plural or not ({"institutions", "institution"} & set(sig))
+
+
+def _types(raw: dict, names: list, sig, question: str, notes: list[str]) -> list[str]:
+    """Institute types to limit the analysis to: the plan's institute_types, type words in its institutions
+    list ('IITs'), or plural type words in the question when the plan names no institution."""
+    given = [v for k in TYPE_KEYS for v in _as_list(raw.pop(k, None))]
+    types = check_types(given) if given else []
+    types += [institute_type_code(n) for n in names if _is_type_word(n, sig)]
+    if not types and not names and question:
+        types += [institute_type_code(a or b) for a, b in _TYPE_WORDS.findall(question)]
+    types = list(dict.fromkeys(t for t in types if t))
+    if types:
+        notes.append(f"Only {' and '.join(type_plural(t) for t in types)} are included ("
+                     + "; ".join(INSTITUTE_TYPES[t] for t in types) + "); ranks stay national.")
+    return types
 
 
 def _fit_to_institutions(engine: str, function: str, params: dict, keys: list[str], category: str, sig,
@@ -431,18 +476,27 @@ def custom_call(plan: CustomPlan, alternatives: list[dict] | None = None,
     if f.years is not None:
         years, note = resolve_years(f.years, cats[0] if len(cats) == 1 else None)
         notes += [note] if note else []
-    states = []
+    states, regions = [], []
     for s in f.states:
+        region = resolve_region(s)
+        if region:                                   # 'South India' typed as a state -> the region filter
+            regions.append(region[0])
+            notes.append(region[2])
+            continue
         name, note = resolve_state(s)
         states.append(name)
         notes += [note] if note else []
     known_regions = {r.lower(): r for r in data_facts()["regions"]}
-    regions = []
     for r in f.regions:
         key = str(r).strip().lower().replace("northeast", "north-east").replace("north east", "north-east")
         if key not in known_regions:
-            raise NirfInputError(f"'{r}' is not a region. Regions: {', '.join(known_regions.values())}.")
+            region = resolve_region(r)
+            if region is None:
+                raise NirfInputError(f"'{r}' is not a region. Regions: {', '.join(known_regions.values())}.")
+            notes.append(region[2])
+            key = region[0].lower()
         regions.append(known_regions[key])
+    regions = list(dict.fromkeys(regions))
     keys = _institutions(f.institutions, notes, alternatives, swaps)
 
     chart = _chart(plan.chart)
@@ -451,7 +505,7 @@ def custom_call(plan: CustomPlan, alternatives: list[dict] | None = None,
     agg = "count" if metric in ("count", "number", "institutions") else plan.agg
     y = None
     if agg != "count":
-        y, note = resolve_parameter(metric)
+        y, note = resolve_parameter(metric, cats[0] if len(cats) == 1 else None)
         notes += [note] if note else []
         if y not in MEASURES:
             raise NirfInputError(f"'{plan.metric}' cannot be summarised in a chart.")
@@ -502,7 +556,7 @@ def execute(plan, run_fn=None, question: str = "") -> Answer:
     run_fn(engine, function, params, states) runs an engine call (default core.runner.run; the page
     passes a cached version).
     """
-    run_fn = run_fn or (lambda e, f, p, s: run(e, f, p, states=s))
+    run_fn = run_fn or (lambda e, f, p, s, t=None: run(e, f, p, states=s, types=t))
     dump = plan.model_dump()
     if isinstance(plan, OutOfScopePlan):
         return Answer("out_of_scope", dump, message=plan.message,
@@ -523,15 +577,17 @@ def execute(plan, run_fn=None, question: str = "") -> Answer:
                 answer.assumptions = [a for a in answer.assumptions if not re.search(r"categor", a, re.I)]
             answer.assumptions += notes
             function = info.get("function", plan.function)
+            types = info.get("types") or []
             answer.plan["resolved_call"] = {"engine": plan.engine, "function": function, "params": params,
-                                            "states": scope}
+                                            "states": scope, **({"institute_types": types} if types else {})}
+            extra = (types,) if types else ()           # a run_fn without a types argument still works
             missing: NoScores | None = info.get("no_scores")
             if missing:
                 answer.kind, answer.message = "no_scores", missing.message
                 answer.next_plan, answer.next_label = missing.plan, missing.label
             else:
-                answer.result = run_fn(plan.engine, function, params, scope)
-                answer.more = [run_fn(plan.engine, f, p, scope) for f, p in info.get("more", [])]
+                answer.result = run_fn(plan.engine, function, params, scope, *extra)
+                answer.more = [run_fn(plan.engine, f, p, scope, *extra) for f, p in info.get("more", [])]
         else:
             args, notes = custom_call(plan, answer.alternatives, swaps)
             answer.assumptions += notes

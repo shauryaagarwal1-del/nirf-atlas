@@ -30,8 +30,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from core.data import (NirfInputError, category_years, check_category, check_states, check_year, check_years,
-                       filter_df, fmt_years, load_master, short_name)
+from core.data import (NirfInputError, category_years, change_years, check_category, check_states, check_year,
+                       check_years, filter_df, fmt_years, list_sizes, load_master, n_years, short_name)
 from core.geo import FEATURE_KEY, india_geojson, polygon_frame, state_polygons
 from core.result import ChartResult
 from core.stats import signed
@@ -48,6 +48,25 @@ def _top(df: pd.DataFrame, top_n: int) -> pd.DataFrame:
     if int(top_n) < 1:
         raise NirfInputError("top_n must be at least 1.")
     return df[df["rank_upper"].le(int(top_n)).fillna(False).astype(bool)]
+
+
+def _cap_top_n(cat: pd.DataFrame, top_n: int, category: str, years: list[int]) -> tuple[int, str | None]:
+    """(top_n, None), or (the list size, a sentence) when top_n is larger than every list of these years.
+
+    'Top 500' of a list with 200 places would count every ranked institution and then speak of 500
+    places, so the top 200 is used instead and the answer says so.
+    """
+    if int(top_n) < 1:
+        raise NirfInputError("top_n must be at least 1.")
+    sizes = list_sizes(category, years)                    # the national list, also under a state / type filter
+    if sizes.empty or int(top_n) <= sizes.max():
+        return int(top_n), None
+    size = int(sizes.max())
+    if len(years) == 1:
+        lists = f"lists {size} institutions in {years[0]}"
+    else:
+        lists = f"lists {'' if sizes.nunique() == 1 else 'at most '}{size} institutions a year"
+    return size, f"{category} {lists}, so the top {size} is used."
 
 
 def _list_note(cat: pd.DataFrame, top_n: int, years: list[int]) -> str | None:
@@ -75,6 +94,7 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
     category = check_category(category, df)
     year = check_year(category_years(category, df)[-1] if year is None else year, category, df)
     cat = filter_df(df, categories=category, years=year)
+    top_n, capped = _cap_top_n(cat, top_n, category, [year])
     top = _top(cat, top_n).sort_values("rank_upper")
     if top.empty:
         raise NirfInputError(f"No {category} institution has a certain rank within the top {top_n} in {year}.")
@@ -109,6 +129,8 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
                f"top {top_n} ({table['institutions'].max()}{' each' if len(lead) > 1 else ''}); the top three states ("
                f"{', '.join(f'{s} {c}' for s, c in zip(top3['state'], top3['institutions']))}) hold "
                f"{top3['share_pct'].sum():.0f}% of the {len(top)} places, spread over {len(table)} states/UTs.")
+    if capped:
+        insight = f"{capped} {insight}"
     last = top["rank"].max()
     sharing = top[top["rank"].eq(last)]
     if len(top) > top_n and len(sharing) > 1:      # NIRF skips ranks after a tie, so only a tie at the end adds
@@ -164,8 +186,9 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     cat = filter_df(df, categories=category)
+    top_n, capped = _cap_top_n(cat, top_n, category, years)
     counts = _state_year_counts(cat, years, top_n)
     shares = counts.div(counts.sum(axis=1), axis=0) * 100
 
@@ -205,6 +228,8 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
     if hidden:
         title = title[:-1] + "; inside 'Other states')" if gain in hidden else title
         insight += f" {_join(hidden)} {'is' if len(hidden) == 1 else 'are'} part of the 'Other states' line."
+    if capped:
+        insight = f"{capped} {insight}"
     table = shares.round(1).stack().rename("share_pct").reset_index()
     table["institutions"] = counts.stack().values
     table = table[table["institutions"].gt(0)].sort_values(["year", "share_pct"], ascending=[True, False])
@@ -231,12 +256,13 @@ def state_representation_change(category: str = "Overall", start_year: int | Non
     """
     df = load_master()
     category = check_category(category, df)
-    available = category_years(category, df)
+    available = change_years(category, df)
     start_year = check_year(available[0] if start_year is None else start_year, category, df)
     end_year = check_year(available[-1] if end_year is None else end_year, category, df)
     if start_year >= end_year:
         raise NirfInputError(f"The start year ({start_year}) must be before the end year ({end_year}).")
     cat = filter_df(df, categories=category, years=[start_year, end_year])
+    top_n, capped = _cap_top_n(cat, top_n, category, [start_year, end_year])
     counts = _state_year_counts(cat, [start_year, end_year], top_n).T
     table = counts.rename(columns={start_year: f"count_{start_year}", end_year: f"count_{end_year}"})
     table.columns.name = None
@@ -284,6 +310,8 @@ def state_representation_change(category: str = "Overall", start_year: int | Non
     insight += (f"; {losers_} lost the most ({signed(worst)}). {gainers} states gained, "
                 f"{losers} lost and {len(table) - gainers - losers} stayed the same."
                 if worst < 0 else "; no state lost places.")
+    if capped:
+        insight = f"{capped} {insight}"
     finish(fig, title, f"{category} ranking · labels show the number of institutions {start_year} → {end_year}",
            note=_list_note(cat, top_n, [start_year, end_year]), height=max(380, 170 + 26 * len(moved)),
            legend_title="Change")
@@ -720,9 +748,9 @@ def state_vs_state(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
     if len(states) == 2:
         other_more = states[1] if more == states[0] else states[0]
         other_better = states[1] if better == states[0] else states[0]
-        count_part = (f"{more} had more {what} institutions in {more_years[more]} of {n} years (on average "
+        count_part = (f"{more} had more {what} institutions in {more_years[more]} of {n_years(n)} (on average "
                       f"{avg[more]:.1f} vs {avg[other_more]:.1f} a year)")
-        rank_part = (f"a better (lower) median rank in {better_years[better]} of {len(both_med)} years where both "
+        rank_part = (f"a better (lower) median rank in {better_years[better]} of {n_years(len(both_med))} where both "
                      f"have one (pooled median {pooled[better]:g} vs {pooled[other_better]:g})")
         if more == better:
             title = f"{more} leads {other_more} on both the number and the rank of its {category} institutions"

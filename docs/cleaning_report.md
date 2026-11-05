@@ -7,10 +7,10 @@ Inputs (hand-checked): `data/mappings/category_map.csv`, `data/mappings/state_ma
 ## Summary
 
 - **Master table:** 11,647 rows x 45 columns: every institution NIRF ranked, 2017-2025, 17 categories, one row per (year, category, institution).
-- **Institutions:** 1,692 distinct `institution_key`s from 2,288 raw name spellings.
+- **Institutions:** 1,647 distinct `institution_key`s from 2,288 raw name spellings.
 - **Exact ranks:** 6,974 rows; **rank-band only:** 4,671 rows; rows with an overall score: 6,923.
 - **Participants table:** 63,979 rows (participant lists + 2018 Special Mention), kept apart from the rankings.
-- **Waiting for a human:** 207 uncertain name pairs in `data/mappings/institution_review.csv` (fill `approve` with yes or no, then re-run).
+- **Waiting for a human:** 15 uncertain name pairs in `data/mappings/institution_review.csv` (fill `approve` with yes or no, then re-run).
 
 | step | what | rows before | rows after |
 |---|---|---|---|
@@ -161,7 +161,7 @@ Contents: [1 Combine raw CSVs](#step-1-combine-raw-csvs) · [2 Column names to s
 
 **Rows:** 75,626 -> 75,626
 
-**What changed:** Institution names changed on 10,491 rows (3,196 distinct spellings): UPPER CASE -> Title Case 1762, broken apostrophe 438, comma spacing 411, PIN code removed 359, trailing punctuation 161, hyphen spacing 65. Cities changed on 4,791 rows. The untouched name is kept in `institute_name_raw` (used by the alias table). Words are never changed here: 'Govt.' stays 'Govt.'; matching different wordings is step 7's job.
+**What changed:** Institution names changed on 10,636 rows (3,214 distinct spellings): UPPER CASE -> Title Case 1762, broken apostrophe 455, comma spacing 411, PIN code removed 359, trailing punctuation 162, hyphen spacing 65. Cities changed on 4,791 rows. The untouched name is kept in `institute_name_raw` (used by the alias table). Words are never changed here: 'Govt.' stays 'Govt.'; matching different wordings is step 7's job.
 
 **Why:** Invisible differences (a double space, ' ,' or a backtick instead of an apostrophe) would make one name look like two, and UPPER CASE names look broken in charts.
 
@@ -196,7 +196,7 @@ Contents: [1 Combine raw CSVs](#step-1-combine-raw-csvs) · [2 Column names to s
 
 **Rows:** 11,647 -> 11,647
 
-**What changed:** 2,288 raw name spellings (2,000 distinct cleaned name + state combinations) were grouped into **1,692 institutions**. Links made: id_code 210, alias_rule 56, fuzzy 42. Proposed links refused because both rows sit in the same ranking list: 1. Names that stand for 2+ different institutions in one state and were split by city: 17. ID codes that cover several different units in one year and were not used for linking: 1 (U-0436). **207 uncertain pairs wait in `data/mappings/institution_review.csv`** (human decisions read back this run: 0 yes, 0 no). Hand alias rules applied: 1. Participant rows linked to a ranked institution: 20,093 of 63,979.
+**What changed:** 2,288 raw name spellings (1,999 distinct cleaned name + state combinations) were grouped into **1,647 institutions**. Links made: id_code 209, alias_rule 63, fuzzy 42, review_approved 38. Proposed links refused because both rows sit in the same ranking list: 1. Names that stand for 2+ different institutions in one state and were split by city: 17. ID codes that cover several different units in one year and were not used for linking: 1 (U-0436). **15 uncertain pairs wait in `data/mappings/institution_review.csv`** (human decisions read back this run: 40 yes, 151 no). Hand alias rules applied: 13. Participant rows linked to a ranked institution: 20,093 of 63,979.
 
 **Why:** Every trend, mobility and new-entrant question follows one institution over the years. Without one key, 'Indian Institute of Technology, Delhi' (2022) and 'Indian Institute of Technology Delhi' (other years) would be two institutions, and IIT Delhi's 2022 rank would vanish from its line. Uncertain cases are left for a human rather than guessed.
 
@@ -205,19 +205,38 @@ Contents: [1 Combine raw CSVs](#step-1-combine-raw-csvs) · [2 Column names to s
 | raw_name | state | canonical_name | institution_key | match_method | match_score |
 |---|---|---|---|---|---|
 | University of Petroleum and Energy Studies | Uttarakhand | UPES | INST-00659 | id_code | 13 |
-| Rajah Serfoji Government College | Tamil Nadu | Rajah Serfoji Government College, Thanjavur | INST-01085 | alias_rule | 86 |
-| Sri Siddharatha Acedemy of Higher Education | Karnataka | Sri Siddhartha Academy of Higher Education | INST-01251 | fuzzy | 96 |
-| Government College, Nattakom, Kottayam | Kerala | Govt. College, Nattakom, Kottayam | INST-01383 | exact | 100 |
-| International Management Institute | Delhi | IMI Delhi | INST-00224 | id_code | 19 |
+| KLE College of Pharmacy | Karnataka | KLE College of Pharmacy, Hubli | INST-01057 | alias_rule | 84 |
+| Raghavendra Institute of Pharmaceuatical Education & Research (RIPER) | Andhra Pradesh | Raghavendra Institute of Pharmaceuatical Education & Research | INST-00496 | fuzzy | 95 |
+| RGUKT- RK Valley | Andhra Pradesh | RGUKT - RK Valley | INST-00494 | exact | 100 |
+| Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI),Vallabh Vidyanagar | Gujarat | Institute of Science & Technology for Advanced Studies & Research (ISTAR) | INST-01164 | review_approved | 87 |
 
 Alias table rows per match method:
 
 | match_method | raw spellings |
 |---|---|
-| exact | 2018 |
-| id_code | 250 |
-| alias_rule | 61 |
+| exact | 1971 |
+| id_code | 249 |
+| alias_rule | 68 |
 | fuzzy | 42 |
+| review_approved | 41 |
+
+**Renamed institutions (hand alias rules).** NIRF gave most institutions a stable ID code only from 2018, so a college whose name changed after 2017 (Thapar University -> Thapar Institute of Engineering and Technology) would otherwise be two institutions: its 2017 rows would be missing from every 2017 -> 2025 comparison, and it would wrongly count as a new entrant in 2018. Each rule below was checked in the raw lists: same city, the old name stops the year the new one starts, never both in one list. `python -m scripts.find_renames` lists more candidates in `data/mappings/rename_review.csv` for a person to check; nothing in that file is merged automatically.
+
+| name in the earlier lists | is the same institution as | evidence |
+|---|---|---|
+| Indraprastha Institute of Information Technology-New Delhi (IIIT New Delhi, Delhi) | Indraprastha Institute of Information Technology | IIIT Delhi: the 2017 Engineering list spells the name with the campus and short form; same institute, same city (New Delhi), never twice in one list (2017 Engineering rank 56, 2018 rank 66 under ID U-0105) |
+| Thapar University | Thapar Institute of Engineering and Technology | Renamed after 2017: same city (Patiala), 2017 lists only under the old name (Engineering 26, Overall 75, University 46), 2018 onwards only under the new name (ID I-1480); never twice in one list |
+| Siksha`O` Anusandhan University | Siksha `O` Anusandhan | Renamed after 2017: same city (Bhubaneswar), 2017 Overall 33 / University 20 under the old name, 2018 onwards only under the new name (ID U-0363); never twice in one list |
+| Symbiosis International University | Symbiosis International | Renamed after 2017: same city (Pune), 2017 Overall 97 / University 61 under the old name, 2018 onwards only under the new name (ID U-0329); never twice in one list |
+| Sri Ramachandra University | Sri Ramachandra Institute of Higher Education and Research | Renamed after 2017: same city (Chennai), 2017 Overall 61 / Pharmacy 19 / University 39 under the old name; 2018 lists it as Sri Ramachandra Medical College and Research Institute and 2019 onwards as Sri Ramachandra Institute of Higher Education and Research (one ID, I-1486); never twice in one list |
+| NITTE University | NITTE | Renamed after 2017: same city (Mangalore), 2017 University 83 under the old name, 2018 onwards only as NITTE (ID U-0239); never twice in one list |
+| Maharishi Markandeshwar University | Maharishi Markandeshwar | Renamed after 2017: same city (Ambala), 2017 Engineering / Pharmacy / University bands under the old name, 2018 onwards only under the new name (ID U-0168); never twice in one list |
+| Lingaya's University | Lingaya's Vidyapeeth | Renamed after 2017: same city (Faridabad), 2017 University band 151-200 under the old name, 2018 University band 151-200 under the new name; never twice in one list |
+| Rajalakshmi Engineering College Engineering & Technology | Rajalakshmi Engineering College | 2017 Engineering list adds 'Engineering & Technology' to the name: same city (Chennai), 2017 band 101-150 under the long name, 2018 onwards only under the short name (ID C-16626); never twice in one list |
+| Poona College of Pharmacy, Erandwane, Pune | Poona College of Pharmacy | 2017 Pharmacy list adds the locality (Erandwane, Pune): same city, 2017 Pharmacy 8 under the long name, 2018 onwards only under the short name (ID C-35430); never twice in one list |
+| Gokaraju Rangaraju Institute of Engineering & Technology | Goka Raju Ranga Raju Institute of Engineering & Technology | Spelled differently after 2017: same city (Hyderabad), 2017 Engineering / Overall bands 151-200 under one spelling, 2018 onwards only under the other; never twice in one list (Gokaraju Rangaraju College of Pharmacy is a separate institution and stays separate) |
+| VNR Vignana Jyothi Institute of Engineering & Technology | Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering and Technology | VNR written out in full from 2019: same city (Hyderabad), 2017-2018 Engineering band 101-150 under the short form, 2019 onwards only under the full name (ID C-19667); never twice in one list |
+| Jawaharlal Nehru Technological University | Jawaharlal Nehru Technological University | JNTU Anantapur: NIRF changed the city from Anantapur (2017-2022) to Ananthapuramu (2023-2025), the new official spelling of the same town; never twice in one list (JNTU Kakinada is a separate institution and stays separate) |
 
 ## Step 8: Ranks, ties and rank bands
 
@@ -325,7 +344,7 @@ NIRF band -> standard band:
 
 **Rows:** 11,647 -> 11,647
 
-**What changed:** `first_year_seen` = the first year the institution appears in that category's ranked list (exact or band). `years_present` = how many different years it appears there. `is_new_entrant` = this row is its first appearance AND the category already existed the year before (nobody is 'new' in 2017, the first year of our data, or in a category's launch year). New-entrant rows: 1,436.
+**What changed:** `first_year_seen` = the first year the institution appears in that category's ranked list (exact or band). `years_present` = how many different years it appears there. `is_new_entrant` = this row is its first appearance AND the category already existed the year before (nobody is 'new' in 2017, the first year of our data, or in a category's launch year). New-entrant rows: 1,380.
 
 **Why:** Q2.5 (states producing the most new institutions) and the mobility questions need to know when an institution first entered a list and how often it has been there.
 
@@ -334,8 +353,8 @@ NIRF band -> standard band:
 | institution_key | canonical_name | category_std | year | first_year_seen | is_new_entrant | years_present |
 |---|---|---|---|---|---|---|
 | INST-00265 | Indian Institute of Technology Madras | Overall | 2017 | 2017 | False | 9 |
-| INST-00966 | St. Stephens's College | College | 2018 | 2018 | True | 8 |
-| INST-00977 | Thapar Institute of Engineering and Technology (Deemed-to-be-university) | Engineering | 2018 | 2018 | True | 8 |
+| INST-00966 | St. Stephen's College | College | 2018 | 2018 | True | 8 |
+| INST-00016 | Aligarh Muslim University | Engineering | 2018 | 2018 | True | 8 |
 | INST-00256 | Indian Institute of Technology Bombay | Management | 2018 | 2018 | True | 8 |
 | INST-00831 | King George's Medical University | Overall | 2018 | 2018 | True | 8 |
 

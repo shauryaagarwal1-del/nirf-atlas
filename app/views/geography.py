@@ -72,7 +72,7 @@ def state_cards(vs: pd.DataFrame, boxes: pd.DataFrame, top_n: int | None) -> Non
 
 def state_vs_state() -> None:
     with st.container(border=True, key=f"x-{PAGE}-controls-vs"):
-        params, _ = controls(PAGE, VS_VIEW, per_row=5)
+        params, _, _ = controls(PAGE, VS_VIEW, per_row=5)
         st.caption("Counts include NIRF band-only positions; median ranks use exact ranks only.")
     vs, error = run_engine("geography", "state_vs_state", params)
     boxes, box_error = run_engine("geography", "state_rank_boxes", params)

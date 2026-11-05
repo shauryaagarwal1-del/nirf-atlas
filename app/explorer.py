@@ -14,7 +14,9 @@ Controls come in two kinds:
     from the sidebar where that makes sense (the year starts at the end of the year range, top N at the
     sidebar's top N) and otherwise from the engine's default.
 "States" on a view that has no state parameter of its own limits the whole analysis to institutions in
-those states (core/runner.py); the chart subtitle, answer and method then name the states.
+those states (core/runner.py); the chart subtitle, answer and method then name the states. Next to it,
+"Only institute type" limits the analysis to IITs, NITs, IIMs ... (the title and answer then start with
+"Among IITs only").
 """
 
 from __future__ import annotations
@@ -27,12 +29,14 @@ from app.components import show
 from app.filters import (MAX_INSTITUTIONS, TOP_N_OPTIONS, category_years_map, clear_dropped_note, current,
                          dropped_note, institution_options, master, on_category_change, parameters_for,
                          removed_note, short_labels, state_options, synced as _synced)
-from core.data import SHORT, YEARS
+from core.data import INSTITUTE_TYPES, SHORT, YEARS
 from core.questions import QUESTION_REGISTRY
 
 PER_ROW = 4
 STATES_HELP = ("Only institutions in these states are analysed (ranks stay national). Empty = all of India. "
                "Same as the sidebar's States filter.")
+TYPES_HELP = ("Only these institute types are analysed, e.g. IITs only (ranks stay national). The type is read from "
+              "the institution's name. Empty = every institution.")
 
 
 @dataclass(frozen=True)
@@ -41,8 +45,8 @@ class C:
 
     kinds: category, categories, years, period, year, institutions, institution (exactly one), states,
     state_pair (two single-state pickers, "State A" and "State B", that together set `states`), scope (state
-    filter for the whole analysis), param (a parameter picker), choice (any other value: top N, threshold,
-    variant ...).
+    filter for the whole analysis; an institute-type filter is drawn next to it), param (a parameter
+    picker), choice (any other value: top N, threshold, variant ...).
     """
     kind: str
     name: str | None = None
@@ -228,6 +232,12 @@ def draw(c: C, ctx: Ctx) -> dict:
                         options=state_options(), placeholder="All of India", help=STATES_HELP)
         return {"__states": value or None}
 
+    if c.kind == "types":                                 # drawn after every "scope" (see _expand)
+        key = f"x-{ctx.page}-types"
+        value = st.multiselect("Only institute type", list(INSTITUTE_TYPES), key=key, placeholder="All institutions",
+                               format_func=lambda t: f"{t}s" if not t.endswith("S") else t, help=TYPES_HELP)
+        return {"__types": value or None}
+
     if c.kind == "param":
         options = parameters_for(ctx.category)
         options = (["score"] + options) if c.with_score else options
@@ -277,20 +287,24 @@ def _leader(category: str) -> str:
 
 
 def _expand(controls_: tuple[C, ...]) -> list[C]:
-    """A state_pair becomes its two single-state pickers (each takes one column)."""
+    """A state_pair becomes its two single-state pickers (each takes one column); a state filter ("scope")
+    gets the institute-type filter next to it."""
     out = []
     for c in controls_:
         if c.kind == "state_pair":
             a, b = c.default or ("Karnataka", "Tamil Nadu")
             out += [C("state", "state_a", "State A", default=a, help=c.help),
                     C("state", "state_b", "State B", default=b, help=c.help)]
+        elif c.kind == "scope":
+            out += [c, C("types")]
         else:
             out.append(c)
     return out
 
 
-def controls(page: str, view: View, per_row: int = PER_ROW) -> tuple[dict, list[str] | None]:
-    """Draw a view's controls in rows of `per_row`; returns (engine parameters, state filter or None)."""
+def controls(page: str, view: View, per_row: int = PER_ROW) -> tuple[dict, list[str] | None, list[str] | None]:
+    """Draw a view's controls in rows of `per_row`; returns (engine parameters, state filter or None,
+    institute-type filter or None)."""
     ctx = Ctx(page, view)
     params: dict = dict(view.fixed)
     pair: list[str] = []
@@ -306,7 +320,8 @@ def controls(page: str, view: View, per_row: int = PER_ROW) -> tuple[dict, list[
     if pair:
         params["states"] = pair
     states = params.pop("__states", None)
-    return params, states
+    types = params.pop("__types", None)
+    return params, states, types
 
 
 def explore(page: str, views: list[View]) -> None:
@@ -319,11 +334,11 @@ def explore(page: str, views: list[View]) -> None:
 def explore_view(page: str, view: View) -> None:
     """One view: its controls in a card, then its chart card."""
     with st.container(border=True, key=f"x-{page}-controls"):
-        params, states = controls(page, view)
+        params, states, types = controls(page, view)
         if view.hint:
             st.caption(view.hint)
     show(view.engine, view.function, key=f"{page}-{view.id}", why=view.why or _registry_why(view.function),
-         scope=states, **params)
+         scope=states, types=types, **params)
 
 
 # ---------- ready-made controls used by several pages ----------

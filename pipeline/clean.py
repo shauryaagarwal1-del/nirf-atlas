@@ -283,9 +283,13 @@ def _smart_title(s: str) -> str:
 
 def tidy_name(s: str) -> str:
     """Display clean-up of an institution name: punctuation, spacing, case and PIN codes (an address
-    fragment some colleges add to their name). Words are never changed."""
+    fragment some colleges add to their name). Words are never changed, except one typo in NIRF's own
+    pages (2021-2025 print "St. Stephens's College"). The name exactly as published stays in
+    institute_name_raw."""
     s = s.replace(" ", " ")
     s = re.sub(r"(?<=[A-Za-z])[`’�?](?=s\b)", "'", s)      # Xavier`s / Vidyapeeth?s -> Xavier's
+    s = s.replace("`", "'")                                   # Siksha `O` Anusandhan -> Siksha 'O' Anusandhan
+    s = re.sub(r"\bStephens's\b", "Stephen's", s)             # source typo: St. Stephens's -> St. Stephen's
     s = re.sub(r"\s+", " ", s).strip()
     s = re.sub(r"\s*[-,]?\s*\b\d{3}\s?\d{3}\b\.?", "", s)               # PIN code: 'Kalady-683 574' -> 'Kalady'
     s = re.sub(r"\s+,", ",", s)                                       # 'College , Amravati' -> 'College, Amravati'
@@ -417,6 +421,17 @@ def institutions(df: pd.DataFrame, rec: StepRecord, ctx: Context) -> pd.DataFram
     rec.examples = _identity_examples(res)
     rec.details.append("Alias table rows per match method:")
     rec.details.append(by_method.rename("raw spellings").rename_axis("match_method").reset_index())
+    rules = pd.read_csv(ALIAS_RULES, dtype=str, keep_default_na=False)
+    rec.details.append(
+        "**Renamed institutions (hand alias rules).** NIRF gave most institutions a stable ID code only from "
+        "2018, so a college whose name changed after 2017 (Thapar University -> Thapar Institute of Engineering "
+        "and Technology) would otherwise be two institutions: its 2017 rows would be missing from every 2017 -> "
+        "2025 comparison, and it would wrongly count as a new entrant in 2018. Each rule below was checked in "
+        "the raw lists: same city, the old name stops the year the new one starts, never both in one list. "
+        "`python -m scripts.find_renames` lists more candidates in `data/mappings/rename_review.csv` for a "
+        "person to check; nothing in that file is merged automatically.")
+    rec.details.append(rules[["name", "same_as_name", "note"]].rename(
+        columns={"name": "name in the earlier lists", "same_as_name": "is the same institution as", "note": "evidence"}))
     if s["rule_problems"]:
         rec.details.append("Alias rules that could not be applied:\n\n" +
                            "\n".join(f"- {p}" for p in s["rule_problems"]))

@@ -25,9 +25,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year, category_years, chart_labels,
-                       check_category, check_column, check_year, filter_df, find_institutions, load_master,
-                       parameters_of, short_name)
+from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year, category_years, change_years,
+                       chart_labels, check_category, check_column, check_year, filter_df, find_institutions,
+                       load_master, parameters_of, short_name)
 from core.result import ChartResult
 from core.stats import signed
 from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, OTHER, UP, add_lollipops, color_map, finish,
@@ -251,7 +251,7 @@ def improved_despite_decline(category: str = "Overall", start_year: int | None =
     """
     df = load_master()
     category = check_category(category, df)
-    available = category_years(category, df)
+    available = change_years(category, df)
     start_year = check_year(available[0] if start_year is None else start_year, category, df)
     end_year = check_year(available[-1] if end_year is None else end_year, category, df)
     if start_year >= end_year:

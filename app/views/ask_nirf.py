@@ -71,8 +71,9 @@ def _status() -> tuple[bool, str]:
         return False, "Status check failed."
 
 
-def _run(engine: str, function: str, params: dict, states):
-    result, error = run_engine(engine, function, params, tuple(states) if states else None)
+def _run(engine: str, function: str, params: dict, states, types=None):
+    result, error = run_engine(engine, function, params, tuple(states) if states else None,
+                               tuple(types) if types else None)
     if error:
         raise NirfInputError(error)
     return result

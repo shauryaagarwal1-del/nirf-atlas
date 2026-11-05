@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from core.data import (NirfInputError, category_years, chart_labels, check_category, check_year, filter_df,
+from core.data import (NirfInputError, category_years, change_years, chart_labels, check_category, check_year, filter_df,
                        fmt_years, load_master)
 from core.engines import trends
 from core.result import ChartResult
@@ -54,7 +54,7 @@ def _mobility_band(rank_upper: pd.Series) -> pd.Series:
 def _category_and_years(category: str, year_a, year_b) -> tuple[pd.DataFrame, str, int, int]:
     df = load_master()
     category = check_category(category, df)
-    available = category_years(category, df)
+    available = change_years(category, df)
     year_a = check_year(available[0] if year_a is None else year_a, category, df)
     year_b = check_year(available[-1] if year_b is None else year_b, category, df)
     if year_a >= year_b:
@@ -178,7 +178,7 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     top = int(top)
     if top < 1:
         raise NirfInputError("top must be at least 1.")
@@ -279,7 +279,7 @@ def band_retention(category: str = "Overall", by_band: bool = False) -> ChartRes
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     if len(years) < 2:
         raise NirfInputError(f"{category} has a ranking in only one year ({years[0]}), so there is no year-to-year change.")
     bands = _bands_by_year(filter_df(df, categories=category))
@@ -368,7 +368,7 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
     """
     df = load_master()
     category = check_category(category, df)
-    available = category_years(category, df)
+    available = change_years(category, df)
     year_a = available[0] if year_a is None else year_a
     year_b = available[-1] if year_b is None else year_b
     base = trends.biggest_movers(category, year_a, year_b, direction="both", n=n)
@@ -428,7 +428,7 @@ def up_down_same_counts(category: str = "Overall") -> ChartResult:
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     if len(years) < 2:
         raise NirfInputError(f"{category} has a ranking in only one year ({years[0]}), so there is no year-to-year change.")
     cat = filter_df(df, categories=category)

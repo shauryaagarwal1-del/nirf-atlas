@@ -25,9 +25,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from core.data import (LABELS, SHORT, NirfInputError, category_years, chart_labels, check_category, check_year,
-                       check_years, filter_df, find_institutions, fmt_years, load_master, parameters_of,
-                       short_label)
+from core.data import (LABELS, SHORT, NirfInputError, category_years, change_years, chart_labels, check_category, check_year,
+                       check_years, filter_df, find_institutions, fmt_years, load_master, n_years,
+                       parameters_of, short_label)
 from core.result import ChartResult
 from core.stats import places, signed
 from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_MUTED, INK_SECONDARY, OTHER,
@@ -504,7 +504,7 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
     """
     df = load_master()
     category = check_category(category, df)
-    available = category_years(category, df)
+    available = change_years(category, df)
     start_year = check_year(available[0] if start_year is None else start_year, category, df)
     end_year = check_year(available[-1] if end_year is None else end_year, category, df)
     if start_year >= end_year:
@@ -706,7 +706,7 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     n, min_years = int(n), int(min_years)
     if n < 1:
         raise NirfInputError("n must be at least 1.")
@@ -721,7 +721,7 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     keep = counts[counts >= min_years]
     if keep.empty:
         raise NirfInputError(f"No institution was in the {category} top {n} in at least {min_years} of "
-                             f"{len(years)} years. Try a smaller min_years or a larger n.")
+                             f"{n_years(len(years))}. Try a smaller min_years or a larger n.")
     mean_rank = cat[cat["in_top"] & cat["institution_key"].isin(keep.index)].groupby("institution_key")["rank_upper"].mean()
     order = (pd.DataFrame({"years": keep, "mean_rank": mean_rank}).sort_values(["years", "mean_rank"],
                                                                               ascending=[False, True]).index.tolist())
@@ -762,13 +762,13 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     fig.update_layout(legend=dict(orientation="h", x=0, y=-0.02, yanchor="top"), margin=dict(t=120, b=110))
 
     always = [labels[k] for k in order if keep[k] == len(years)]
-    title = (f"{len(order)} institutions were in the {category} top {n} in at least {min_years} of {len(years)} years")
+    title = (f"{len(order)} institutions were in the {category} top {n} in at least {min_years} of {n_years(len(years))}")
     insight = (f"{len(order)} institutions were in the {category} top {n} in at least {min_years} of the "
-               f"{len(years)} years ({fmt_years(years)}); "
+               f"{n_years(len(years))} ({fmt_years(years)}); "
                + (f"{len(always)} of them were there every year: {', '.join(always)}." if always
-                  else f"none was there every year (most: {labels[order[0]]}, {keep[order[0]]} years)."))
+                  else f"none was there every year (most: {labels[order[0]]}, {n_years(keep[order[0]])})."))
     if capped:
-        insight = (f"{category} was ranked in only {len(years)} years, so 'at least {requested} years' means every "
+        insight = (f"{category} was ranked in only {n_years(len(years))}, so 'at least {requested} years' means every "
                    f"year it has. " + insight)
     method = (f"For each year we mark an institution as 'in the top {n}' when its rank is certainly {n} or better "
               f"(an exact rank ≤ {n}, or a NIRF band whose worst rank is ≤ {n}). We count those years per "
@@ -864,7 +864,7 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
                  f"{int(s.iloc[-1])} in {last_year} ({places(moves[climber])})" if moves[climber] > 0 else "")
         always = int(sum(ranks.loc[k].le(n).all() for k in keys))
         insight = (f"{labels[leader]} is rank {lead_rank} in {category} {last_year} and held that rank in {leader_years} of "
-                   f"{len(years)} years{climb}. {always} of today's top {n} were in the top {n} in every year "
+                   f"{n_years(len(years))}{climb}. {always} of today's top {n} were in the top {n} in every year "
                    f"{span}.")
         title = (f"{labels[leader]} leads {category} {last_year}; {labels[climber]} made the biggest climb"
                  if moves[climber] > 0 else f"{labels[leader]} leads the {category} top {n} in {last_year}")

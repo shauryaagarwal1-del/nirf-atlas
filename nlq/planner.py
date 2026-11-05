@@ -121,7 +121,11 @@ Rules:
 - States: write them as typed (e.g. "TN", "Karnataka"). Any analysis can be limited to institutions of some
   states by adding "states": [...] to params, even if the function has no states parameter. A city used as
   a place ("Bangalore colleges", "colleges in Pune") goes in "states" as typed; our code turns it into its
-  state.
+  state. A region ("South India", "the north-east") also goes in "states" as typed.
+- Institute types: any analysis can be limited to one kind of institute by adding "institute_types": [...]
+  to params, with codes IIT, NIT, IIIT, IIM, IISER, AIIMS, NLU, NIPER. "Which IITs improved the most?" =
+  trends.biggest_movers with "institute_types": ["IIT"]; "all IIMs", "the NITs" likewise. Not for one named
+  institute ("IIT Bombay" stays an institution).
 - Two questions in one message: plan the first and put the second, written out in full, FIRST in follow_ups.
 - Parameters: use codes score, tlr (teaching), rpc (research), go (graduation outcomes, placements),
   oi (outreach, inclusivity), pr (perception, reputation).

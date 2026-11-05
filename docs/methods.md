@@ -49,7 +49,7 @@ scores are only compared within the same category unless a visible note says oth
 ### Step 3: cleaning and integration (`pipeline/clean.py` → `data/processed/nirf_master.parquet`)
 - **What:** all 290 raw CSVs become one master table with one row per (year, category, institution):
   11,647 ranked rows (6,976 with an exact rank, 4,671 known only by rank band), 2017–2025, 17 categories.
-  Participant lists (63,975 rows) and the 2018 Special Mention page go to a separate
+  Participant lists (63,979 rows) and the 2018 Special Mention page go to a separate
   `nirf_participants.parquet`, so they are never counted as ranked. Full numbers and examples per step:
   `docs/cleaning_report.md`.
 - **How (plain words), in order:**
@@ -62,7 +62,10 @@ scores are only compared within the same category unless a visible note says oth
      (Pondicherry → Puducherry) and adds a region (MHA zonal councils + North-East). Its `geo_name` column
      names the map polygon of each state (e.g. Jammu and Kashmir → "Jammu & Kashmir"), so maps match names
      through this table and the GeoJSON is never edited (`tests/test_geo.py` checks every state has a polygon).
-  6. *Text tidy:* spaces, commas, hyphens, broken apostrophes (`` ` `` → '), PIN codes, UPPER CASE.
+  6. *Text tidy:* spaces, commas, hyphens, broken apostrophes (`` ` `` → ', so "Siksha `O` Anusandhan" is shown as
+     "Siksha 'O' Anusandhan"), PIN codes, UPPER CASE, and one typo in NIRF's own pages ("St. Stephens's College",
+     2021-2025, is shown as "St. Stephen's College"). The name exactly as published always stays in
+     `institute_name_raw`.
   7. *Institution identity* (`pipeline/identity.py`): a matching key per name (lower case, & → and,
      no punctuation, "Govt" → "government", "Bangalore" → "bengaluru"); same key + same state = same
      institution (+ city when one name means two colleges in one state). Then links by NIRF ID code
@@ -71,6 +74,23 @@ scores are only compared within the same category unless a visible note says oth
      them (each name has its own different word, different cities, different ID codes), go to
      `data/mappings/institution_review.csv` for a human `approve = yes/no`, read back on the next run.
      Two rows of the same ranking list are never merged. `canonical_name` = the most recent name.
+     *Renamed institutions (Phase 15e):* NIRF gave most institutions an ID code only from 2018, so a college whose
+     name changed after 2017 (Thapar University → Thapar Institute of Engineering and Technology, Symbiosis
+     International University → Symbiosis International ...) became two institutions: the 2017 rows were counted as
+     a different institution, so it was missing from "2017 → 2025" comparisons and was a false "new entrant" in 2018.
+     We checked 12 such pairs in the raw lists (same city; the old name stops the year the new one starts; never both
+     in one list) and wrote each into `data/mappings/institution_alias_rules.csv` with that evidence; JNTU Anantapur
+     was split by a new spelling of its city (Anantapur → Ananthapuramu, 2023). `python -m scripts.find_renames` lists
+     other candidates for a person to check (`data/mappings/rename_review.csv`, 77 pairs): an institution last listed
+     in year Y and one first listed in Y+1 or Y+2, in the same state and city, with similar names (token_set_ratio ≥
+     75), never in the same list and sharing a category. Nothing in that file is merged until a person confirms it.
+     The 208 pairs in `institution_review.csv` were decided with a pre-sorted suggestion file
+     (`institution_review_suggested.csv`: yes / no / check with a reason); we corrected 4 "yes" suggestions that
+     would have merged two different institutions (Thiagarajar College of Engineering and Thiagarajar College; the
+     Landran and Jhanjeri campuses of Chandigarh Engineering College; the Kalkaji and Vasant Kunj campuses of
+     Jagannath International Management School; the two Government Post Graduate Colleges for Girls in Chandigarh,
+     both listed in 2018-2020). Result: 1,692 → 1,647 institutions; Q1.2/Q1.3 now compare 65 institutions ranked in
+     both 2017 and 2025 (was 62); 2018 new entrants 362 → 340 rows (301 → 288 institutions).
   8. *Rank:* `rank_raw` kept; `rank` = exact integer (ties share it, `is_tie`); `21A`-style ranks keep
      their number and are flagged `lettered`; withdrawn ranks stay empty. Every row gets a standard
      `rank_band` (1-10, 11-25, 26-50, 51-100, 101-150, 151-200, 201-300) and `in_top10/50/100`.
@@ -152,14 +172,23 @@ scores are only compared within the same category unless a visible note says oth
     the others are offered ("IIT Bangalore" → IIIT Bangalore, with IISc and IIM Bangalore). The dashboard pages do
     not swap silently; they show "There's no IIT Bangalore in the NIRF rankings. Did you mean IIIT Bangalore, IISc
     or IIM Bangalore?"; (7) otherwise "No institution called X in the NIRF data" with at most 3 suggestions that
-    pass both guards. If several institutions fit equally well, the message lists them so the person can be more
+    pass both guards and are also similar as a whole name (token_sort_ratio ≥ 70; an unknown short form under 6
+    letters gets no suggestions), so "JIPMER" or "JU" can never suggest an unrelated college that merely shares a
+    few letters. If several institutions fit equally well, the message lists them so the person can be more
     specific.
+  - *A family alone always asks:* "IISER", "IIM", "NIT", "NIPER" typed alone fit several institutes, so the person
+    gets the 4 best known to choose from: ranked by the family's own main list (Management for the IIMs: IIM
+    Ahmedabad, Bangalore, Kozhikode, Lucknow, the 2025 top 4), even though one IISER was listed in 2017 under the
+    bare name "Indian Institute of Science Education & Research". NIPER (the National Institutes of
+    Pharmaceutical Education and Research) is a family too, so "NIPER Mohali" finds the Mohali institute.
   - *Why:* a spelling score alone rewards shared letters, not meaning ("indian institute of information technology
     bengaluru" looked close to "bangalore institute of technology"). Trying the precise rules first and checking
     family and place before accepting a spelling match keeps every guess explainable.
 - **Year checks with a state filter:** when the chosen states have no institution in a year that NIRF did publish,
   the message says so ("No institution in Goa is in the Overall ranking of 2025 (they appear in 2017-2022)") instead
-  of claiming that NIRF has no ranking that year.
+  of claiming that NIRF has no ranking that year (the same with an institute-type filter: "No IIM is ...").
+  A real state or UT with no ranked institution at all says that plainly: "No institution from Ladakh appears in any
+  NIRF ranking." (Ladakh and Lakshadweep; `INDIA_STATES` holds the 36 official names), instead of a list of states.
 - **"In the top N" (used everywhere):** the rank is *certainly* N or better: exact rank ≤ N, or a NIRF band whose
   worst rank ≤ N. A 76-100 row is in the top 100; a 101-150 row is not; a 51-75 row is in the top 75.
 - **Exact ranks only:** whenever a rank must be used as a number (subtracting, averaging, box plots of ranks), rows
@@ -194,6 +223,25 @@ scores are only compared within the same category unless a visible note says oth
   counts, averages, quartiles, z-scores and correlations are calculated within the chosen states. A state with no
   institution in the category gives a plain message instead of an empty chart. `run()` only calls public functions
   of the 8 engines (nothing else), so the dashboard and the Ask NIRF chat run analyses the same safe way.
+- **Institute-type filter for any analysis (`core/data.py :: only_types()`, `run(..., types=["IIT"])`):** works like
+  the state filter, for one kind of institute: IIT, NIT, IIIT, IIM, IISER, AIIMS, NLU, NIPER. *Definition:* the type
+  is read from the cleaned name with the same family patterns the name search uses ("Indian Institute of Technology
+  ..." = IIT, "Visvesvaraya National Institute of Technology" = NIT, IIIT covers the Indian, International and
+  Indraprastha IIITs and IIITDM, NLU covers the national law universities and law schools such as NLSIU and
+  NALSAR). Counts: 23 IITs, 31 NITs, 21 IIMs, 10 IIITs, 5 IISERs, 7 AIIMS, 18 NLUs, 7 NIPERs. Central / state
+  universities are not offered: NIRF does not publish that status, and it cannot be read reliably from a name.
+  *Shown:* the chart title and the answer start "Among IITs only" (with states: "Among NITs in Tamil Nadu only"),
+  and the method lists what the type covers. Ranks stay national; averages, z-scores and correlations are within
+  the group. *Why:* "Which IITs improved the most since 2019?" needs the analysis limited to IITs, not a chart of
+  all institutions.
+- **Change over time in a category ranked once:** every analysis of change (movers, transitions, retention,
+  volatility, unusual changes, state shares over time, consistent top N) first checks the category's years
+  (`core/data.py :: change_years()`). SDG was ranked only in 2025, so these say "SDG was ranked only in 2025, so
+  there is no change over time to show." instead of "the start year (2025) must be before the end year (2025)".
+  Year counts are written "1 year" / "3 years" (`n_years()`).
+- **"Top N" larger than the list:** NIRF's list has a fixed number of places (Overall 200, Law 40 in 2025;
+  `list_sizes()`, always the national list, also under a filter). Asking for the top 500 uses the top 200 and the
+  answer says "Overall lists 200 institutions in 2025, so the top 200 is used." (Q2.1, Q2.2, Q2.3).
 - **`core/stats.py`:** summary statistics, Pearson/Spearman correlation, R², p-value and the least-squares line.
   Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 moderate, < 0.8 strong, otherwise very strong.
 
@@ -319,8 +367,9 @@ of one category-year (default: its latest year).
 ### Q2.1: Which states have the highest number of institutions in the top 100?
 - **Engine / function:** `core/engines/geography.py :: state_counts(year, category, top_n)`
 - **Definition used:** institutions of each state certainly in the top N of that category-year.
-- **Calculation (plain words):** filter to the top N, count per state, sort; share = count / all top-N × 100. If NIRF
-  ranks fewer than N (e.g. Law), a note says every ranked institution is counted. A tie at the last place makes the
+- **Calculation (plain words):** filter to the top N, count per state, sort; share = count / all top-N × 100. If N is
+  larger than NIRF's list (top 500 of Overall's 200 places, top 100 of Law's 40), the list size is used and the answer
+  says so ("Overall lists 200 institutions in 2025, so the top 200 is used."). A tie at the last place makes the
   top N hold more than N institutions (Overall 2020: two institutions share rank 100, so the top 100 holds 101); the
   answer names them, and shares are of the institutions actually in the list.
 - **Chart and why:** horizontal bar sorted from most to fewest: easy to compare, and long state names fit.
@@ -700,7 +749,9 @@ lies wholly inside one of these four, so institutions known only by band can be 
   year) / SD of that year's changes. Unusual = |z| > 2. z is computed per year pair so that a year in which NIRF's method
   moved everyone (e.g. +4 on average in 2017 → 2018) does not make every institution look unusual.
 - **Calculation (plain words):** all changes, their z-scores, keep |z| > 2; the insight names institutions with more
-  than one unusual change.
+  than one unusual change. When no change passes the threshold (e.g. Dental with |z| > 3), the answer says so and names
+  the largest change: "None of the 154 year-to-year score changes in Dental (2020-2025) is beyond |z| > 3; the largest
+  is ... (z = −2.6). Try a lower threshold."
 - **Chart and why:** **jittered strip chart** over a box plot per year pair: every change is a dot, spread sideways at
   random (fixed seed) so dots do not hide each other; the box shows the year's typical change. Unusual jumps are teal,
   unusual drops coral, and the 12 largest are labelled.
@@ -794,7 +845,7 @@ lies wholly inside one of these four, so institutions known only by band can be 
   sidebar or above a chart) starts from the stored value and writes changes back (`app/filters.py :: synced()`).
 - **Institution lists follow the category:** every institution picker (sidebar, Explore views, Question Bank, Chart
   Builder) offers only the institutions listed in the chosen category at least once, with an exact rank or in a rank
-  band (`app/filters.py :: institution_options(category)`): Engineering offers 460, Medical 66, instead of all 1,692.
+  band (`app/filters.py :: institution_options(category)`): Engineering offers 460, Medical 66, instead of all 1,647.
   For several categories (Chart Builder) it is the union of their lists. The label is "Short name · City, State",
   plus "· band only" when NIRF never gave the institution an exact rank in that category. When the category changes,
   chosen institutions not listed in the new one are removed and a caption says so, e.g. "IIT Dharwad is not ranked in
@@ -803,6 +854,8 @@ lies wholly inside one of these four, so institutions known only by band can be 
 - **"Only states":** on every analysis without its own state parameter, the state filter limits the whole analysis to
   institutions in those states (see "State filter for any analysis" above), and the chart says so. Compare states has
   its own state picker instead (empty = Karnataka and Tamil Nadu).
+- **"Only institute type":** drawn next to "Only states" on the same views: IITs, NITs, IIITs, IIMs, IISERs, AIIMS,
+  NLUs, NIPERs (see "Institute-type filter" above). The chart title and the answer then start "Among IITs only".
 - **Tests:** `tests/test_explorer.py` checks that each view's controls cover exactly its function's parameters, that
   every view of every page draws a chart in the real app (Streamlit AppTest), that page and sidebar stay in sync, that
   local choices survive a category change, and that the state filter is applied and shown. `tests/test_filters.py`
@@ -939,20 +992,43 @@ and checks that the chart drawn is the same answer as the analysis those setting
   pydantic, then the names are checked against the code (does `trends.rank_trajectory` exist? is `region` a group?).
   If the JSON is invalid or a name does not exist, the model is asked once more with the error message.
 - **Step 3, name resolution (`nlq/resolve.py`, fixed rules):** institutions: known short forms first (iitb, iitkgp,
-  iima, nitt, LPU, KIIT, IIIT Bangalore, iiitb ...), then the dashboard's institution matcher (see "Institution
-  names" above: exact name, word match, close spelling last, the family and place guards, never-ranked participants,
-  the family swap);
-  states: codes and old names (TN, KA, UP, Orissa); parameters: everyday words (research -> RPC, teaching -> TLR,
-  placements -> GO, reputation -> PR); categories: engg -> Engineering, B-schools -> Management; years: numbers,
-  ranges and phrases ("last 3 years" = the latest 3 years in which that category was published, "since 2020",
-  "latest", "pichhle 5 saal"). Every translation is written as a plain sentence ("I read 'TN' as Tamil Nadu.",
+  iima, nitt, LPU, KIIT, IIIT Bangalore, iiitb, MAHE, ISM Dhanbad, SRMIST, JU, CMC Ludhiana, JIPMER, PGI, NLU Delhi,
+  RVCE, MIT Manipal, LSR, SOA, TIFR, ICT Mumbai, NIPER Mohali ...), then the dashboard's institution matcher (see
+  "Institution names" above: exact name, word match, close spelling last, the family and place guards, never-ranked
+  participants, the family swap). A name two institutions share is shown with its city ("National Law University
+  (New Delhi)" vs "(Cuttack)"). Well-known institutions NIRF does not rank are said plainly: "The Indian School of
+  Business (ISB) does not appear in any NIRF ranking"; "BITS Pilani's Goa campus is not ranked on its own in NIRF:
+  only BITS Pilani ... appears", with a button for BITS Pilani;
+  states: codes and old names (TN, KA, UP, Orissa), one-letter slips ("Telengana" = Telangana: similarity ≥ 87 and
+  clearly ahead of the next state; Andhra and Madhya Pradesh are 86 apart, so they never mix), cities as their state
+  (Mumbai, Bangalore, Chennai, Kolkata, Hyderabad, Pune ...), and regions ("South India", "the north-east", "north
+  India") as the states of that region in the data's region column, with a note listing them;
+  parameters: everyday words (research -> RPC, teaching -> TLR, placements -> GO, reputation -> PR), also with
+  "score" ("research score"); a NIRF sub-parameter maps to its parameter with the note "NIRF publishes only the 5
+  parameter scores, not the sub-parameters" (patents -> RPC, student strength and faculty ratio -> TLR, median
+  salary -> GO, women / regional diversity -> OI); in Research Institutions, which has no RPC, research -> QnR
+  (Quantitative Research) and teaching -> SFC, with a note;
+  categories: engg / B.Tech -> Engineering, B-schools / MBA colleges -> Management, pharmacy colleges -> Pharmacy,
+  MBBS colleges -> Medical, architecture colleges / planning -> Architecture & Planning, law universities -> Law, agri
+  colleges -> Agriculture, arts (and science) colleges -> College, sustainability -> SDG; nursing and polytechnics
+  get "NIRF has no Nursing ranking ...";
+  years: numbers, ranges and phrases ("last 3 years" = the latest 3 years in which that category was published,
+  "since 2020" = "2020 se", "latest", "pichhle 5 saal", "recent years" = the latest 3, "over the years" / "last
+  decade" = every year, "2020s", "'21" = "2k21" = 2021, "FY2024" = 2024, "2024-25" = NIRF 2025 because NIRF names a
+  ranking by the year it is published, "three years ago" = the calendar year three years back). A year with no
+  ranking is not returned as an empty year: "There is no NIRF ranking for 2026 in the data: the latest NIRF ranking
+  is 2025", "Dental starts in 2020 ..."; in an engine plan the chat instead moves it to the nearest year and says so
+  ("Dental rankings exist only for 2020-2025, so 2020 is shown (the nearest to 2018)"). Every translation is written as a plain sentence ("I read 'TN' as Tamil Nadu.",
   "I read 'Jadavpur Universty' as Jadavpur University, the closest spelling in the NIRF data.", "There's no IIT
   Bangalore in the NIRF rankings, so I assumed you meant IIIT Bangalore (International Institute of Information
   Technology Bangalore).").
 - **Step 4, running (`nlq/executor.py`):** years are fitted to the function (a list, one year = the latest asked for,
   or two years = the first and last asked for; given the wrong way round, "from 2024 to 2019", they are swapped,
   because a change is always measured from the earlier to the later year, and the swap is listed as an assumption); `states` on any analysis limits it to institutions in those states
-  (ranks stay national); options a function does not have are dropped and listed. Only the 8 engines' public
+  (ranks stay national); `institute_types` (or "IITs", "all IIMs", "the NITs" written as an institution, or such a
+  plural in the question of an analysis that covers every institution) limits it to those institute types, so "Which
+  IITs improved the most in Engineering since 2019?" ranks only IITs and the answer starts "Among IITs only" (a bare
+  "IIT" on a chart of named institutions still asks which IIT); options a function does not have are dropped and listed. Only the 8 engines' public
   functions or the Chart Builder can be called. Nothing the model writes is run as code (no `exec`/`eval`; a test
   checks the syntax tree of `nlq/`).
 - **What the page shows:** the chart card (chart, one-line answer, method, data + CSV), directly under it an

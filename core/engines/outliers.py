@@ -24,7 +24,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year, category_years, chart_labels,
-                       check_category, check_column, filter_df, fmt_years, load_master)
+                       change_years, check_category, check_column, filter_df, fmt_years, load_master,
+                       n_years)
 from core.result import ChartResult
 from core.stats import correlate, signed
 from core.theme import (CATEGORICAL, DOWN, INK_SECONDARY, OTHER, UP, finish, highlight_marker, jitter, label_points,
@@ -200,7 +201,7 @@ def unusual_score_jumps(category: str = "Overall", z_threshold: float = 2.0, max
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     cat = filter_df(df, categories=category)
     scores = cat[cat["score"].notna()].pivot(index="institution_key", columns="year", values="score")
     if scores.empty or len(years) < 2:
@@ -223,11 +224,12 @@ def unusual_score_jumps(category: str = "Overall", z_threshold: float = 2.0, max
     labels = chart_labels(d["institution_key"])
     d["institution"] = d["institution_key"].map(labels)
     d["full_name"] = d["institution_key"].map(names)
-    d["unusual"] = d["z"].abs() > z_threshold
+    d["a"] = d["z"].abs()
+    d["unusual"] = d["a"] > z_threshold
     pairs = list(dict.fromkeys(d["pair"]))
     pos = {p: i for i, p in enumerate(pairs)}
     d["x"] = d["pair"].map(pos) + jitter(len(d), 0.22)
-    label_idx = set(d[d["unusual"]].assign(a=d["z"].abs()).nlargest(int(max_labels), "a").index)
+    label_idx = set(d[d["unusual"]].nlargest(int(max_labels), "a").index)
 
     fig = go.Figure()
     for p in pairs:
@@ -255,24 +257,35 @@ def unusual_score_jumps(category: str = "Overall", z_threshold: float = 2.0, max
     label_points(fig, shown["x"], shown["change"], shown["institution"], (-0.6, len(pairs) - 0.4),
                  padded_range(d["change"]), avoid_x=d["x"], avoid_y=d["change"])
 
-    un = d[d["unusual"]].assign(a=d["z"].abs()).sort_values("a", ascending=False)
-    big = un.iloc[0] if len(un) else d.loc[d["z"].abs().idxmax()]
+    # Selected from d itself (never .assign() on an empty selection: pandas would then adopt d's whole index).
+    un = d[d["unusual"]].sort_values("a", ascending=False)
+    big = d.loc[d["a"].idxmax()]                      # the most extreme change, unusual or not
     n_up, n_down = int((un["change"] > 0).sum()), int((un["change"] <= 0).sum())
-    title = (f"{len(un)} unusual year-to-year score changes in {category}; the largest: {big['institution']} "
-             f"{signed(big['change'], 1)} points ({big['pair']})")
-    insight = (f"Out of {len(d)} year-to-year score changes in {category} ({fmt_years(years)}), {len(un)} are unusual "
-               f"(|z| > {z_threshold:g}): {n_up} jumps up and {n_down} drops. The most extreme is {big['full_name']} in "
-               f"{big['pair']} ({big['score_from']:.1f} → {big['score_to']:.1f}, {signed(big['change'], 1)} points, "
-               f"z = {signed(big['z'], 1)}). Institutions with unusual changes more than once: "
-               + (", ".join(f"{k} ({v}×)" for k, v in un["institution"].value_counts().loc[lambda s: s > 1].items())
-                  or "none") + ".")
+    move = (f"{big['score_from']:.1f} → {big['score_to']:.1f}, {signed(big['change'], 1)} points, "
+            f"z = {signed(big['z'], 1)}")
+    if un.empty:
+        title = (f"No {category} score change is beyond |z| > {z_threshold:g}; the largest: {big['institution']} "
+                 f"{signed(big['change'], 1)} points ({big['pair']})")
+        insight = (f"None of the {len(d)} year-to-year score changes in {category} ({fmt_years(years)}) is beyond "
+                   f"|z| > {z_threshold:g}; the largest is {big['full_name']} in {big['pair']} ({move}). "
+                   f"Try a lower threshold.")
+    else:
+        title = (f"{len(un)} unusual year-to-year score changes in {category}; the largest: {big['institution']} "
+                 f"{signed(big['change'], 1)} points ({big['pair']})")
+        insight = (f"Out of {len(d)} year-to-year score changes in {category} ({fmt_years(years)}), {len(un)} "
+                   f"{'is' if len(un) == 1 else 'are'} unusual (|z| > {z_threshold:g}): {n_up} "
+                   f"{'jump' if n_up == 1 else 'jumps'} up and {n_down} {'drop' if n_down == 1 else 'drops'}. "
+                   f"The most extreme is {big['full_name']} in {big['pair']} ({move}). "
+                   f"Institutions with unusual changes more than once: "
+                   + (", ".join(f"{k} ({v}×)" for k, v in un["institution"].value_counts().loc[lambda s: s > 1].items())
+                      or "none") + ".")
     finish(fig, title, f"{category} ranking · one box per year pair, every dot = one institution's score change · "
            f"labelled: the {min(len(un), int(max_labels))} largest |z|", height=580, legend_title="Score change")
     method = (f"For each {category} institution with a published score in two consecutive published years, change = new "
               f"score − old score. Within each year pair we turn the changes into z-scores, z = (change − mean change) / "
               f"SD of the changes, so a year in which NIRF's method moved everyone up or down does not make every "
-              f"institution look unusual. |z| > {z_threshold:g} = unusual (more than two standard deviations from that "
-              f"year's typical change). The box plot shows each year's median and middle 50% of changes; dots are spread "
+              f"institution look unusual. |z| > {z_threshold:g} = unusual (more than {z_threshold:g} standard deviations "
+              f"from that year's typical change). The box plot shows each year's median and middle 50% of changes; dots are spread "
               f"sideways at random (jitter, fixed seed) so they do not cover each other.")
     table = (un if len(un) else d).drop(columns=["x", "a", "institution_key", "unusual"], errors="ignore")
     table = table[["institution", "full_name", "pair", "score_from", "score_to", "change", "z"]].round(2)
@@ -368,11 +381,11 @@ def volatility_vs_peers(category: str = "Overall", min_years: int = 4) -> ChartR
     """
     df = load_master()
     category = check_category(category, df)
-    years = category_years(category, df)
+    years = change_years(category, df)
     min_years = int(min_years)
     if not 2 <= min_years <= len(years):
-        raise NirfInputError(f"{category} has {len(years)} years ({fmt_years(years)}); min_years must be between 2 and "
-                             f"{len(years)}.")
+        raise NirfInputError(f"{category} has {n_years(len(years))} ({fmt_years(years)}); min_years must be between 2 "
+                             f"and {len(years)}.")
     cat = filter_df(df, categories=category, exact_ranks_only=True)
     g = cat.groupby("institution_key")["rank"]
     v = pd.DataFrame({"years": g.size(), "rank_sd": g.std().astype(float), "median_rank": g.median().astype(float),

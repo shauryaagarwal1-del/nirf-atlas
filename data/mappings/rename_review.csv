@@ -1,0 +1,78 @@
+approve,similarity,gap_years,old_name,old_years,new_name,new_years,state,old_city,new_city,shared_categories,review_file_decision,old_key,new_key
+,100,1,BVRIT Hyderabad,2019-2020,BVRIT Hyderabad College of Engineering for Women,2021-2022,Telangana,Hyderabad,Hyderabad,Engineering,,INST-01009,INST-01273
+,100,1,"Bharathiya Vidya Bhavan's Vivekananda College of Science, Humanities & Commerce",2018-2019,"Bhavans Vivekananda College of Science, Humanities and Commerce","2020, 2022, 2024-2025",Telangana,Secunderabad,Secunderabad,College,,INST-00740,INST-01131
+,100,1,Bharati Vidyapeeth's College of Pharmacy,2017-2022,"Bharati Vidyapeeth's College of Pharmacy, Sector 8, C.B.D. Belapur, Navi Mumbai",2023-2025,Maharashtra,Navi Mumbai,Navi Mumbai,Pharmacy,,INST-00057,INST-01457
+,100,1,Chandigarh Engineering College,2020-2022,"Chandigarh Engineering College-CGC, Landran, Mohali",2023-2025,Punjab,Sahibzada Ajit Singh Nagar,Mohali / Sahibzada Ajit Singh Nagar,"Engineering, Overall",,INST-01135,INST-01462
+,100,1,"Department of Pharmaceutical Sciences, Maharshi Dayanand University, Rohtak",2017,Maharshi Dayanand University,2018-2025,Haryana,Rohtak,Rohtak,Pharmacy,,INST-00127,INST-00857
+,100,1,"Institute for Excellence in Higher Education(IEHE), Bhopal(Autonomous)",2024,"Institute for Excellence in Higher Education(IEHE), Bhopal(Autonomous) Kaliya sot bandh Kolar Road, Bhopal",2025,Madhya Pradesh,Bhopal,Bhopal,College,,INST-01567,INST-01668
+,100,1,Maharashtra Academy of Engineering & Educational Research's Maharashtra Institute of Pharmacy,2017,MAEERS Maharashtra Institute of Pharmacy,2018-2019,Maharashtra,Pune,Pune,Pharmacy,,INST-00371,INST-00855
+,100,1,Marian College,2018-2021,"Marian College, Kuttikanam P.O. Peermade",2022-2025,Kerala,Kuttikanam,Kuttikanam,College,,INST-00870,INST-01415
+,100,1,Nizam College,2021,"Nizam College, Basheerbagh","2022, 2024-2025",Telangana,Hyderabad,Hyderabad,College,,INST-01326,INST-01422
+,100,1,PSMO College,2019-2020,"PSMO College, Thirurangadi",2021-2025,Kerala,Malappuram,Malappuram,College,,INST-01079,INST-01328
+,100,1,"Sadakathullah Appa College, Rahmath Nagar, Palayamkottai",2022-2023,Sadakathullah Appa College,2024-2025,Tamil Nadu,Tirunelveli,Tirunelveli,College,,INST-01433,INST-01610
+,100,1,Smt. Parvatibai Chowgule Cultural Foundation's College of Arts & Science Fatorda,2018,Parvatibai Chowgule College of Arts & Science (Autonomous),"2019, 2021, 2024-2025",Goa,South Goa,Margao / South Goa,College,,INST-00937,INST-01082
+,100,1,St. Xavier's College,2020,St Xaviers College of Arts Science & Commerce Mapusa,"2021, 2024-2025",Goa,North Goa,Mapusa / North Goa,College,,INST-01254,INST-01345
+,95,1,K.G. College of Arts and Science,2024,KPR College of Arts Science and Research,2025,Tamil Nadu,Coimbatore,Coimbatore,College,no,INST-01571,INST-01670
+,94,1,Balaji Institute of Management and Human Resource Development,2020,Balaji Institute of Management and HRD,2021,Maharashtra,Pune,Pune,Management,,INST-01123,INST-01274
+,92,1,Jayawant Shikshan Prasarak Mandal's Rajarshi Shahu College of Engineering,2020-2021,JSPM's Rajarshi Shahu College of Engineering,"2022, 2024-2025",Maharashtra,Pune,Pune,Engineering,,INST-01170,INST-01398
+,91,1,Vesveswaraiah Technological University,2018-2019,Visvesvaraya Technological University,2020-2025,Karnataka,Belgaum,Belgaum,"Overall, University",,INST-00991,INST-01261
+,90,1,Al-Ameen College of Pharmacy,2019,KLE College of Pharmacy,2020-2025,Karnataka,Bengaluru,Bengaluru,Pharmacy,,INST-00999,INST-01175
+,90,1,Sree Sankaracharya University of Sanskrit,2020,"Shree Sankaracharya Univeristy of Sanskrit, Kalady",2021,Kerala,Ernakulam,Ernakulam,University,,INST-01247,INST-01340
+,89,1,Dhempe College of Arts & Science,2020,St Xaviers College of Arts Science & Commerce Mapusa,"2021, 2024-2025",Goa,North Goa,Mapusa / North Goa,College,,INST-01141,INST-01345
+,89,1,Dr. R.V. Arts and Science College,2017,Sri Ramakrishna College of Arts and Science,2018-2025,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00148,INST-00950
+,89,1,Dr. R.V. Arts and Science College,2017,Sri Ramakrishna Mission Vidyalaya College of Arts and Science,2018-2025,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00148,INST-00951
+,89,1,I.C.College of Home Science,2020-2023,I.C. College of Community Science,2024-2025,Haryana,Hisar,Hisar,College,no,INST-01158,INST-01560
+,89,1,J.M.J. College for Women,2017,Govt. Degree College for Women,2018,Andhra Pradesh,Guntur,Guntur,College,,INST-00286,INST-00782
+,88,1,Delhi Institute of Pharmaceutical Sciences & Research,2017-2020,Delhi Pharmaceutical Sciences and Research University,2021-2025,Delhi,New Delhi,Delhi,Pharmacy,,INST-00122,INST-01289
+,88,1,JNTUH College of Engineering,2017,Muffakham Jah College of Engineering and Technology,2018,Telangana,Hyderabad,Hyderabad,Engineering,,INST-00289,INST-00872
+,88,1,MVSR Engineering College,2020,BVRIT Hyderabad College of Engineering for Women,2021-2022,Telangana,Hyderabad,Hyderabad,Engineering,,INST-01184,INST-01273
+,88,1,MVSR Engineering College,2020,Malla Reddy Engineering College,"2021-2022, 2024-2025",Telangana,Hyderabad,Hyderabad,Engineering,no,INST-01184,INST-01318
+,88,1,Quaid E Millath Govt College for Women,"2018, 2024",Government Arts College,2025,Tamil Nadu,Chennai,Chennai,College,,INST-00911,INST-01659
+,84,1,Manav Rachna International Uniersity,2017,Manav Rachna International Institute of Research & Studies,2018-2025,Haryana,Faridabad,Faridabad,University,,INST-00384,INST-00864
+,84,1,Sinhgad Institute of Pharmacy,2017,MAEERS Maharashtra Institute of Pharmacy,2018-2019,Maharashtra,Pune,Pune,Pharmacy,,INST-00581,INST-00855
+,84,1,St. Joseph's Evening College,2017,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",2018-2023,Karnataka,Bengaluru,Bengaluru,College,,INST-00622,INST-00963
+,83,1,IIS University,2017,"Amity University Rajasthan, Jaipur",2018-2025,Rajasthan,Jaipur,Jaipur,University,,INST-00223,INST-00730
+,82,1,J.B. College,2017,Bahona College,2018,Assam,District Jorhat,Jorhat,College,,INST-00284,INST-00736
+,82,1,Little Flower College,2017-2018,S. N. College,2019,Kerala,District Trichur / Trichur,Thrissur,College,,INST-00354,INST-01090
+,82,1,Mahatma Gandhi College,2018-2020,"MG College, Thiruvananthapuram","2021, 2024-2025",Kerala,Thiruvananthapuram,Thiruvananthapuram,College,,INST-00858,INST-01314
+,82,1,Murgaon Education Society's College of Arts and Commerce,2017,Ponda Education Society Shri Ravi S. Naik College of Arts and Science,2018-2025,Goa,Goa,North Goa,College,,INST-00406,INST-00900
+,82,1,S. N. College,2019,"Sree Narayana College, Nattika",2020-2021,Kerala,Thrissur,Thrissur,College,,INST-01090,INST-01246
+,81,1,"College of Home Science, Nirmala Niketan",2019,College of Social Work Nirmala Niketan 38 New Marine Lines,2020-2025,Maharashtra,Mumbai,Mumbai,College,,INST-01021,INST-01138
+,81,1,JNTUH College of Engineering,2017,Malla Reddy Engineering College for Women (Autonomous),"2018, 2020, 2025",Telangana,Hyderabad,Hyderabad,Engineering,,INST-00289,INST-00862
+,81,1,M S Ramaiah Institute of Management,2017,St. Joseph's Institute of Management,"2018, 2022-2023",Karnataka,Bengaluru,Bengaluru,Management,,INST-00357,INST-00962
+,81,1,"SVKM's Narsee Monjee Institute of Management Studies, School of Business Management",2017,Institute of Management Technology,2018-2025,Telangana,Hyderabad,Hyderabad,Management,,INST-00532,INST-00799
+,80,1,Teri University,2019,Netaji Subhas University of Technology (NSUT),2020-2025,Delhi,New Delhi,Delhi / South West,University,,INST-01105,INST-01211
+,79,1,"MGM Dental College and Hospital, Navi Mumbai",2022,"Govt. Dental College, Mumbai",2023-2025,Maharashtra,Navi Mumbai,Mumbai,Dental,,INST-01408,INST-01472
+,78,1,B. C. M. College,2019,"Baselius College, Kottayam",2020-2025,Kerala,Kottayam,Kottayam,College,,INST-01007,INST-01127
+,78,1,CMS College of Science and Commerce,2018-2021,Nehru Arts and Science College,2022-2025,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00745,INST-01421
+,78,1,Dr. R.V. Arts and Science College,2017,CMS College of Science and Commerce,2018-2021,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00148,INST-00745
+,78,1,Dr. R.V. Arts and Science College,2017,N. G. M. College,2018-2025,Tamil Nadu,Coimbatore,Coimbatore / Pollachi,College,,INST-00148,INST-00873
+,78,1,Kuriakose Elias College,2018,B. C. M. College,2019,Kerala,Kottayam,Kottayam,College,,INST-00833,INST-01007
+,78,1,PES Modern College of Pharmacy,2018-2019,Marathwada Mitra Mandal's College of Pharmacy,"2020, 2022-2024",Maharashtra,Pune,Pune,Pharmacy,,INST-00897,INST-01193
+,78,1,SNR Sons College,2017,N. G. M. College,2018-2025,Tamil Nadu,Coimbatore,Coimbatore / Pollachi,College,,INST-00526,INST-00873
+,78,1,Smt. Kashibai Navale College of Pharmacy,2017,PES Modern College of Pharmacy,2018-2019,Maharashtra,Pune,Pune,Pharmacy,,INST-00585,INST-00897
+,77,1,CMS College of Science and Commerce,2018-2021,Sri Nehru Maha Vidyalaya College of Arts and Science,2022-2025,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00745,INST-01441
+,77,1,"Rajasthan University of Health Sciences, Jaipur",2023,"Mahatma Gandhi University of Medical Sciences & Technology, Jaipur",2024-2025,Rajasthan,Jaipur,Jaipur,University,,INST-01500,INST-01588
+,77,1,"SVKM's Narsee Monjee Institute of Management Studies, School of Business Management",2017,St. Joseph's Institute of Management,"2018, 2022-2023",Karnataka,Bengaluru,Bengaluru,Management,,INST-00533,INST-00962
+,76,1,St. Ann's College for Women,2017,Govt. Degree College for Women,2018,Andhra Pradesh,Guntur,Guntur,College,,INST-00618,INST-00782
+,75,1,Lala Lajpatrai Institute of Management,2017,Vivekanand Education Society's Institute of Management Studies and Research,2018-2022,Maharashtra,Mumbai,Mumbai,Management,,INST-00352,INST-00994
+,100,2,Chandigarh Engineering College,2020-2022,Chandigarh Engineering College Jhanjeri,2024-2025,Punjab,Sahibzada Ajit Singh Nagar,Sahibzada Ajit Singh Nagar,Engineering,no,INST-01135,INST-01538
+,100,2,K.S.R. College of Arts and Science for Women,2017,K. S. R. Arts & Science College,2019,Tamil Nadu,Namakkal,Namakkal,College,no,INST-00318,INST-01056
+,95,2,Dr. R.V. Arts and Science College,2017,Dr. S. N. S. Rajalakshmi College of Arts and Science,2019-2025,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00148,INST-01029
+,95,2,Muffakham Jah College of Engineering and Technology,2018,CMR College of Engineering & Technology,"2020-2022, 2024-2025",Telangana,Hyderabad,Hyderabad,Engineering,no,INST-00872,INST-01133
+,91,2,Shrimathi Devkunvar Nanalal Bhatt Vaishnav College For Women,2020,DG Vaishnav College,2022-2025,Tamil Nadu,Chennai,Chennai,College,,INST-01241,INST-01368
+,90,2,Balaji Institute of Modern Management,2017-2018,Balaji Institute of Management and Human Resource Development,2020,Maharashtra,Pune,Pune,Management,,INST-00043,INST-01123
+,88,2,Muffakham Jah College of Engineering and Technology,2018,MVSR Engineering College,2020,Telangana,Hyderabad,Hyderabad,Engineering,,INST-00872,INST-01184
+,87,2,Saurashtra University,2017-2019,RK University,2021-2022,Gujarat,Rajkot,Rajkot,University,,INST-00552,INST-01330
+,85,2,"University College for Women, Koti",2022,RBVRR College for Women,2024-2025,Telangana,Hyderabad,Hyderabad,College,,INST-01445,INST-01603
+,84,2,Central University of Kashmir,"2017-2018, 2020-2021",Sher-e-Kashmir University of Agricultural Science and Technology of Kashmir,2023-2025,Jammu and Kashmir,Ganderbal / Srinagar,Srinagar,University,,INST-00083,INST-01503
+,83,2,M. S. Ramaiah Fgc,2018,"M S Ramaiah College of Arts, Science, and Commerce",2020-2025,Karnataka,Bengaluru,Bengaluru,College,,INST-00847,INST-01183
+,83,2,St. Alberts College,"2018, 2020-2022",St. Peter's College,2024-2025,Kerala,Ernakulam,Ernakulam,College,,INST-00959,INST-01633
+,82,2,U. C. College,2018-2019,Morning Star Home Science College,"2021, 2024-2025",Kerala,Ernakulam,Ernakulam,College,,INST-00983,INST-01321
+,82,2,U. C. College,2018-2019,St. Paul''s College,2021,Kerala,Ernakulam,Ernakulam,College,,INST-00983,INST-01348
+,82,2,U. C. College,2018-2019,Union Christian College,2021-2025,Kerala,Ernakulam,Ernakulam,College,,INST-00983,INST-01355
+,79,2,Maharashtra Institute of Technology,2017-2018,Dr. D. Y. Patil Institute of Technology,"2020-2022, 2024-2025",Maharashtra,Pune,Pune,Engineering,,INST-00373,INST-01144
+,79,2,Muffakham Jah College of Engineering and Technology,2018,University College of Technology (Autonomous),2020,Telangana,Hyderabad,Hyderabad,Engineering,,INST-00872,INST-01259
+,77,2,Balaji Institute of Management and HRD,2021,National Institute of Bank Management,2023-2025,Maharashtra,Pune,Pune,Management,,INST-01274,INST-01492
+,77,2,CMS College of Science and Commerce,2018-2021,Sri Krishna Adithya College of Arts and Science,2023-2025,Tamil Nadu,Coimbatore,Coimbatore,College,,INST-00745,INST-01509
+,76,2,"University College for Women, Koti",2022,St. Ann's College for Women,2024-2025,Telangana,Hyderabad,Hyderabad,College,,INST-01445,INST-01630

@@ -81,9 +81,6 @@ Amar Shaheed Baba Ajit Singh Jujhar Singh Memorial College of,Punjab,,INST-00729
 Amar Shaheed Baba Ajit Singh Jujhar Singh Memorial College of Pharmacy,Punjab,,INST-00729,"Amar Shaheed Baba Ajit Singh Jujhar Singh Memorial College of Pharmacy, BELA",id_code,97
 "Amar Shaheed Baba Ajit Singh Jujhar Singh Memorial College of Pharmacy, BELA",Punjab,,INST-00729,"Amar Shaheed Baba Ajit Singh Jujhar Singh Memorial College of Pharmacy, BELA",exact,100
 Ambedkar Institute of Advanced Communication Technologies and Research,Delhi,,INST-01114,Ambedkar Institute of Advanced Communication Technologies and Research,exact,100
-Ambedkar University,Delhi,,INST-00018,Ambedkar University,exact,100
-Ambedkar University Delhi,Delhi,,INST-00018,Ambedkar University,alias_rule,86
-Ambedkar University Delhi (AUD),Delhi,,INST-00018,Ambedkar University,fuzzy,79
 AMITY University,Uttar Pradesh,,INST-00019,Amity University,exact,100
 Amity University,Uttar Pradesh,,INST-00019,Amity University,exact,100
 Amity University Noida,Uttar Pradesh,,INST-00019,Amity University,id_code,84
@@ -149,7 +146,6 @@ Ayya Nadar Janaki Ammal College,Tamil Nadu,,INST-00035,Ayya Nadar Janaki Ammal C
 B I T SINDRI,Jharkhand,,INST-01271,B I T Sindri,exact,100
 B I T Sindri,Jharkhand,,INST-01271,B I T Sindri,exact,100
 BIT Sindri,Jharkhand,,INST-01271,B I T Sindri,exact,100
-B V V Sangha`s Basaveshwar Engineering College,Karnataka,,INST-00036,B V V Sangha's Basaveshwar Engineering College,exact,100
 B. Borooah College,Assam,,INST-01650,B. Borooah College,exact,100
 B. C. M. College,Kerala,,INST-01007,B. C. M. College,exact,100
 B. J. Medical College,Gujarat,,INST-01364,B. J. Medical College,exact,100
@@ -192,6 +188,7 @@ Bannari Amman Institute of Technology,Tamil Nadu,,INST-00047,Bannari Amman Insti
 Bansilal Ramnath Agarwal Charitable Trust`s Vishwakarama Institute of Technology,Maharashtra,,INST-00737,Bansilal Ramnath Agarwal Charitable Trust's Vishwakarama Institute of Technology,exact,100
 Bapatla College of Arts & Science,Andhra Pradesh,,INST-00048,Bapatla College of Arts & Science,exact,100
 Bapuji Dental College & Hospital,Karnataka,,INST-01126,Bapuji Dental College & Hospital,exact,100
+B V V Sangha`s Basaveshwar Engineering College,Karnataka,,INST-01010,Basaveshwar Engineering College,review_approved,84
 Basaveshwar Engineering College,Karnataka,,INST-01010,Basaveshwar Engineering College,exact,100
 Baselius College,Kerala,,INST-01127,"Baselius College, Kottayam",alias_rule,78
 "Baselius College, Kottayam",Kerala,,INST-01127,"Baselius College, Kottayam",exact,100
@@ -235,6 +232,7 @@ Bharati Vidyapeeth`s Institute of Environment Education & Research,Maharashtra,,
 Bharati Vidyapeeth's Institute of Management and Entrepreneurship Development,Maharashtra,,INST-00060,Bharati Vidyapeeth's Institute of Management and Entrepreneurship Development,exact,100
 Bharati Vidyapeeth?s Institute of Management and Entrepreneurship Development,Maharashtra,,INST-00060,Bharati Vidyapeeth's Institute of Management and Entrepreneurship Development,exact,100
 Bharati Vidyapeeth`s Institute of Management and Entrepreneurship Development,Maharashtra,,INST-00060,Bharati Vidyapeeth's Institute of Management and Entrepreneurship Development,exact,100
+Institute of Management and Entrepreneurship Development,Maharashtra,,INST-00060,Bharati Vidyapeeth's Institute of Management and Entrepreneurship Development,review_approved,85
 Bharatiya Vidya Bhavan`s Sardar Patel Institute of Technology,Maharashtra,,INST-00061,Bharatiya Vidya Bhavan's Sardar Patel Institute of Technology,exact,100
 Bharatiya Vidya Bhavans Sardar Patel Institute of Technology,Maharashtra,,INST-00061,Bharatiya Vidya Bhavan's Sardar Patel Institute of Technology,exact,100
 Bharti Vidyapeeth`s Matoshri Bayabai Shripatrao Kadam Kanya Mahavidyalaya,Maharashtra,,INST-00062,Bharti Vidyapeeth's Matoshri Bayabai Shripatrao Kadam Kanya Mahavidyalaya,exact,100
@@ -436,9 +434,9 @@ Department of Management Studies - M.B.A,Tamil Nadu,,INST-00125,Department of Ma
 "Department of Pharmaceutical Sciences, Maharshi Dayanand University, Rohtak.",Haryana,,INST-00127,"Department of Pharmaceutical Sciences, Maharshi Dayanand University, Rohtak",exact,100
 Desh Bhagat University-Gobindgarh,Punjab,,INST-00128,Desh Bhagat University-Gobindgarh,exact,100
 Deshbandhu College,Delhi,,INST-01140,Deshbandhu College,exact,100
-Devamatha College,Kerala,,INST-01025,Devamatha College,exact,100
-"Devamatha College, Kuravilangad",Kerala,,INST-01545,"Devamatha College, Kuravilangad",exact,100
-"Devamatha College, Kuravilangad-686633",Kerala,,INST-01545,"Devamatha College, Kuravilangad",exact,90
+Devamatha College,Kerala,,INST-01025,"Devamatha College, Kuravilangad",review_approved,72
+"Devamatha College, Kuravilangad",Kerala,,INST-01025,"Devamatha College, Kuravilangad",exact,100
+"Devamatha College, Kuravilangad-686633",Kerala,,INST-01025,"Devamatha College, Kuravilangad",exact,90
 Devi Ahilya Vishwavidyalaya,Madhya Pradesh,,INST-00129,Devi Ahilya Vishwavidyalaya,exact,100
 Dhanalakshmi Srinivasan College of Arts & Science for Women,Tamil Nadu,,INST-01370,Dhanalakshmi Srinivasan College of Arts & Science for Women,exact,100
 Dhanalakshmi Srinivasan College of Arts and Science for Women,Tamil Nadu,,INST-01370,Dhanalakshmi Srinivasan College of Arts & Science for Women,exact,100
@@ -477,8 +475,11 @@ Dr. B. R. Ambedkar Institute of Technology,Andaman and Nicobar Islands,,INST-010
 Dr. B. R. Ambedkar University,Andhra Pradesh,,INST-00139,Dr. B. R. Ambedkar University,exact,100
 "Dr. B. R. Ambedkar University, Agra",Uttar Pradesh,,INST-01656,"Dr. B. R. Ambedkar University, Agra",exact,100
 "Dr. B.C. Roy Engineering College, Durgapur",West Bengal,,INST-01371,"Dr. B.C. Roy Engineering College, Durgapur",exact,100
-Dr. B.R. Ambedkar University Delhi,Delhi,,INST-01143,"Dr. B.R. Ambedkar University, Delhi",exact,100
-"Dr. B.R. Ambedkar University, Delhi",Delhi,,INST-01143,"Dr. B.R. Ambedkar University, Delhi",exact,100
+Ambedkar University,Delhi,,INST-00018,"Dr. B.R. Ambedkar University, Delhi",alias_rule,76
+Ambedkar University Delhi,Delhi,,INST-00018,"Dr. B.R. Ambedkar University, Delhi",review_approved,89
+Ambedkar University Delhi (AUD),Delhi,,INST-00018,"Dr. B.R. Ambedkar University, Delhi",fuzzy,87
+Dr. B.R. Ambedkar University Delhi,Delhi,,INST-00018,"Dr. B.R. Ambedkar University, Delhi",exact,100
+"Dr. B.R. Ambedkar University, Delhi",Delhi,,INST-00018,"Dr. B.R. Ambedkar University, Delhi",exact,100
 Dr. Babasaheb Ambedkar Marathwada University,Maharashtra,,INST-00140,Dr. Babasaheb Ambedkar Marathwada University,exact,100
 "Dr. Babasaheb Ambedkar Marathwada University, Aurangabad",Maharashtra,,INST-00140,Dr. Babasaheb Ambedkar Marathwada University,id_code,89
 Dr. Babasaheb Ambedkar Open University,Gujarat,,INST-01547,Dr. Babasaheb Ambedkar Open University,exact,100
@@ -489,7 +490,7 @@ Dr. D. Y. Patil Vidyapeeth,Maharashtra,,INST-00142,Dr. D. Y. Patil Vidyapeeth,ex
 Dr. D. Y. Patil Vidyapeeth Pune,Maharashtra,,INST-00142,Dr. D. Y. Patil Vidyapeeth,alias_rule,90
 "Dr. D.Y.Patil Unitech Society Dr. D.Y.Patil Arts, Commerce and Science College",Maharashtra,,INST-01291,"Dr. D.Y.Patil Unitech Society Dr. D.Y.Patil Arts, Commerce and Science College",exact,100
 Dr. G.Y.Pathrikar College of Computer Science and Information Technology,Maharashtra,,INST-00143,Dr. G.Y.Pathrikar College of Computer Science and Information Technology,exact,100
-Dr. Gafoor Memorial MES Mampad College,Kerala,,INST-01145,Dr. Gafoor Memorial MES Mampad College,exact,100
+Dr. Gafoor Memorial MES Mampad College,Kerala,,INST-00763,"Dr. Gafoor Memorial MES Mampad College, Mampad",review_approved,91
 "Dr. Gafoor Memorial MES Mampad College, Mampad",Kerala,,INST-00763,"Dr. Gafoor Memorial MES Mampad College, Mampad",exact,100
 "Dr. Gafoor Memorial Mes Mampad College, Mampad",Kerala,,INST-00763,"Dr. Gafoor Memorial MES Mampad College, Mampad",exact,100
 Dr. Harisingh Gour Vishwavidyalaya,Madhya Pradesh,,INST-00144,Dr. Harisingh Gour Vishwavidyalaya,exact,100
@@ -561,6 +562,7 @@ G.B. Pant Universtiy of Agriculture and Technology,Uttarakhand,,INST-00770,"G.B.
 "G.B. Pant Universtiy of Agriculture and Technology, Pantnagar",Uttarakhand,,INST-00770,"G.B. Pant Universtiy of Agriculture and Technology, Pantnagar",exact,100
 G. L. Bajaj Institute of Technology and Management,Uttar Pradesh,,INST-00771,G.L.Bajaj Institute of Technology and Management,exact,100
 G.L.Bajaj Institute of Technology and Management,Uttar Pradesh,,INST-00771,G.L.Bajaj Institute of Technology and Management,exact,100
+Ganeshi Lal Bajaj Institute of Technology and Management,Uttar Pradesh,,INST-00771,G.L.Bajaj Institute of Technology and Management,review_approved,89
 G.T.N. ARTS COLLEGE,Tamil Nadu,,INST-01549,G.T.N. Arts College,exact,100
 G.T.N. Arts College,Tamil Nadu,,INST-01549,G.T.N. Arts College,exact,100
 "GIET University, Gunupur",Odisha,,INST-01550,"GIET University, Gunupur",exact,100
@@ -569,15 +571,14 @@ GMR Institute of Technology,Andhra Pradesh,,INST-00169,GMR Institute of Technolo
 Galgotias College of Engineering & Technology,Uttar Pradesh,,INST-00772,Galgotias College of Engineering & Technology,exact,100
 Galgotias University,Uttar Pradesh,,INST-01033,Galgotias University,exact,100
 Gandhi Engieering College (GEC),Odisha,,INST-01147,Gandhi Engieering College (GEC),exact,100
-Gandhi Institute for Technological Advancement,Odisha,,INST-00170,Gandhi Institute for Technological Advancement,exact,100
 "Gandhi Institute for Technological Aavancement (GITA), Bhubaneswar",Odisha,,INST-01292,"Gandhi Institute for Technological Advancement (GITA), Bhubaneswar",fuzzy,98
+Gandhi Institute for Technological Advancement,Odisha,,INST-01292,"Gandhi Institute for Technological Advancement (GITA), Bhubaneswar",review_approved,84
 "Gandhi Institute for Technological Advancement (GITA), Bhubaneswar",Odisha,,INST-01292,"Gandhi Institute for Technological Advancement (GITA), Bhubaneswar",exact,100
 "Gandhi Institute for Technological Advancement (Gita), Bhubaneswar",Odisha,,INST-01292,"Gandhi Institute for Technological Advancement (GITA), Bhubaneswar",exact,100
 Gandhi Institute of Engineering and Technology,Odisha,,INST-01375,Gandhi Institute of Engineering and Technology,exact,100
 Gandhi Institute of Technology And Management (GITAM),Andhra Pradesh,,INST-00171,Gandhi Institute of Technology And Management (GITAM),exact,100
 Gandhi Institute of Technology and Management,Andhra Pradesh,,INST-00171,Gandhi Institute of Technology And Management (GITAM),id_code,94
 Gandhi Institute of Technology and Management (GITAM),Andhra Pradesh,,INST-00171,Gandhi Institute of Technology And Management (GITAM),exact,100
-Ganeshi Lal Bajaj Institute of Technology and Management,Uttar Pradesh,,INST-00172,Ganeshi Lal Bajaj Institute of Technology and Management,exact,100
 Ganpat University,Gujarat,,INST-00173,Ganpat University,exact,100
 Gargi College,Delhi,,INST-00773,Gargi College,exact,100
 Gauhati University,Assam,,INST-00174,Gauhati University,exact,100
@@ -601,8 +602,8 @@ Gogte Institute of Technology,Karnataka,,INST-00182,"Gogte Institute of Technolo
 "Gogte Institute of Technology, Belgaum",Karnataka,,INST-00182,"Gogte Institute of Technology, Belgaum",exact,100
 K.L.S. Gogte Institute of Technology,Karnataka,,INST-00182,"Gogte Institute of Technology, Belgaum",fuzzy,82
 Goka Raju Ranga Raju Institute of Engineering & Technology,Telangana,,INST-00775,Goka Raju Ranga Raju Institute of Engineering & Technology,exact,100
+Gokaraju Rangaraju Institute of Engineering & Technology,Telangana,,INST-00775,Goka Raju Ranga Raju Institute of Engineering & Technology,review_approved,86
 Gokaraju Rangaraju College of Pharmacy,Telangana,,INST-00183,Gokaraju Rangaraju College of Pharmacy,exact,100
-Gokaraju Rangaraju Institute of Engineering & Technology,Telangana,,INST-00184,Gokaraju Rangaraju Institute of Engineering & Technology,exact,100
 Goswami Ganesh Dutta S.D. College,Chandigarh,,INST-00185,Goswami Ganesh Dutta S.D. College,exact,100
 Goswami Ganesh Dutta Sanatan Dharma College,Chandigarh,,INST-00185,Goswami Ganesh Dutta S.D. College,id_code,81
 "Government Arts & Science College, Kozhinjampara",Kerala,,INST-01294,"Government Arts & Science College, Kozhinjampara",exact,100
@@ -627,7 +628,6 @@ Government Arts College,Tamil Nadu,Tiruppur,INST-00779,"Government Arts College,
 "Government Bikram College of Commerce, Patiala",Punjab,,INST-01553,"Government Bikram College of Commerce, Patiala",exact,100
 Government Brennen College,Kerala,,INST-01295,Government Brennen College,exact,100
 Government College,Andhra Pradesh,Rajahmundry,INST-00186,Government College,exact,100
-"Government College Kasaragod, Vidya Nagar",Kerala,,INST-01378,"Government College Kasaragod, Vidya Nagar",exact,100
 Government College for Men,Andhra Pradesh,,INST-00187,Government College for Men,exact,100
 "Government College for Women, Kumbakonam",Tamil Nadu,,INST-01379,"Government College for Women, Kumbakonam",exact,100
 "Government College for Women, Parade Ground , Jammu",Jammu and Kashmir,,INST-01554,"Government College for Women, Parade Ground, Jammu",exact,100
@@ -651,9 +651,6 @@ Government Institute of Forensic Science,Maharashtra,,INST-01038,Government Inst
 "Government Institute of Science, Nagpur",Maharashtra,,INST-01297,"Government Institute of Science, Nagpur",exact,100
 Government Medical College Thiruvananthapuram,Kerala,,INST-01469,"Government Medical College, Thiruvananthapuram",exact,100
 "Government Medical College, Thiruvananthapuram",Kerala,,INST-01469,"Government Medical College, Thiruvananthapuram",exact,100
-Government Post Graduate College for Girls,Chandigarh,,INST-00780,Government Post Graduate College for Girls,exact,100
-Govt. Post-Graduate College for Girls,Chandigarh,,INST-00780,Government Post Graduate College for Girls,exact,100
-"Government Post Graduate College for Girls, Chandigarh, Sector-11",Chandigarh,,INST-01298,"Government Post Graduate College for Girls, Chandigarh, Sector-11",exact,100
 Government Science College,Gujarat,,INST-00191,Government Science College,exact,100
 Government Victoria College,Kerala,,INST-01039,"Government Victoria College, Palakkad",id_code,86
 "Government Victoria College, Palakkad",Kerala,,INST-01039,"Government Victoria College, Palakkad",exact,100
@@ -664,9 +661,12 @@ Government Home Science College,Chandigarh,,INST-01040,Govt Home Science College
 Govt Home Science College,Chandigarh,,INST-01040,Govt Home Science College,exact,100
 "Govt Home Science College, Sector-10",Chandigarh,,INST-01040,Govt Home Science College,id_code,86
 "Govt Home Science College,Sector-10",Chandigarh,,INST-01040,Govt Home Science College,id_code,86
+Government Post Graduate College for Girls,Chandigarh,,INST-01041,"Govt Post-graduate College for Girls, Sector-11",review_approved,89
+"Government Post Graduate College for Girls, Chandigarh, Sector-11",Chandigarh,,INST-01041,"Govt Post-graduate College for Girls, Sector-11",review_approved,90
 "Government Post-graduate College for Girls, Sector-11",Chandigarh,,INST-01041,"Govt Post-graduate College for Girls, Sector-11",exact,100
 "Govt Post-Graduate College for Girls, Sector-11",Chandigarh,,INST-01041,"Govt Post-graduate College for Girls, Sector-11",exact,100
 "Govt Post-graduate College for Girls, Sector-11",Chandigarh,,INST-01041,"Govt Post-graduate College for Girls, Sector-11",exact,100
+Govt. Post-Graduate College for Girls,Chandigarh,,INST-01041,"Govt Post-graduate College for Girls, Sector-11",review_approved,89
 "GOVT. ARTS & SCIENCE COLLEGE, MEENCHANDA",Kerala,,INST-01470,"Govt. Arts & Science College, Meenchanda",exact,100
 "Govt. Arts & Science College, Meenchanda",Kerala,,INST-01470,"Govt. Arts & Science College, Meenchanda",exact,100
 Government Arts College,Tamil Nadu,Thiruvannamalai,INST-01153,Govt. Arts College Thiruvannamalai,alias_rule,74
@@ -677,6 +677,7 @@ Govt. College,Andhra Pradesh,District Anantapur,INST-00192,Govt. College,exact,1
 Government College,Kerala,,INST-01042,Govt. College,exact,100
 Govt. College,Kerala,,INST-01042,Govt. College,exact,100
 Govt. College Kasaragod,Kerala,,INST-01042,Govt. College,alias_rule,78
+"Government College Kasaragod, Vidya Nagar",Kerala,,INST-01471,"Govt. College Kasaragod. Vidya Nagar P.O, Kasargod",review_approved,87
 "Govt. College Kasaragod. Vidya Nagar P.O, Kasargod",Kerala,,INST-01471,"Govt. College Kasaragod. Vidya Nagar P.O, Kasargod",exact,100
 Govt. College for Women,Jammu and Kashmir,,INST-00193,Govt. College for Women,exact,100
 Government College for Women,Kerala,,INST-01043,"Govt. College for Women, Thiruvananthapuram",id_code,75
@@ -921,9 +922,9 @@ Indus Busiess Academy,Karnataka,,INST-01394,Indus Busiess Academy,exact,100
 "Institute for Excellence in Higher Education(IEHE), Bhopal(Autonomous)",Madhya Pradesh,,INST-01567,"Institute for Excellence in Higher Education(IEHE), Bhopal(Autonomous)",exact,100
 "Institute for Excellence in Higher Education(IEHE),Bhopal(Autonomous) Kaliya sot bandh Kolar Road, Bhopal",Madhya Pradesh,,INST-01668,"Institute for Excellence in Higher Education(IEHE), Bhopal(Autonomous) Kaliya sot bandh Kolar Road, Bhopal",exact,100
 Institute of Aeronautical Engineering,Telangana,,INST-00272,Institute of Aeronautical Engineering,exact,100
-"IPS Academy, Institute of Business Management and Research",Madhya Pradesh,,INST-00273,"Institute of Business Management & Research, IPS Academy",fuzzy,100
-"Institute of Business Management & Research, IPS Academy",Madhya Pradesh,,INST-00273,"Institute of Business Management & Research, IPS Academy",exact,100
-Institute of Business Management and Research,Madhya Pradesh,,INST-01162,Institute of Business Management and Research,exact,100
+"IPS Academy, Institute of Business Management and Research",Madhya Pradesh,,INST-00273,Institute of Business Management and Research,review_approved,88
+"Institute of Business Management & Research, IPS Academy",Madhya Pradesh,,INST-00273,Institute of Business Management and Research,fuzzy,88
+Institute of Business Management and Research,Madhya Pradesh,,INST-00273,Institute of Business Management and Research,exact,100
 Institute of Chemical Technology,Maharashtra,,INST-00274,Institute of Chemical Technology,exact,100
 Institute of Engineering & Management,West Bengal,,INST-00275,Institute of Engineering & Management,exact,100
 Institute of Home Economics,Delhi,,INST-01395,Institute of Home Economics,exact,100
@@ -938,7 +939,6 @@ Institute of Management Technology,Uttar Pradesh,,INST-00276,Institute of Manage
 "Institute Of Management Technology, Nagpur",Maharashtra,,INST-00277,"Institute of Management Technology, Nagpur",exact,100
 Institute of Management Technology,Maharashtra,,INST-00277,"Institute of Management Technology, Nagpur",id_code,91
 "Institute of Management Technology, Nagpur",Maharashtra,,INST-00277,"Institute of Management Technology, Nagpur",exact,100
-Institute of Management and Entrepreneurship Development,Maharashtra,,INST-00800,Institute of Management and Entrepreneurship Development,exact,100
 "Institute of Management, Nirma University",Gujarat,,INST-00801,"Institute of Management, Nirma University",exact,100
 Institute of Pharmaceutical Education and Research,Maharashtra,,INST-00278,Institute of Pharmaceutical Education and Research,exact,100
 "Institute of Pharmacy, Nirma University",Gujarat,,INST-00802,"Institute of Pharmacy, Nirma University",exact,100
@@ -950,8 +950,8 @@ Institute of Rural Management Anand,Gujarat,,INST-00279,Institute of Rural Manag
 Institute of Rural Management Anand (IRMA),Gujarat,,INST-00279,Institute of Rural Management Anand,id_code,93
 Institute of Science & Technology for Advanced Studies & Research (ISTAR),Gujarat,,INST-01164,Institute of Science & Technology for Advanced Studies & Research (ISTAR),exact,100
 Institute of Science & Technology for Advanced Studies & Research (ISTAR) College,Gujarat,,INST-01164,Institute of Science & Technology for Advanced Studies & Research (ISTAR),fuzzy,95
-"Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI),Vallabh Vidyanagar",Gujarat,,INST-01397,"Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI), Vallabh Vidyanagar 511",fuzzy,98
-"Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI),Vallabh Vidyanagar 511",Gujarat,,INST-01397,"Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI), Vallabh Vidyanagar 511",exact,100
+"Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI),Vallabh Vidyanagar",Gujarat,,INST-01164,Institute of Science & Technology for Advanced Studies & Research (ISTAR),review_approved,87
+"Institute of Science & Technology for Advanced Studies & Research (ISTAR)(SFI),Vallabh Vidyanagar 511",Gujarat,,INST-01164,Institute of Science & Technology for Advanced Studies & Research (ISTAR),fuzzy,85
 Institute of Technology and Science,Uttar Pradesh,,INST-01053,Institute of Technology and Science,exact,100
 "Institute of Technology, Nirma University",Gujarat,,INST-00803,"Institute of Technology, Nirma University",exact,100
 Integral University,Uttar Pradesh,,INST-00280,Integral University,exact,100
@@ -980,7 +980,6 @@ JSPM's Rajarshi Shahu College of Engineering,Maharashtra,,INST-01398,JSPM's Raja
 JSPM`S Rajarshi Shahu College of Engineering,Maharashtra,,INST-01398,JSPM's Rajarshi Shahu College of Engineering,exact,100
 JSS Academy of Higher Education and Research,Karnataka,,INST-00807,JSS Academy of Higher Education and Research,exact,100
 JSS Academy of Technical Education,Karnataka,,INST-00290,JSS Academy of Technical Education,exact,100
-JSS Academy of Technical Education,Uttar Pradesh,,INST-01168,JSS Academy of Technical Education,exact,100
 JSS College of Pharmacy,Karnataka,,INST-00291,JSS College of Pharmacy,exact,100
 JSS College of Pharmacy,Tamil Nadu,,INST-00292,JSS College of Pharmacy,exact,100
 JSS Dental College and Hospital,Karnataka,,INST-01169,JSS Dental College and Hospital,exact,100
@@ -992,8 +991,8 @@ Jadavpur University,West Bengal,,INST-00294,Jadavpur University,exact,100
 Jagadguru Sri Shivarathreeshwara University,Karnataka,,INST-00295,Jagadguru Sri Shivarathreeshwara University,exact,100
 Jagan Institute of Management Studies,Delhi,,INST-00808,Jagan Institute of Management Studies,exact,100
 Jagan Institute of Management Studies Technical Campus,Delhi,,INST-00296,Jagan Institute of Management Studies Technical Campus,exact,100
-Jagannath International Management School,Delhi,,INST-01306,Jagannath International Management School,exact,100
-"Jagannath International Management School, Kalkaji",Delhi,,INST-00809,"Jagannath International Management School, Kalkaji",exact,100
+Jagannath International Management School,Delhi,,INST-00809,Jagannath International Management School,exact,100
+"Jagannath International Management School, Kalkaji",Delhi,,INST-00809,Jagannath International Management School,review_approved,91
 "Jagannath International Management School, VasantKunj",Delhi,,INST-01568,"Jagannath International Management School, VasantKunj",exact,100
 Jagarlamudi Kuppuswamy Choundry College,Andhra Pradesh,,INST-00297,Jagarlamudi Kuppuswamy Choundry College,exact,100
 Jain Vishva Bharati Institute,Rajasthan,,INST-00298,Jain Vishva Bharati Institute,exact,100
@@ -1028,8 +1027,8 @@ Jawaharlal Nehru Centre for Advanced Scientific Research,Karnataka,,INST-00304,J
 Jawaharlal Nehru Medical College,Karnataka,,INST-00813,Jawaharlal Nehru Medical College,exact,100
 Jawaharlal Nehru Rajkeeya Mahavidyalaya,Andaman and Nicobar Islands,,INST-00305,Jawaharlal Nehru Rajkeeya Mahavidyalaya,exact,100
 Jawaharlal Nehru Technological University,Andhra Pradesh,Kakinada,INST-00307,Jawaharlal Nehru Technological University,exact,100
-Jawaharlal Nehru Technological University,Andhra Pradesh,Anantapur,INST-00308,Jawaharlal Nehru Technological University,exact,100
-Jawaharlal Nehru Technological University,Andhra Pradesh,Ananthapuramu,INST-01482,Jawaharlal Nehru Technological University,exact,100
+Jawaharlal Nehru Technological University,Andhra Pradesh,Anantapur,INST-00308,Jawaharlal Nehru Technological University,alias_rule,100
+Jawaharlal Nehru Technological University,Andhra Pradesh,Ananthapuramu,INST-00308,Jawaharlal Nehru Technological University,exact,100
 Jawaharlal Nehru Technological University,Telangana,,INST-00306,Jawaharlal Nehru Technological University,exact,100
 Jawaharlal Nehru University,Delhi,,INST-00309,Jawaharlal Nehru University,exact,100
 Jayawant Shikshan Prasarak Mandal`s Rajarshi Shahu College of Engineering,Maharashtra,,INST-01170,Jayawant Shikshan Prasarak Mandal's Rajarshi Shahu College of Engineering,exact,100
@@ -1042,6 +1041,7 @@ Jaywant Shikshan Prasarak Mandals Rajarshi Shahu College of Pharmacy & Research,
 Jesus & Mary College,Delhi,,INST-00815,Jesus & Mary College,exact,100
 Jeyaraj Annapackiyam College for Women,Tamil Nadu,,INST-00816,Jeyaraj Annapackiyam College for Women,exact,100
 "JSS Academy Of Technical Education, Noida",Uttar Pradesh,,INST-01309,"Jss Academy Of Technical Education, Noida",exact,100
+JSS Academy of Technical Education,Uttar Pradesh,,INST-01309,"Jss Academy Of Technical Education, Noida",review_approved,92
 "JSS Academy of Technical Education, Noida",Uttar Pradesh,,INST-01309,"Jss Academy Of Technical Education, Noida",exact,100
 "Jss Academy Of Technical Education, Noida",Uttar Pradesh,,INST-01309,"Jss Academy Of Technical Education, Noida",exact,100
 Junagadh Agricultural University,Gujarat,,INST-00817,Junagadh Agricultural University,exact,100
@@ -1163,11 +1163,11 @@ Kumaraguru College of Technology,Tamil Nadu,,INST-00345,Kumaraguru College of Te
 Kumaraguru college of Liberal Arts and Science,Tamil Nadu,,INST-01575,Kumaraguru college of Liberal Arts and Science,exact,100
 "Kumaun University, Nainital",Uttarakhand,,INST-01179,"Kumaun University, Nainital",exact,100
 Kumbhalkar Social Work College,Maharashtra,,INST-01486,Kumbhalkar Social Work College,exact,100
-Kundavai Naachiyaar Government College for Women,Tamil Nadu,,INST-01062,Kundavai Naachiyaar Government College for Women,exact,100
+Kundavai Naachiyaar Government College for Women,Tamil Nadu,,INST-01576,Kunthavai Naacchiyaar Government Arts College for Women,review_approved,91
 Kunthavai Naacchiyaar Government Arts College for Women,Tamil Nadu,,INST-01576,Kunthavai Naacchiyaar Government Arts College for Women,exact,100
 Kuriakose Elias College,Kerala,,INST-00833,Kuriakose Elias College,exact,100
-Kuriakose Gregorios College,Kerala,,INST-00834,Kuriakose Gregorios College,exact,100
-"Kuriakose Gregorios College, Pampady",Kerala,,INST-01180,"Kuriakose Gregorios College, Pampady",exact,100
+Kuriakose Gregorios College,Kerala,,INST-00834,"Kuriakose Gregorios College, Pampady",review_approved,87
+"Kuriakose Gregorios College, Pampady",Kerala,,INST-00834,"Kuriakose Gregorios College, Pampady",exact,100
 Kurukshetra University,Haryana,,INST-00346,Kurukshetra University,exact,100
 Kuvempu University,Karnataka,,INST-00347,Kuvempu University,exact,100
 L. M. College of Pharmacy,Gujarat,,INST-00348,L. M. College of Pharmacy,exact,100
@@ -1191,8 +1191,8 @@ Lala Lajpatrai Institute of Management,Maharashtra,,INST-00352,Lala Lajpatrai In
 Lala lajpat Rai University of Veterinary and Animal Sciences,Haryana,,INST-01488,Lala lajpat Rai University of Veterinary and Animal Sciences,exact,100
 Late Sushilabai Ramchandrarao Mamidwar College of Social Work,Maharashtra,,INST-01063,Late Sushilabai Ramchandrarao Mamidwar College of Social Work,exact,100
 Laxminarayan Institute of Technology,Maharashtra,,INST-01313,Laxminarayan Institute of Technology,exact,100
-Lingaya`s University,Haryana,,INST-00353,Lingaya's University,exact,100
-Lingaya`s Vidyapeeth,Haryana,,INST-00841,Lingaya's Vidyapeeth,exact,100
+Lingaya`s University,Haryana,,INST-00353,Lingaya's Vidyapeeth,alias_rule,63
+Lingaya`s Vidyapeeth,Haryana,,INST-00353,Lingaya's Vidyapeeth,exact,100
 Little Flower College,Kerala,,INST-00354,Little Flower College,exact,100
 "Lloyd Institute of Management and Technology, Greater Noida",Uttar Pradesh,,INST-01577,"Lloyd Institute of Management and Technology, Greater Noida",exact,100
 Loreto College,West Bengal,,INST-00355,Loreto College,exact,100
@@ -1203,7 +1203,7 @@ Loyola Institute of Business Administration,Tamil Nadu,,INST-00844,Loyola Instit
 "M S Ramaiah College of Arts, Science, and Commerce",Karnataka,,INST-01183,"M S Ramaiah College of Arts, Science, and Commerce",exact,100
 MS Ramaiah College of Arts Science & Commerce,Karnataka,,INST-01183,"M S Ramaiah College of Arts, Science, and Commerce",exact,100
 M S Ramaiah Institute of Management,Karnataka,,INST-00357,M S Ramaiah Institute of Management,exact,100
-M. D. K. Girls` College,Assam,,INST-00845,M. D. K. Girls` College,exact,100
+M. D. K. Girls` College,Assam,,INST-00845,M. D. K. Girls' College,exact,100
 "M. E. S College, Marampally, North Vazhakulam, Aluva",Kerala,,INST-01578,"M. E. S College, Marampally, North Vazhakulam, Aluva",exact,100
 "M. E. S College, Marampally, North Vazhakulam, Aluva- 683 107",Kerala,,INST-01578,"M. E. S College, Marampally, North Vazhakulam, Aluva",exact,92
 M. G. Science Institute,Gujarat,,INST-00846,M. G. Science Institute,exact,100
@@ -1216,10 +1216,11 @@ M. S. Ramaiah University of Applied Sciences,Karnataka,,INST-00849,M.S. Ramaiah 
 M.S. Ramaiah University of Applied Sciences,Karnataka,,INST-00849,M.S. Ramaiah University of Applied Sciences,exact,100
 M.V.Muthiah Government Arts College for Women,Tamil Nadu,,INST-01673,M.V.Muthiah Government Arts College for Women,exact,100
 MAEER`s MIT School of Management,Maharashtra,,INST-00359,MAEER's MIT School of Management,exact,100
-MAEERS Maharashtra Institute of Pharmacy,Maharashtra,,INST-01065,MAEERS Maharashtra Institute of Pharmacy,exact,100
+MAEERS Maharashtra Institute of Pharmacy,Maharashtra,,INST-00855,MAEERS Maharashtra Institute of Pharmacy,exact,100
+Maharashtra Institute of Pharmacy,Maharashtra,,INST-00855,MAEERS Maharashtra Institute of Pharmacy,review_approved,90
 MES Keveeyam College,Kerala,,INST-00360,MES Keveeyam College,exact,100
-MES Ponnani College,Kerala,,INST-00850,MES Ponnani College,exact,100
-"MES Ponnani College, Ponnani",Kerala,,INST-01580,"MES Ponnani College, Ponnani",exact,100
+MES Ponnani College,Kerala,,INST-00850,"MES Ponnani College, Ponnani",review_approved,83
+"MES Ponnani College, Ponnani",Kerala,,INST-00850,"MES Ponnani College, Ponnani",exact,100
 MG College,Kerala,,INST-01314,"MG College, Thiruvananthapuram",alias_rule,51
 "MG College, Thiruvananthapuram",Kerala,,INST-01314,"MG College, Thiruvananthapuram",exact,100
 "MGM Dental College and Hospital, Navi Mumbai",Maharashtra,,INST-01408,"MGM Dental College and Hospital, Navi Mumbai",exact,100
@@ -1269,14 +1270,13 @@ Maharani Cluster University,Karnataka,,INST-01189,Maharani Cluster University,ex
 Maharashtra Academy of Engineering & Educational Research`s Maharashtra Institute of Pharmacy,Maharashtra,,INST-00371,Maharashtra Academy of Engineering & Educational Research's Maharashtra Institute of Pharmacy,exact,100
 "Maharashtra Academy of Engineering and Educational Research, MIT College of Engineering",Maharashtra,,INST-00372,"Maharashtra Academy of Engineering and Educational Research, MIT College of Engineering",exact,100
 Maharashtra College of Pharmacy,Maharashtra,,INST-00854,Maharashtra College of Pharmacy,exact,100
-Maharashtra Institute of Pharmacy,Maharashtra,,INST-00855,Maharashtra Institute of Pharmacy,exact,100
 Maharashtra Institute of Technology,Maharashtra,,INST-00373,Maharashtra Institute of Technology,exact,100
 "Maharashtra Institute of Technology, Pune",Maharashtra,,INST-00373,Maharashtra Institute of Technology,alias_rule,93
 Maharashtra National Law University Mumbai,Maharashtra,,INST-01583,Maharashtra National Law University Mumbai,exact,100
 "Maharashtra National Law University, Nagpur",Maharashtra,,INST-01584,"Maharashtra National Law University, Nagpur",exact,100
 Maharishi Markandeshwar,Haryana,,INST-00856,Maharishi Markandeshwar,exact,100
 Maharishi Markandeshwar (Deemed to be University),Haryana,,INST-00856,Maharishi Markandeshwar,exact,100
-Maharishi Markandeshwar University,Haryana,,INST-00374,Maharishi Markandeshwar University,exact,100
+Maharishi Markandeshwar University,Haryana,,INST-00856,Maharishi Markandeshwar,review_approved,81
 Maharshi Dayanand University,Haryana,,INST-00857,Maharshi Dayanand University,exact,100
 "Maharshi Dayanand University, Rohtak",Haryana,,INST-00857,Maharshi Dayanand University,alias_rule,89
 Maharshi Karve Stree Shikshan Samstha's Cummins College of Engineering for Women,Maharashtra,,INST-00375,Maharshi Karve Stree Shikshan Samstha's Cummins College of Engineering for Women,exact,100
@@ -1399,8 +1399,8 @@ N.G.S.M.Institute of Pharmaceutical Sciences,Karnataka,,INST-00410,N.G.S.M. Inst
 Nitte Gulabi Shetty Memorial Institute of Pharmaceutical Sciences,Karnataka,,INST-00410,N.G.S.M. Institute of Pharmaceutical Sciences,id_code,72
 "NIMS University, Jaipur",Rajasthan,,INST-01323,"NIMS University, Jaipur",exact,100
 NITTE,Karnataka,,INST-00875,NITTE,exact,100
+NITTE University,Karnataka,,INST-00875,NITTE,alias_rule,48
 NITTE Education Trust School of Management,Karnataka,,INST-00411,NITTE Education Trust School of Management,exact,100
-NITTE University,Karnataka,,INST-00412,NITTE University,exact,100
 N M A M Institute of Technology,Karnataka,,INST-00876,NMAM Institute of Technology,exact,100
 N. M. A. M. Institute of Technology,Karnataka,,INST-00876,NMAM Institute of Technology,exact,100
 NMAM Institute of Technology,Karnataka,,INST-00876,NMAM Institute of Technology,exact,100
@@ -1568,7 +1568,7 @@ P.S.G. College of Arts & Science,Tamil Nadu,,INST-00459,PSG College of Arts and 
 PSG College of Arts and Science,Tamil Nadu,,INST-00459,PSG College of Arts and Science,exact,100
 PSG College of Pharmacy,Tamil Nadu,,INST-00460,PSG College of Pharmacy,exact,100
 PSG College of Technology,Tamil Nadu,,INST-00461,PSG College of Technology,exact,100
-"PSG INSTITUTE OF MEDICAL SCIENCES & RESEARCH (Inst. Code - 012), COIMBATORE",Tamil Nadu,,INST-01494,"PSG INSTITUTE OF MEDICAL SCIENCES & RESEARCH (Inst. Code - 012), COIMBATORE",exact,100
+"PSG INSTITUTE OF MEDICAL SCIENCES & RESEARCH (Inst. Code - 012), COIMBATORE",Tamil Nadu,,INST-00898,PSG Institute of Medical Sciences and Research,review_approved,75
 PSG Institute of Medical Sciences & Research,Tamil Nadu,,INST-00898,PSG Institute of Medical Sciences and Research,exact,100
 "PSG Institute of Medical Sciences & Research, Coimbatore",Tamil Nadu,,INST-00898,PSG Institute of Medical Sciences and Research,id_code,89
 PSG Institute of Medical Sciences and Research,Tamil Nadu,,INST-00898,PSG Institute of Medical Sciences and Research,exact,100
@@ -1615,8 +1615,8 @@ Ponda Education Society`s Rajaram and Tarabai Bandekar College of Pharmacy,Goa,,
 Pondicherry Engineering College,Puducherry,,INST-00473,Pondicherry Engineering College,exact,100
 Pondicherry University,Puducherry,,INST-00474,Pondicherry University,exact,100
 "Pookoya Thangal Memorial Govt. College, Perinthalmanna",Kerala,,INST-01600,"Pookoya Thangal Memorial Govt. College, Perinthalmanna",exact,100
-"Poona College of Pharmacy, Erandwane, Pune",Maharashtra,,INST-00475,"Poona College of Pharmacy, Erandwane, Pune",exact,100
 Poona College of Pharmacy,Maharashtra,,INST-00901,"Poona College of Pharmacy, Pune",id_code,91
+"Poona College of Pharmacy, Erandwane, Pune",Maharashtra,,INST-00901,"Poona College of Pharmacy, Pune",review_approved,85
 "Poona College of Pharmacy, Pune",Maharashtra,,INST-00901,"Poona College of Pharmacy, Pune",exact,100
 Post Graduate Government College for Girls,Chandigarh,,INST-00476,Post Graduate Government College for Girls,exact,100
 Post Graduate Institute of Medical Education and Research,Chandigarh,,INST-00902,Post Graduate Institute of Medical Education and Research,exact,100
@@ -1635,15 +1635,15 @@ Presidency University,West Bengal,,INST-00906,Presidency University,exact,100
 "Presidency University , Bengaluru",Karnataka,,INST-01679,"Presidency University, Bengaluru",exact,100
 "Prestige Institute of Management & Research, Gwalior",Madhya Pradesh,,INST-01424,"Prestige Institute of Management & Research, Gwalior",exact,100
 Prin. L. N. Welingkar Institute of Management Development & Research,Karnataka,,INST-01425,Prin. L. N. Welingkar Institute of Management Development & Research,exact,100
-Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),Maharashtra,,INST-01601,Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),exact,100
+Prin. L.N. Welingkar Institute of Management Development & Research,Maharashtra,,INST-00482,Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),review_approved,97
+Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),Maharashtra,,INST-00482,Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),exact,100
+Principal L N Welingkar Institute of Management Development and Research,Maharashtra,,INST-00482,Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),review_approved,97
+Principal L. N. Welingkar Institute of Management Development & Research,Maharashtra,,INST-00482,Prin. L.N. Welingkar Institute of Management Development and Research (PGDM),review_approved,97
 Prince Shri Venkateshwara Arts and Science College,Tamil Nadu,,INST-01497,Prince Shri Venkateshwara Arts and Science College,exact,100
 Prince Shri Venkateshwara Padmavathy Engineering College,Tamil Nadu,,INST-01602,Prince Shri Venkateshwara Padmavathy Engineering College,exact,100
 Prin.K.M.Kundnani College of Pharmacy,Maharashtra,,INST-00481,Principal K.M. Kundnani College of Pharmacy,exact,100
 Principal K.M. Kundanani College of Pharmacy,Maharashtra,,INST-00481,Principal K.M. Kundnani College of Pharmacy,id_code,99
 Principal K.M. Kundnani College of Pharmacy,Maharashtra,,INST-00481,Principal K.M. Kundnani College of Pharmacy,exact,100
-Prin. L.N. Welingkar Institute of Management Development & Research,Maharashtra,,INST-00482,Principal L N Welingkar Institute of Management Development and Research,exact,100
-Principal L N Welingkar Institute of Management Development and Research,Maharashtra,,INST-00482,Principal L N Welingkar Institute of Management Development and Research,exact,100
-Principal L. N. Welingkar Institute of Management Development & Research,Maharashtra,,INST-00482,Principal L N Welingkar Institute of Management Development and Research,exact,100
 Prof. Ram Meghe Institute of Technology & Research,Maharashtra,,INST-01220,Prof. Ram Meghe Institute of Technology & Research,exact,100
 Professor Jayashankar Telangana Agricultural University (PJTAU),Telangana,,INST-00907,Professor Jayashankar Telangana Agricultural University (PJTAU),exact,100
 Professor Jayashankar Telangana State Agricultural University,Telangana,,INST-00907,Professor Jayashankar Telangana Agricultural University (PJTAU),id_code,90
@@ -1698,7 +1698,7 @@ Raghavendra Institute of Pharmaceuatical Education & Research,Andhra Pradesh,,IN
 Raghavendra Institute of Pharmaceuatical Education & Research (RIPER),Andhra Pradesh,,INST-00496,Raghavendra Institute of Pharmaceuatical Education & Research,fuzzy,95
 Raja Lakhama Gonda Science Institute,Karnataka,,INST-00497,Raja Lakhama Gonda Science Institute,exact,100
 Raja Narendra Lal Khan Women's College - Autonomous,West Bengal,,INST-01331,Raja Narendra Lal Khan Women's College - Autonomous,exact,100
-Raja Narendralal Khan Women's College,West Bengal,,INST-00498,Raja Narendralal Khan Women's College,exact,100
+Raja Narendralal Khan Women's College,West Bengal,,INST-01331,Raja Narendra Lal Khan Women's College - Autonomous,review_approved,90
 Raja Rajeswari Dental College & Hospital,Karnataka,,INST-01332,Raja Rajeswari Dental College & Hospital,exact,100
 Raja Shripatrao Bhagawantrao Mahavidyalaya Aundh,Maharashtra,,INST-00499,Raja Shripatrao Bhagawantrao Mahavidyalaya Aundh,exact,100
 Rajagiri Business School,Kerala,,INST-00500,Rajagiri Business School,exact,100
@@ -1711,7 +1711,7 @@ Rajah Serfoji Government College,Tamil Nadu,,INST-01085,"Rajah Serfoji Governmen
 "Rajah Serfoji Government College, Thanjavur - 613 005",Tamil Nadu,,INST-01085,"Rajah Serfoji Government College, Thanjavur",exact,91
 "Rajah Serfoji Government College, Thanjavur - 613 005.",Tamil Nadu,,INST-01085,"Rajah Serfoji Government College, Thanjavur",exact,91
 Rajalakshmi Engineering College,Tamil Nadu,,INST-00913,Rajalakshmi Engineering College,exact,100
-Rajalakshmi Engineering College Engineering & Technology,Tamil Nadu,,INST-00503,Rajalakshmi Engineering College Engineering & Technology,exact,100
+Rajalakshmi Engineering College Engineering & Technology,Tamil Nadu,,INST-00913,Rajalakshmi Engineering College,alias_rule,70
 Rajalakshmi Institute of Technology,Tamil Nadu,,INST-01224,Rajalakshmi Institute of Technology,exact,100
 Rajarambapu College of Pharmacy,Maharashtra,,INST-01499,Rajarambapu College of Pharmacy,exact,100
 Rajarshi Shahu Mahavidyalaya,Maharashtra,,INST-00504,Rajarshi Shahu Mahavidyalaya,exact,100
@@ -1754,8 +1754,8 @@ S R M College of Arts and Science,Tamil Nadu,,INST-00516,S R M College of Arts a
 S S Jain Subodh P G College,Rajasthan,,INST-01089,"S S Jain Subodh P G College, Jaipur",alias_rule,88
 "S S Jain Subodh P G College, Jaipur",Rajasthan,,INST-01089,"S S Jain Subodh P G College, Jaipur",exact,100
 S. D. M. College of Engineering & Technology,Karnataka,,INST-01228,S. D. M. College of Engineering & Technology,exact,100
-S. E. T.`s College of Pharmacy,Karnataka,,INST-00517,S. E. T.`s College of Pharmacy,exact,100
-S.E.T`s College of Pharmacy,Karnataka,,INST-00517,S. E. T.`s College of Pharmacy,fuzzy,98
+S. E. T.`s College of Pharmacy,Karnataka,,INST-00517,S. E. T.'s College of Pharmacy,exact,100
+S.E.T`s College of Pharmacy,Karnataka,,INST-00517,S. E. T.'s College of Pharmacy,fuzzy,98
 S. N. College,Kerala,,INST-01090,S. N. College,exact,100
 S. P. Jain Institute of Management & Research,Maharashtra,,INST-00518,S. P. Jain Institute of Management and Research,exact,100
 S. P. Jain Institute of Management and Research,Maharashtra,,INST-00518,S. P. Jain Institute of Management and Research,exact,100
@@ -1810,7 +1810,7 @@ Sadakathullah Appa College,Tamil Nadu,,INST-01610,Sadakathullah Appa College,exa
 "Sadakathullah Appa College, Rahmath Nagar, Palayamkottai",Tamil Nadu,,INST-01433,"Sadakathullah Appa College, Rahmath Nagar, Palayamkottai",exact,100
 "Sadakathullah Appa College, Rahmath Nagar, Palayamkottai, 627 011",Tamil Nadu,,INST-01433,"Sadakathullah Appa College, Rahmath Nagar, Palayamkottai",exact,93
 Sadguru Gadge Maharaja College,Maharashtra,,INST-00536,Sadguru Gadge Maharaja College,exact,100
-Sagi Rama Krishnam Raju Engineering College,Andhra Pradesh,,INST-01234,Sagi Rama Krishnam Raju Engineering College,exact,100
+Sagi Rama Krishnam Raju Engineering College,Andhra Pradesh,,INST-00537,Sagi Ramakrishnam Raju Engineering College,review_approved,80
 Sagi Ramakrishnam Raju Engineering College,Andhra Pradesh,,INST-00537,Sagi Ramakrishnam Raju Engineering College,exact,100
 Sai College of Computer Education,Maharashtra,,INST-00538,Sai College of Computer Education,exact,100
 Saiva Bhanu Kshatriya College,Tamil Nadu,,INST-00539,Saiva Bhanu Kshatriya College,exact,100
@@ -1828,8 +1828,8 @@ Sant Gadge Baba Amravati University,Maharashtra,,INST-00545,Sant Gadge Baba Amra
 Sant Longowal Institute of Engineering & Technology,Punjab,,INST-00546,Sant Longowal Institute of Engineering & Technology,exact,100
 Sant Longowal Institute of Engineering and Technology,Punjab,,INST-00546,Sant Longowal Institute of Engineering & Technology,exact,100
 Santosh University,Uttar Pradesh,,INST-01611,Santosh University,exact,100
-Sarah Tucker College,Tamil Nadu,,INST-01235,Sarah Tucker College,exact,100
-"Sarah Tucker College, Palayamkottai",Tamil Nadu,,INST-01337,"Sarah Tucker College, Palayamkottai",exact,100
+Sarah Tucker College,Tamil Nadu,,INST-01502,"Sarah Tucker College, Perumalpuram, Palayamkottai",review_approved,60
+"Sarah Tucker College, Palayamkottai",Tamil Nadu,,INST-01502,"Sarah Tucker College, Perumalpuram, Palayamkottai",review_approved,84
 "Sarah Tucker College, Perumalpuram, Palayamkottai",Tamil Nadu,,INST-01502,"Sarah Tucker College, Perumalpuram, Palayamkottai",exact,100
 "Sarah Tucker College, Perumalpuram, Palayamkottai - 627 011",Tamil Nadu,,INST-01502,"Sarah Tucker College, Perumalpuram, Palayamkottai",exact,92
 Saraswati Dental College & Hospital,Uttar Pradesh,,INST-01338,Saraswati Dental College & Hospital,exact,100
@@ -1870,7 +1870,7 @@ Seethalakshmi Ramaswamy College,Tamil Nadu,,INST-00559,Seethalakshmi Ramaswami C
 Seven Hills College of Pharmacy,Andhra Pradesh,,INST-01094,Seven Hills College of Pharmacy,exact,100
 Shah & Anchor Kutchhi Engineering College,Maharashtra,,INST-01238,Shah & Anchor Kutchhi Engineering College,exact,100
 Shaheed Bhagat Singh College,Delhi,,INST-01239,Shaheed Bhagat Singh College,exact,100
-Shaheed Bhagat Singh College (Evening Classes),Delhi,,INST-00560,Shaheed Bhagat Singh College (Evening Classes),exact,100
+Shaheed Bhagat Singh College (Evening Classes),Delhi,,INST-00926,Shaheed Bhagat Singh College (Evening),review_approved,90
 Shaheed Bhagat Singh College (Evening),Delhi,,INST-00926,Shaheed Bhagat Singh College (Evening),exact,100
 Shaheed Rajguru College of Applied Sciences for Women,Delhi,,INST-00927,Shaheed Rajguru College of Applied Sciences for Women,exact,100
 Shaheed Sukhdev College of Business Studies,Delhi,,INST-01095,Shaheed Sukhdev College of Business Studies,exact,100
@@ -1927,8 +1927,8 @@ Sikkim Government College,Sikkim,,INST-00934,Sikkim Government College,exact,100
 Sikkim Manipal Institute of Technology (SMIT),Sikkim,,INST-01243,Sikkim Manipal Institute of Technology (SMIT),exact,100
 Sikkim Manipal University,Sikkim,,INST-00577,Sikkim Manipal University,exact,100
 Sikkim University,Sikkim,,INST-00578,Sikkim University,exact,100
-Siksha `O` Anusandhan,Odisha,,INST-00935,Siksha `O` Anusandhan,exact,100
-Siksha`O` Anusandhan University,Odisha,,INST-00579,Siksha`O` Anusandhan University,exact,100
+Siksha `O` Anusandhan,Odisha,,INST-00935,Siksha 'O' Anusandhan,exact,100
+Siksha`O` Anusandhan University,Odisha,,INST-00935,Siksha 'O' Anusandhan,review_approved,78
 Silapather College,Assam,,INST-00580,Silapather College,exact,100
 "Silicon Institute of Technology (SIT), Bhubaneswar",Odisha,,INST-01244,"Silicon Institute of Technology (SIT), Bhubaneswar",exact,100
 "Silicon University,Odisha, Bhubaneswar",Odisha,,INST-01686,"Silicon University, Odisha, Bhubaneswar",exact,100
@@ -1984,7 +1984,7 @@ Sri Chandrasekharendra Saraswathi Vishwa Mahavidyalaya,Tamil Nadu,,INST-00593,Sr
 Sri Chandrasekharendra Saraswathi Viswa Mahavidyalaya,Tamil Nadu,,INST-00593,Sri Chandrasekharendra Saraswathi Viswa Mahavidyalaya,exact,100
 Sri D. Manjunatheswara College,Karnataka,,INST-00594,Sri D. Manjunatheswara College,exact,100
 Sri Devraj Urs Academy of Higher Education and Research,Karnataka,,INST-01249,Sri Devraj Urs Academy of Higher Education and Research,exact,100
-Sri Dharmasthala Manjunatheshwara College,Karnataka,,INST-00943,Sri Dharmasthala Manjunatheshwara College,exact,100
+Sri Dharmasthala Manjunatheshwara College,Karnataka,,INST-01622,"Sri Dharmasthala Manjunatheshwara College, Ujire, Belthangady",review_approved,82
 "Sri Dharmasthala Manjunatheshwara College, Ujire, Belthangady",Karnataka,,INST-01622,"Sri Dharmasthala Manjunatheshwara College, Ujire, Belthangady",exact,100
 "Sri Dharmasthala Manjunatheshwara College, Ujire-574240, Belthangady",Karnataka,,INST-01622,"Sri Dharmasthala Manjunatheshwara College, Ujire, Belthangady",exact,94
 Sri Dharmasthala Manjunatheswara College of Dharwad,Karnataka,,INST-01250,Sri Dharmasthala Manjunatheswara College of Dharwad,exact,100
@@ -2013,7 +2013,7 @@ Sri Pratap College,Jammu and Kashmir,,INST-00948,Sri Pratap College,exact,100
 Sri Ramachandra Institute of Higher Education And Research,Tamil Nadu,,INST-00949,Sri Ramachandra Institute of Higher Education and Research,exact,100
 Sri Ramachandra Institute of Higher Education and Research,Tamil Nadu,,INST-00949,Sri Ramachandra Institute of Higher Education and Research,exact,100
 Sri Ramachandra Medical College and Research Institute,Tamil Nadu,,INST-00949,Sri Ramachandra Institute of Higher Education and Research,id_code,79
-Sri Ramachandra University,Tamil Nadu,,INST-00603,Sri Ramachandra University,exact,100
+Sri Ramachandra University,Tamil Nadu,,INST-00949,Sri Ramachandra Institute of Higher Education and Research,alias_rule,40
 Sri Ramakrishna College of Arts & Science for Women,Tamil Nadu,,INST-00604,Sri Ramakrishna College of Arts & Science for Women,exact,100
 Sri Ramakrishna College of Arts and Science,Tamil Nadu,,INST-00950,Sri Ramakrishna College of Arts and Science,exact,100
 Sri Ramakrishna Degree College,Andhra Pradesh,,INST-00605,Sri Ramakrishna Degree College,exact,100
@@ -2063,8 +2063,8 @@ St. Aloysius College,Karnataka,,INST-00617,St. Aloysius College,exact,100
 St. Ann`s College for Women,Andhra Pradesh,,INST-00618,St. Ann's College for Women,exact,100
 St. Ann`s College for Women,Telangana,,INST-01630,St. Ann's College for Women,exact,100
 St. Anthony's College,Meghalaya,,INST-01631,St. Anthony's College,exact,100
-St. Dominic's College,Kerala,,INST-01099,St. Dominic's College,exact,100
-"St. Dominic's College, Kanjirappally",Kerala,,INST-01346,"St. Dominic's College, Kanjirappally",exact,100
+St. Dominic's College,Kerala,,INST-01442,"St. Dominic's College, Parathod P.O., Kanjirappally",review_approved,63
+"St. Dominic's College, Kanjirappally",Kerala,,INST-01442,"St. Dominic's College, Parathod P.O., Kanjirappally",review_approved,86
 "St. Dominic's College, Parathod P.O., Kanjirappally",Kerala,,INST-01442,"St. Dominic's College, Parathod P.O., Kanjirappally",exact,100
 "St. Dominic's College, Parathod P.O., Kanjirappally-686 512",Kerala,,INST-01442,"St. Dominic's College, Parathod P.O., Kanjirappally",exact,92
 "St. Dominic`s College, Parathod P.O., Kanjirappally",Kerala,,INST-01442,"St. Dominic's College, Parathod P.O., Kanjirappally",exact,100
@@ -2090,11 +2090,11 @@ St. Joseph`s Evening College,Karnataka,,INST-00622,St. Joseph's Evening College,
 St. Joseph's Institute of Management,Karnataka,,INST-00962,St. Joseph's Institute of Management,exact,100
 St. Joseph`s Institute of Management,Karnataka,,INST-00962,St. Joseph's Institute of Management,exact,100
 St. Joseph`s Institute of Technology,Tamil Nadu,,INST-01688,St. Joseph's Institute of Technology,exact,100
-St. Joseph`s Arts & Science College,Karnataka,,INST-00963,"St. Josephs Arts & Science College, Bangalore (Autonomous)",alias_rule,88
-St. Josephs Arts & Science College,Karnataka,,INST-00963,"St. Josephs Arts & Science College, Bangalore (Autonomous)",alias_rule,88
-"St. Josephs Arts & Science College, Bangalore (Autonomous)",Karnataka,,INST-00963,"St. Josephs Arts & Science College, Bangalore (Autonomous)",exact,100
-"St. Josephs Arts & Science College, Lalbhag Rd, Bangalore",Karnataka,,INST-01443,"St. Josephs Arts & Science College, Lalbhag Rd, Bangalore",exact,100
-"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd,Bangalore-27 (Autonomous)",Karnataka,,INST-01510,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",exact,100
+St. Joseph`s Arts & Science College,Karnataka,,INST-00963,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",alias_rule,70
+St. Josephs Arts & Science College,Karnataka,,INST-00963,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",alias_rule,70
+"St. Josephs Arts & Science College, Bangalore (Autonomous)",Karnataka,,INST-00963,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",review_approved,81
+"St. Josephs Arts & Science College, Lalbhag Rd, Bangalore",Karnataka,,INST-00963,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",review_approved,91
+"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd,Bangalore-27 (Autonomous)",Karnataka,,INST-00963,"St. Josephs Arts & Science College, PB 27094, Lalbhag Rd, Bangalore-27 (Autonomous)",exact,100
 "St. Josephs College for Women, (Autonomous)",Andhra Pradesh,,INST-00623,"St. Josephs College for Women, (Autonomous)",exact,100
 ST. Joseph's College of Engineering,Tamil Nadu,,INST-00624,St. Josephs College of Engineering,exact,100
 St. Josephs College of Engineering,Tamil Nadu,,INST-00624,St. Josephs College of Engineering,exact,100
@@ -2106,18 +2106,18 @@ St. Paul''s College,Kerala,,INST-01348,St. Paul''s College,exact,100
 St. Peter's College,Kerala,,INST-01633,St. Peter's College,exact,100
 St. Peter`s Institute of Pharmaceutical Sciences,Telangana,,INST-01444,St. Peter's Institute of Pharmaceutical Sciences,exact,100
 St. Philomena College,Karnataka,,INST-00964,St. Philomena College,exact,100
-St. Pius X College,Kerala,,INST-00965,St. Pius X College,exact,100
+St. Pius X College,Kerala,,INST-01634,St. Pius Xth College,review_approved,95
 St. Pius Xth College,Kerala,,INST-01634,St. Pius Xth College,exact,100
-St. Stephen`s College,Delhi,,INST-00966,St. Stephens's College,id_code,98
-St. Stephens's College,Delhi,,INST-00966,St. Stephens's College,exact,100
+St. Stephen`s College,Delhi,,INST-00966,St. Stephen's College,exact,100
+St. Stephens's College,Delhi,,INST-00966,St. Stephen's College,exact,98
 St. Teresa's College,Kerala,,INST-00626,"St. Teresa's College, Ernakulam",id_code,81
 "St. Teresa's College, Ernakulam",Kerala,,INST-00626,"St. Teresa's College, Ernakulam",exact,100
 St. Teresa`s College,Kerala,,INST-00626,"St. Teresa's College, Ernakulam",id_code,81
 "St. Teresa`s College, Ernakulam",Kerala,,INST-00626,"St. Teresa's College, Ernakulam",exact,100
-St. Thomas College,Kerala,Kottayam,INST-01101,St. Thomas College,exact,100
-St. Thomas College,Kerala,Pathanamthitta,INST-01253,St. Thomas College,exact,100
+St. Thomas College,Kerala,Kottayam,INST-01635,"St. Thomas College, Arunapuram",review_approved,78
 "St. Thomas College, Arunapuram",Kerala,,INST-01635,"St. Thomas College, Arunapuram",exact,100
-"St. Thomas College, Kozhencherry",Kerala,,INST-01349,"St. Thomas College, Kozhencherry",exact,100
+St. Thomas College,Kerala,Pathanamthitta,INST-01253,"St. Thomas College, Kozhencherry",review_approved,75
+"St. Thomas College, Kozhencherry",Kerala,,INST-01253,"St. Thomas College, Kozhencherry",exact,100
 "ST. Thomas College, Thrissur",Kerala,,INST-00967,"St. Thomas College, Thrissur",exact,100
 St. Thomas College,Kerala,Thrissur,INST-00967,"St. Thomas College, Thrissur",id_code,82
 "St. Thomas College, Thrissur",Kerala,,INST-00967,"St. Thomas College, Thrissur",exact,100
@@ -2159,7 +2159,7 @@ Swami Shraddhanand College,Delhi,,INST-01690,Swami Shraddhanand College,exact,10
 Symbiosis College of Arts and Commerce,Maharashtra,,INST-00635,Symbiosis College of Arts and Commerce,exact,100
 Symbiosis Institute of Business Management,Maharashtra,,INST-00971,Symbiosis Institute of Business Management,exact,100
 Symbiosis International,Maharashtra,,INST-00972,Symbiosis International,exact,100
-Symbiosis International University,Maharashtra,,INST-00636,Symbiosis International University,exact,100
+Symbiosis International University,Maharashtra,,INST-00972,Symbiosis International,review_approved,81
 Symbiosis Law School,Maharashtra,,INST-00973,"Symbiosis Law School, Pune",id_code,89
 "Symbiosis Law School, Pune",Maharashtra,,INST-00973,"Symbiosis Law School, Pune",exact,100
 Symbiosis Skills and Professional University (Formerly Symbiosis Skill and Open University),Maharashtra,,INST-01638,Symbiosis Skills and Professional University (Formerly Symbiosis Skill and Open University),exact,100
@@ -2194,7 +2194,7 @@ Thanthai Periyar Government Arts and Science College (Autonomous),Tamil Nadu,,IN
 Thapar Institute of Engineering & Technology,Punjab,,INST-00977,Thapar Institute of Engineering and Technology (Deemed-to-be-university),exact,100
 Thapar Institute of Engineering and Technology,Punjab,,INST-00977,Thapar Institute of Engineering and Technology (Deemed-to-be-university),exact,100
 Thapar Institute of Engineering and Technology (Deemed-to-be-university),Punjab,,INST-00977,Thapar Institute of Engineering and Technology (Deemed-to-be-university),exact,100
-Thapar University,Punjab,,INST-00646,Thapar University,exact,100
+Thapar University,Punjab,,INST-00977,Thapar Institute of Engineering and Technology (Deemed-to-be-university),alias_rule,32
 Thassim Beevi Abdul Kader College for Women,Tamil Nadu,,INST-00647,Thassim Beevi Abdul Kader College for Women,exact,100
 The American College,Tamil Nadu,,INST-00978,The American College,exact,100
 The Gandhigram Rural Institute,Tamil Nadu,,INST-00648,The Gandhigram Rural Institute,exact,100
@@ -2270,8 +2270,8 @@ V.S.M. College,Andhra Pradesh,,INST-00673,V.S.M. College,exact,100
 V. V. Vanniaperumal College for Women,Tamil Nadu,,INST-00674,V.V. Vanniaperumal College for Women,exact,100
 V.V. Vanniaperumal College for Women,Tamil Nadu,,INST-00674,V.V. Vanniaperumal College for Women,exact,100
 V.V.Vanniaperumal College for Women,Tamil Nadu,,INST-00674,V.V. Vanniaperumal College for Women,exact,100
-VNR Vignana Jyothi Institute of Engineering & Technology,Telangana,,INST-00675,VNR Vignana Jyothi Institute of Engineering & Technology,exact,100
 VPM`s Dr. V.N.Bedekar Institute of Management Studies,Maharashtra,,INST-00676,VPM's Dr. V.N.Bedekar Institute of Management Studies,exact,100
+VNR Vignana Jyothi Institute of Engineering & Technology,Telangana,,INST-01110,Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering and Technology,alias_rule,78
 Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering and Technology,Telangana,,INST-01110,Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering and Technology,exact,100
 Vardhaman College of Engineering,Telangana,,INST-00677,Vardhaman College of Engineering,exact,100
 Vardhman Mahavir Medical College & Safdarjung Hospital,Delhi,,INST-00989,Vardhman Mahavir Medical College & Safdarjung Hospital,exact,100
