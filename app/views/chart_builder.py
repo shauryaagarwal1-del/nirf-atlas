@@ -3,7 +3,8 @@ aggregation and an allowed chart type, and get a chart (logic: core/builder.py).
 
 How the page works:
   1. Filters: categories, years, states, regions, institutions and a rank cut-off. They start from the
-     sidebar filters when the page opens and are then the page's own.
+     global filters when the page opens and are then the page's own. The institution list offers only
+     institutions listed in the chosen categories.
   2. Chart: chart type, X, Y, aggregation, colour (group), facet, and bubble size. Controls the chosen
      chart type does not use are greyed out, so only sensible choices remain.
   3. Combinations that still cannot make a chart (a pie of averages, a line over states ...) show a
@@ -16,7 +17,7 @@ from __future__ import annotations
 import streamlit as st
 
 from app.components import chart_card, empty_state, page_header
-from app.filters import category_years_map, current, institution_options, master, state_options
+from app.filters import category_years_map, current, institution_options, master, prune_institutions, state_options
 from core.builder import AGGREGATIONS, CHARTS, DIMENSIONS, MEASURES, BuilderHint, build_chart, uses
 from core.data import YEARS
 from core.result import ChartResult
@@ -114,10 +115,16 @@ with st.container(border=True, key=f"{K}filters"):
     with c[1]:
         regions = st.multiselect("Regions", sorted(df["region"].dropna().unique()), key=f"{K}regions",
                                  placeholder="All regions")
-    with c[2]:
-        opts = institution_options()
+    with c[2]:   # only institutions listed in the chosen categories (all, when none is chosen)
+        opts = institution_options(chosen or None)
+        listed_in = " or ".join(chosen) if chosen else "any category"
+        note = prune_institutions(f"{K}institutions", opts, listed_in)
         insts = st.multiselect("Institutions", list(opts), key=f"{K}institutions", format_func=lambda k: opts[k],
-                               placeholder="All institutions")
+                               placeholder="All institutions",
+                               help=f"Institutions listed in {listed_in}. 'band only' = never given an exact rank "
+                                    "there." if chosen else None)
+        if note:
+            st.caption(note)
 
 chart_keys = list(CHARTS)
 dims, nums = list(DIMENSIONS), list(MEASURES)

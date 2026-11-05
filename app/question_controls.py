@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.filters import MAX_INSTITUTIONS, category_years_map, institution_options, parameters_for, state_options
+from app.filters import (MAX_INSTITUTIONS, category_years_map, institution_options, parameters_for,
+                         prune_institutions, state_options)
 from core.data import YEARS, NirfInputError, SHORT, find_institutions
 from core.questions import Question
 
@@ -133,11 +134,18 @@ def _widget(q: Question, name: str, params: dict, category: str | None, years: l
                              index=_index(years, default, 0 if first else len(years) - 1))
         return {name: value}
 
-    if name == "institutions":
-        options = list(institution_options())
-        value = st.multiselect("Institutions", options, default=default or [], key=_key(q, name),
-                               format_func=institution_options().__getitem__, max_selections=MAX_INSTITUTIONS,
-                               placeholder="Top 5 (default)" if not default else "Search by name")
+    if name == "institutions":                    # only institutions listed in the question's category
+        opts = institution_options(category or params.get("categories"))
+        key = _key(q, name)
+        note = prune_institutions(key, opts, category)   # after a category change: drop the unlisted ones
+        start = None if key in st.session_state else [k for k in default or [] if k in opts]
+        value = st.multiselect("Institutions", list(opts), default=start, key=key, format_func=opts.__getitem__,
+                               max_selections=MAX_INSTITUTIONS,
+                               placeholder="Top 5 (default)" if not default else "Search by name",
+                               help=f"Institutions listed in {category}. 'band only' = never given an exact rank "
+                                    "there." if category else None)
+        if note:
+            st.caption(note)
         return {name: value or None}
 
     if name == "states":

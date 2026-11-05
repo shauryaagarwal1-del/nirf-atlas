@@ -786,12 +786,28 @@ lies wholly inside one of these four, so institutions known only by band can be 
   "at least N years" (bounded by the category's number of years), chart variants (e.g. violin or overlapping
   histogram) and how many names are printed on the chart. A local choice is kept when the category changes, as long
   as the new category offers it (e.g. the year 2019); otherwise it starts again from its default.
+- **Where the sidebar filters are drawn:** on Home, the seven Explore pages and Data & Method, the pages that use
+  them. Question Bank, Chart Builder and Ask NIRF have their own controls, so their sidebar shows a short note instead
+  ("This page uses its own controls. The sidebar filters apply to the Explore pages."); Ask NIRF keeps its Gemini
+  status box. The five filter values live in session state, not in the sidebar widgets, so they wait while such a
+  page is open: Trends -> Ask NIRF -> Trends shows the same choices. Every control that edits a filter (in the
+  sidebar or above a chart) starts from the stored value and writes changes back (`app/filters.py :: synced()`).
+- **Institution lists follow the category:** every institution picker (sidebar, Explore views, Question Bank, Chart
+  Builder) offers only the institutions listed in the chosen category at least once, with an exact rank or in a rank
+  band (`app/filters.py :: institution_options(category)`): Engineering offers 460, Medical 66, instead of all 1,692.
+  For several categories (Chart Builder) it is the union of their lists. The label is "Short name · City, State",
+  plus "· band only" when NIRF never gave the institution an exact rank in that category. When the category changes,
+  chosen institutions not listed in the new one are removed and a caption says so, e.g. "IIT Dharwad is not ranked in
+  Medical, so it was removed." Why: choosing an institution that has no rows in the category could only give an empty
+  chart.
 - **"Only states":** on every analysis without its own state parameter, the state filter limits the whole analysis to
   institutions in those states (see "State filter for any analysis" above), and the chart says so. Compare states has
   its own state picker instead (empty = Karnataka and Tamil Nadu).
 - **Tests:** `tests/test_explorer.py` checks that each view's controls cover exactly its function's parameters, that
   every view of every page draws a chart in the real app (Streamlit AppTest), that page and sidebar stay in sync, that
-  local choices survive a category change, and that the state filter is applied and shown.
+  local choices survive a category change, and that the state filter is applied and shown. `tests/test_filters.py`
+  checks the per-category institution lists, where the sidebar filters are drawn, that they survive a page without
+  them, and that a category change removes unlisted institutions with a caption.
 
 ### Extra: How have one institution's parameter scores changed over the years?
 - **Engine / function:** `core/engines/trends.py :: parameter_trends(institution, category, years)` (Trends page,
@@ -867,7 +883,8 @@ lies wholly inside one of these four, so institutions known only by band can be 
 - **Where:** `core/builder.py :: build_chart()` (logic) and `app/views/chart_builder.py` (controls). The Ask NIRF chat
   can call the same function for questions no ready-made analysis covers.
 - **Filters:** categories (empty = all), from year, to year, rank cut-off (top 10 ... top 200: rows certainly ranked
-  within it), states, regions, institutions. They start from the sidebar filters when the page opens.
+  within it), states, regions, institutions. They start from the global filters when the page opens; the
+  institution list offers only institutions listed in the chosen categories (all, when none is chosen).
 - **Variables:** groups = year, category, state, region, rank band, institution, new entrant (first year in that
   category's list; the list's own first year is shown separately, because nobody can be "new" in it); numbers =
   overall score, the parameters (TLR, RPC, GO, OI, PR, QnR, QlR, SFC) and the exact rank.

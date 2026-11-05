@@ -305,8 +305,7 @@ def _sidebar() -> None:
                 f"<span><b>Gemini</b> · {_esc(text)}</span></div>")
         st.button("Check the key again", on_click=_status.clear, icon=":material/refresh:", width="stretch",
                   key="ask-recheck")
-        st.caption("The chat reads category, years and states from your question; the global filters above "
-                   "are not used here.")
+        st.caption("The chat reads the category, years, states and institutions from your question.")
 
 
 # ---------- page ----------

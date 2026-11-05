@@ -21,13 +21,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import zlib
-
 import streamlit as st
 
 from app.components import show
-from app.filters import (MAX_INSTITUTIONS, TOP_N_OPTIONS, _reset_years, category_years_map, current,
-                         institution_options, master, parameters_for, state_options)
+from app.filters import (MAX_INSTITUTIONS, TOP_N_OPTIONS, category_years_map, clear_dropped_note, current,
+                         dropped_note, institution_options, master, on_category_change, parameters_for,
+                         removed_note, short_labels, state_options, synced as _synced)
 from core.data import SHORT, YEARS
 from core.questions import QUESTION_REGISTRY
 
@@ -81,22 +80,6 @@ def _registry_why(function: str) -> str | None:
 
 
 # ---------- the widgets ----------
-
-def _synced(widget, key: str, global_key: str, state, to_global=lambda v: v, after=None, **kwargs):
-    """A page widget that edits a sidebar filter: it starts from the filter's value and writes changes back.
-
-    The widget key carries the filter's current value, so when the filter changes (here or in the
-    sidebar) the widget is drawn afresh from the new value: page and sidebar always agree. `kwargs`
-    must give the widget its starting value (index= / value= / default=).
-    """
-    key = f"{key}-{zlib.crc32(repr(state).encode())}"
-
-    def write_back():
-        st.session_state[global_key] = to_global(st.session_state[key])
-        if after:
-            after()
-    return widget(key=key, on_change=write_back, **kwargs)
-
 
 def keep_valid(key: str, options) -> None:
     """Forget a local choice only when it is no longer offered (e.g. a year the new category does not have).
@@ -156,7 +139,8 @@ def draw(c: C, ctx: Ctx) -> dict:
     f, cats = ctx.f, category_years_map()
 
     if c.kind == "category":
-        ctx.category = _synced(st.selectbox, f"x-{ctx.page}-category", "f_category", f.category, after=_reset_years,
+        ctx.category = _synced(st.selectbox, f"x-{ctx.page}-category", "f_category", f.category,
+                               after=on_category_change,
                                label="Category", options=list(cats), index=list(cats).index(f.category),
                                help="Each NIRF category is a separate ranking list with its own weights.")
         return {c.name or "category": ctx.category}
@@ -195,21 +179,33 @@ def draw(c: C, ctx: Ctx) -> dict:
                              key=key)
         return {c.name or "year": value}
 
-    if c.kind == "institutions":
-        opts = institution_options()
+    if c.kind == "institutions":                  # only institutions listed in the chosen category
+        category = ctx.category or f.category
+        opts = institution_options(ctx.categories if ctx.category is None else category)
         value = _synced(st.multiselect, f"x-{ctx.page}-institutions", "f_institutions",
-                        list(f.institutions), default=[k for k in f.institutions if k in opts],
+                        list(f.institutions), after=clear_dropped_note,
+                        default=[k for k in f.institutions if k in opts],
                         label="Institutions", options=list(opts),
                         format_func=lambda k: opts[k], max_selections=MAX_INSTITUTIONS,
-                        placeholder=c.help or "Top 5 (default)")
+                        placeholder=c.help or "Top 5 (default)",
+                        help=f"Institutions listed in {category}. 'band only' = never given an exact rank there.")
+        if note := dropped_note():
+            st.caption(note)
         return {"institutions": value or None}
 
     if c.kind == "institution":
-        opts = institution_options()
-        default = next((k for k in f.institutions if k in opts), None) or _leader(ctx.category)
-        value = st.selectbox("Institution", list(opts), index=list(opts).index(default), format_func=opts.get,
-                             key=ctx.key("institution"),
-                             help="Starts from the first institution in the sidebar, else this category's rank 1.")
+        category = ctx.category or f.category
+        opts = institution_options(category)
+        key = ctx.key("institution")
+        default = next((k for k in f.institutions if k in opts), None) or _leader(category)
+        note = _keep_institution(key, opts, category)
+        index = 0 if key in st.session_state else list(opts).index(default)   # a kept choice wins
+        value = st.selectbox("Institution", list(opts), index=index, format_func=opts.get, key=key,
+                             on_change=lambda: st.session_state.update({f"{key}-chosen": True}),
+                             help="Starts from the first institution in the sidebar, else this category's rank 1. "
+                                  f"Only institutions listed in {category}.")
+        if note:
+            st.caption(note)
         return {"institution": value}
 
     if c.kind == "states":
@@ -255,6 +251,22 @@ def draw(c: C, ctx: Ctx) -> dict:
         return {c.name: _choice(c, ctx.key(c.name))}
 
     raise ValueError(f"unknown control kind {c.kind!r}")
+
+
+def _keep_institution(key: str, opts: dict, category: str) -> str | None:
+    """A single-institution picker after a category change: keep the choice when the new category lists it
+    (written back, because new options make a new widget), else forget it. Returns a caption when a choice
+    the user made was removed."""
+    if key not in st.session_state:
+        return None
+    value = st.session_state[key]
+    if value in opts:
+        st.session_state[key] = value
+        return None
+    del st.session_state[key]
+    if st.session_state.pop(f"{key}-chosen", False):
+        return removed_note(short_labels([value]), category)
+    return None
 
 
 def _leader(category: str) -> str:

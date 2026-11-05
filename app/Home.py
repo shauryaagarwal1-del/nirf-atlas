@@ -1,8 +1,9 @@
 """NIRF Atlas: the Streamlit entry point. Run with:  streamlit run app/Home.py
 
 Every page visit runs this file first: it sets up the page, injects the stylesheet once, builds the
-sidebar navigation (grouped, with icons) and draws the global filters, then runs the chosen page
-from app/views/. The page catalogue itself is in app/nav.py.
+sidebar navigation (grouped, with icons) and draws the global filters (on Home, the Explore pages and
+Data & Method; the other pages have their own controls and get a short note instead), then runs the
+chosen page from app/views/. The page catalogue itself is in app/nav.py.
 
 The page files live in app/views/, not app/pages/: Streamlit treats a folder called "pages" next to the
 entry point as an old-style page list, and on a freshly started server a direct link (e.g. a restored
@@ -22,7 +23,7 @@ if str(ROOT) not in sys.path:
 import streamlit as st  # noqa: E402
 
 from app.components import inject_css  # noqa: E402
-from app.filters import render_sidebar  # noqa: E402
+from app.filters import render_own_controls_note, render_sidebar  # noqa: E402
 from app.nav import PAGES  # noqa: E402
 
 st.set_page_config(page_title="NIRF Atlas", page_icon=str(ROOT / "assets" / "mark.svg"), layout="wide",
@@ -31,11 +32,18 @@ inject_css()
 st.logo(str(ROOT / "assets" / "logo.svg"), icon_image=str(ROOT / "assets" / "mark.svg"), size="large")
 
 sections: dict[str, list] = {}
+own_controls: set[str] = set()   # url paths of the pages that do not use the global filters
 for p in PAGES:
-    sections.setdefault(p.section, []).append(st.Page(p.path, title=p.title, icon=p.icon, default=p.title == "Home"))
+    page_ = st.Page(p.path, title=p.title, icon=p.icon, default=p.title == "Home")
+    sections.setdefault(p.section, []).append(page_)
+    if not p.global_filters:
+        own_controls.add(page_.url_path)
 page = st.navigation(sections, position="sidebar")
 
-render_sidebar()
+if page.url_path in own_controls:
+    render_own_controls_note()
+else:
+    render_sidebar()
 if (ROOT / "app" / "pages").exists():   # left over (e.g. its __pycache__) from before the rename to app/views
     st.warning("Delete the old folder app/pages (only cache files are left in it) and restart the app: while it "
                "exists, Streamlit may open direct links without the atlas styling and filters.",

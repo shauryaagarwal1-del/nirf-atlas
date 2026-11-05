@@ -1,7 +1,8 @@
 """The list of dashboard pages: file, title, icon, sidebar section and a one-line description.
 
 One place for the page catalogue, so the sidebar navigation (app/Home.py) and the cards on the
-home page always show the same pages in the same order.
+home page always show the same pages in the same order. It also says which pages use the global
+sidebar filters: Question Bank, Chart Builder and Ask NIRF have their own controls instead.
 """
 
 from __future__ import annotations
@@ -16,13 +17,15 @@ class PageInfo:
     icon: str          # Material icon shown in the sidebar and on the home cards
     section: str       # sidebar group
     description: str   # shown on the home page card
+    global_filters: bool = True   # draws the sidebar filters; False = the page has its own controls
 
 
 PAGES = [
     PageInfo("views/home.py", "Home", ":material/home:", "",
              "Overview, key numbers and how to use the atlas."),
     PageInfo("views/question_bank.py", "Question Bank", ":material/quiz:", "",
-             "The 40 Annexure A questions, one click each."),
+             "The 40 Annexure A questions, one click each.",
+             global_filters=False),
     PageInfo("views/trends.py", "Trends", ":material/show_chart:", "Explore",
              "How ranks and scores moved from 2017 to 2025: climbers, fallers and steady leaders."),
     PageInfo("views/geography.py", "Geography", ":material/public:", "Explore",
@@ -38,9 +41,11 @@ PAGES = [
     PageInfo("views/outliers.py", "Outliers", ":material/radar:", "Explore",
              "Institutions that break the pattern: unusual scores, jumps and volatility."),
     PageInfo("views/chart_builder.py", "Chart Builder", ":material/construction:", "Build & ask",
-             "Pick any variables and an allowed chart type to answer a new question."),
+             "Pick any variables and an allowed chart type to answer a new question.",
+             global_filters=False),
     PageInfo("views/ask_nirf.py", "Ask NIRF (AI)", ":material/forum:", "Build & ask",
-             "Type a question in plain English and get the chart that answers it."),
+             "Type a question in plain English and get the chart that answers it.",
+             global_filters=False),
     PageInfo("views/data_method.py", "Data & Method", ":material/menu_book:", "Reference",
              "Where the data comes from, how it was cleaned, and the full table to download."),
 ]

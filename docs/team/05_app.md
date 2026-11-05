@@ -62,7 +62,12 @@ How to start it: `python -m streamlit run app/Home.py` (exact commands in the RE
   right live: open the data and show the numbers.
 - **The sidebar filters are shared**: category, year range, states, institutions and top N follow you from page to
   page. On Explore pages the controls above the chart and the sidebar are the *same* value: change either and both
-  update.
+  update. They are drawn on Home, the Explore pages and Data & Method; Question Bank, Chart Builder and Ask NIRF
+  have their own controls, so their sidebar says "This page uses its own controls" (the filter values are kept for
+  when you come back to an Explore page).
+- **Institution lists follow the category**: in Engineering the picker offers only the 460 institutions NIRF listed
+  in Engineering, not all 1,692; "band only" marks those that never got an exact rank there. Switching category
+  removes chosen institutions that are not in the new list, with a caption saying which.
 - **Every parameter of every analysis has a control** (a test checks this), so any variation of an Annexure
   question is a few clicks away. Example: Q2.1 asks about the Overall top 100 in 2025; changing Category to
   Engineering, Year to 2019 and Top list to 50 answers "Which states have the most Engineering institutions in the
@@ -127,7 +132,8 @@ a test sets exactly those controls in the real app and checks the answer.
 Twelve pages in four groups. Home gives an overview and key numbers. The Question Bank holds all 40 Annexure
 questions, one click each. Seven Explore pages (Trends, Geography, Distributions, Relationships, Multi-Parameter,
 Mobility, Outliers) offer every analysis with every setting. Chart Builder and Ask NIRF handle new questions, and
-Data & Method explains the data and cleaning. All pages share the sidebar filters and the same eight engines.
+Data & Method explains the data and cleaning. The overview, Explore and data pages share the sidebar filters, and
+every page uses the same eight engines.
 
 **Q2. How would you answer a question that is not among the 40?**
 First, change the filters of the closest question: years, category, states, institutions, parameters, top N. If it
@@ -149,8 +155,9 @@ widgets and pages with little code; Plotly gives interactive charts with hover d
 exact values and full institution names.
 
 **Q6. Do the filters apply everywhere?**
-Category, year range, states, institutions and top N are shared by every page and follow you between pages. Each
-analysis can add its own controls, such as a single year, the parameters to compare, the z cut-off or the chart
+Category, year range, states, institutions and top N are shared by Home, the Explore pages and Data & Method, and
+follow you between them. Question Bank, Chart Builder and Ask NIRF have their own controls (the sidebar says so).
+Institution pickers list only institutions ranked in the chosen category. Each analysis can add its own controls, such as a single year, the parameters to compare, the z cut-off or the chart
 variant. The state filter limits any analysis to institutions in those states and the chart says so.
 
 **Q7. How did you make sure the app is fast and doesn't crash in the demo?**

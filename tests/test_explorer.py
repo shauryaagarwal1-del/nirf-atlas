@@ -84,8 +84,8 @@ def test_page_category_and_sidebar_stay_in_sync():
     at = open_page("views/trends.py")
     at = set_widget(at, "selectbox", "x-trends-category", "Pharmacy")
     assert at.session_state["f_category"] == "Pharmacy"
-    # The sidebar's widget is keyed f_category; AppTest does not list sidebar widgets of st.navigation apps,
-    # so the sidebar change is made through the same session-state value the sidebar widget edits.
+    # AppTest does not list sidebar widgets of st.navigation apps, so the sidebar change is made through the
+    # session-state value the sidebar's category widget writes (f_category).
     at.session_state["f_category"] = "Management"
     at.session_state["f_years"] = (2017, 2025)
     at.run()
