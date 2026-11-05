@@ -14,7 +14,9 @@ Steps:
 Names, places and years are copied as the person typed them; nlq/resolve.py translates them later.
 A prediction or an opinion ("Will IIT Mandi overtake IIT Jodhpur?", "Which is better?") is not refused:
 the plan is the closest factual analysis, with an optional "notice" that the page shows in a highlighted
-box above the chart ("I can't predict future rankings; here is how they have done so far.").
+box above the chart ("I can't predict future rankings; here is how they have done so far."). A message
+with two questions gets a chart for the first, the second as the first suggested follow-up, and a notice
+that says so. Short requests ("NIT ranking", "SDG ranking in 2019") are planned as a chart, not asked back.
 """
 
 from __future__ import annotations
@@ -102,7 +104,13 @@ Rules:
 - Use shape 2 only when no analysis fits (e.g. an average per region or per category as a bar chart).
 - Use shape 3 only when you cannot pick a sensible reading. Otherwise choose sensible defaults and list each
   one in "assumptions" in plain English (e.g. "Category: Overall, because none was named").
+  A short request is NOT unclear; show the ranking it names with trends.top_n_race:
+  "NIT ranking" / "IIM ranks" (a type of institute, nothing else) -> "institute_types": ["NIT"], no category
+  (our code picks the list most of them are in); "Bangalore colleges in engineering 2025" (a place) ->
+  "states": ["Bangalore"], "category": "Engineering", "years": [2025]; "SDG ranking in 2019" -> "category":
+  "SDG", "years": [2019].
 - Use shape 4 for anything not about NIRF rankings or not in the data ({NOT_IN_DATA}).
+  A year the category does not have (SDG 2019, Dental 2018, 2026) is NOT shape 4: see Years below.
 - Predictions and opinions ("Will IIT Mandi overtake IIT Jodhpur?", "Who will be #1 in 2026?", "Which is
   better, IIT Madras or IIT Bombay?") are NOT shape 4: answer with the closest factual analysis (usually
   trends.rank_trajectory of the named institutions, or trends.top_n_race / the top of the latest ranking) and
@@ -126,7 +134,9 @@ Rules:
   to params, with codes IIT, NIT, IIIT, IIM, IISER, AIIMS, NLU, NIPER. "Which IITs improved the most?" =
   trends.biggest_movers with "institute_types": ["IIT"]; "all IIMs", "the NITs" likewise. Not for one named
   institute ("IIT Bombay" stays an institution).
-- Two questions in one message: plan the first and put the second, written out in full, FIRST in follow_ups.
+- Two questions in one message: plan the first and put the second, written out in full, FIRST in follow_ups,
+  and set "notice": "Your message asks two things; this chart answers the first. The second is the first
+  suggestion below."
 - Parameters: use codes score, tlr (teaching), rpc (research), go (graduation outcomes, placements),
   oi (outreach, inclusivity), pr (perception, reputation).
 - Years: integers when given, even a year the category does not have (e.g. SDG 2019, or 2026): our code moves

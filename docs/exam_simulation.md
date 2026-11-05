@@ -316,7 +316,7 @@ _Last run: 05 November 2026. UI path: **30/30 pass**. Ask NIRF chat: **30/30 pas
 - **Section:** 7. Mobility · **tricky case:** band-only ranks
 - **UI path:** Mobility → *Moves between rank bands from one year to another*; Category = Engineering; From year → to year = 2020 → 2025 → PASS
   - shown: 5 Engineering institutions moved from the 51-100<br>band into the top 50 between 2020 and 2025
-  - answer: Between 2020 and 2025, 5 Engineering institutions moved from the 51-100 band into the top 50: Chandigarh University, IIT Jodhpur, Kalasalingam Academy of Research an…, Koneru Lakshmaiah Education Foundat…, Lovely Professional University. Of the 213 institutions ranked in both years, 163 (77%) stayed in the same band, 19 moved to a better band and 31 to a worse one; 87 dropped out of the list and 87 were newly listed. 13 climbed from 101+ (where NIRF publishes mostly bands such as 101-150) into the top 100.
+  - answer: Between 2020 and 2025, 5 Engineering institutions moved from the 51-100 band into the top 50: Chandigarh University, IIT Jodhpur, Kalasalingam Academy of Research an…, Koneru Lakshmaiah Education Foundat…, Lovely Professional University. Of the 214 institutions ranked in both years, 164 (77%) stayed in the same band, 19 moved to a better band and 31 to a worse one; 86 dropped out of the list and 86 were newly listed. 13 climbed from 101+ (where NIRF publishes mostly bands such as 101-150) into the top 100.
 - **Ask NIRF:** live model (gemini-flash-lite-latest, 2026-11-04) → `mobility.band_transitions` → PASS
   - shown: 5 Engineering institutions moved from the 51-100<br>band into the top 50 between 2020 and 2025
   - how it understood the question: Category: Engineering, as specified in the question; Years: 2020 to 2025, as specified in the question; Top 100 transition is captured via the band transitions matrix between the two years.
@@ -342,17 +342,17 @@ _Last run: 05 November 2026. UI path: **30/30 pass**. Ask NIRF chat: **30/30 pas
 ### X27. Which institutions entered or left the Overall top 100 from one year to the next?
 - **Section:** 7. Mobility · **tricky case:** tied ranks at the cut-off
 - **UI path:** Mobility → *Entries and exits of the top N, year to year*; Top N = 100 → PASS
-  - shown: 169 different institutions were in the Overall<br>top 100 in 2017-2025; 53 were there every year
-  - answer: Across 2017-2025, 169 different institutions were in the Overall top 100; there were 95 entries and 95 exits, in 8 of 8 year-to-year changes. 53 institutions were in the top 100 every year. In 2025: Indian Agricultural Research Instit…, IIT Bhubaneswar, International Institute of Informat…, Manipal University Jaipur, Mumbai University, Tamil Nadu Agricultural University, Post Graduate Institute of Medical…, Madan Mohan Malaviya University of…, National Institute of Mental Health…, AIIMS Bhubaneswar, Sher-e-Kashmir University of Agricu… entered; Acharya Nagarjuna University, Gujarat University, Mysore University, NIT Durgapur, Periyar University, Shoolini University of Biotechnolog…, Tata Institute of Social Sciences, Sri Ramachandra Institute of Higher…, AIIMS Jodhpur, Indian Statistical Institute, Kolka…, AIIMS Patna left.
+  - shown: 165 different institutions were in the Overall<br>top 100 in 2017-2025; 56 were there every year
+  - answer: Across 2017-2025, 165 different institutions were in the Overall top 100; there were 91 entries and 91 exits, in 8 of 8 year-to-year changes. 56 institutions were in the top 100 every year. In 2025: Indian Agricultural Research Instit…, IIT Bhubaneswar, International Institute of Informat…, Manipal University Jaipur, Mumbai University, Tamil Nadu Agricultural University, Post Graduate Institute of Medical…, Madan Mohan Malaviya University of…, National Institute of Mental Health…, AIIMS Bhubaneswar, Sher-e-Kashmir University of Agricu… entered; Acharya Nagarjuna University, Gujarat University, Mysore University, NIT Durgapur, Periyar University, Shoolini University of Biotechnolog…, Tata Institute of Social Sciences, Sri Ramachandra Institute of Higher…, AIIMS Jodhpur, Indian Statistical Institute, Kolka…, AIIMS Patna left.
 - **Ask NIRF:** live model (gemini-flash-lite-latest, 2026-11-04) → `mobility.top10_entries_exits` → PASS
-  - shown: 169 different institutions were in the Overall<br>top 100 in 2017-2025; 53 were there every year
+  - shown: 165 different institutions were in the Overall<br>top 100 in 2017-2025; 56 were there every year
   - how it understood the question: Category: Overall, as specified in the prompt; Threshold: Top 100, as requested by the user; Method: Tracks consecutive years of published rankings to identify institutions entering or leaving the top 100 list.
 
 ### X28. Which Engineering institutions had unusually large year-to-year score changes, using |z| above 2.5?
 - **Section:** 8. Outliers
 - **UI path:** Outliers → *Unusually large year-to-year score changes*; Category = Engineering; Unusual if |z| is above = 2.5 → PASS
   - shown: 24 unusual year-to-year score changes in Engineering;<br>the largest: NIT Delhi +17.4 points (2022→2023)
-  - answer: Out of 993 year-to-year score changes in Engineering (2017-2025), 24 are unusual (|z| > 2.5): 20 jumps up and 4 drops. The most extreme is National Institute of Technology Delhi in 2022→2023 (34.0 → 51.4, +17.4 points, z = +5.2). Institutions with unusual changes more than once: NIT Delhi (2×), UPES (2×), Chandigarh University (2×).
+  - answer: Out of 994 year-to-year score changes in Engineering (2017-2025), 24 are unusual (|z| > 2.5): 20 jumps up and 4 drops. The most extreme is National Institute of Technology Delhi in 2022→2023 (34.0 → 51.4, +17.4 points, z = +5.2). Institutions with unusual changes more than once: NIT Delhi (2×), UPES (2×), Chandigarh University (2×).
 - **Ask NIRF:** live model (gemini-flash-lite-latest, 2026-11-04) → `outliers.unusual_score_jumps` → PASS
   - shown: 24 unusual year-to-year score changes in Engineering;<br>the largest: NIT Delhi +17.4 points (2022→2023)
   - how it understood the question: Category: Engineering, explicitly requested; Z-score threshold: 2.5, explicitly requested.
@@ -361,7 +361,7 @@ _Last run: 05 November 2026. UI path: **30/30 pass**. Ask NIRF chat: **30/30 pas
 - **Section:** 8. Outliers · **tricky case:** missing in some years
 - **UI path:** Outliers → *Unusually volatile ranks compared with peers*; Category = Pharmacy; Ranked in at least … years = 6 → PASS
   - shown: 2 Pharmacy institutions move far more than their peers; most:<br>Bombay College of Pharmacy (rank SD 21.6 vs 6.4 typical)
-  - answer: Of the 62 Pharmacy institutions with at least 6 exact ranks, 2 are unusually volatile for their peer band: Bombay College of Pharmacy (median rank 24, SD 21.6 vs peer median 6.4), JSS College of Pharmacy (Ootacamund) (median rank 7, SD 4.8 vs peer median 1.6). Typical volatility grows down the list: median rank SD 1-10 1.6, 11-25 6.4, 26-50 7.6, 51-100 13.6.
+  - answer: Of the 62 Pharmacy institutions with at least 6 exact ranks, 2 are unusually volatile for their peer band: Bombay College of Pharmacy (median rank 24, SD 21.6 vs peer median 6.4), JSS College of Pharmacy (Ootacamund) (median rank 7, SD 4.8 vs peer median 1.6). Typical volatility grows down the list: median rank SD 1-10 1.6, 11-25 6.4, 26-50 7.7, 51-100 13.6.
 - **Ask NIRF:** live model (gemini-flash-lite-latest, 2026-11-04) → `outliers.volatility_vs_peers` → PASS
   - shown: 2 Pharmacy institutions move far more than their peers; most:<br>Bombay College of Pharmacy (rank SD 21.6 vs 6.4 typical)
   - how it understood the question: Category: Pharmacy, as specified in the question; Minimum years required: 6 years, as specified in the question.
@@ -375,3 +375,111 @@ _Last run: 05 November 2026. UI path: **30/30 pass**. Ask NIRF chat: **30/30 pas
   - shown: 4 of the 26 University institutions with a<br>top-quartile PR in 2023 are ranked in the bottom half
   - how it understood the question: Category: University; Year: 2023; Parameter: Perception (pr).
 <!-- results:end -->
+
+## Edge cases
+
+_Live check, 05 November 2026: **12/12 pass**._ Twelve tricky questions typed into Ask NIRF and planned by the live
+Gemini model (the model named on each line; when one model's free daily quota ran out, the next one answered). Our
+executor then ran each plan; the answer, the "Assumed" lines and the buttons below are exactly what the page shows.
+A question passes when the chart (or message) is the honest answer the data allows and every choice we made is
+written down.
+
+**First run, and the fixes.** In the first run 9 of 12 passed. Three short requests were not drawn:
+
+- "NIT ranking" and "Bangalore colleges in engineering 2025": the model asked a vague question back ("What aspect of
+  NIT rankings are you interested in?") instead of drawing the ranking.
+- "SDG ranking in 2019": the model refused because SDG exists only in 2025, although our code already moves a missing
+  year to the nearest one.
+
+The fix was a planner rule: a short request is drawn as today's top 10 of that list, with the institute type,
+place or year it names. "NIT ranking" now uses the Engineering list, because 31 NITs are ranked there against 21 in
+Overall. The rule is explained in methods.md, under "Category for a type of institute".
+
+The first run also showed three wording problems, fixed in the same phase:
+
+- A two-part question gave no sign that its second part was waiting. Now a notice says so.
+- When our code chose Overall, the model's own wrong sentence about the category could remain in the Assumed box.
+  Now our reason replaces it.
+- The top-N chart said "top 10" when only 7 Karnataka institutions had a rank. It also counted a year with no rank
+  as "in the top 10" (so the Home page answer said 9 of today's top 10 had always been there; the right number is
+  8). Both are fixed, and "stayed in the top N" is now counted within the list shown (the top 10 NITs, not the
+  national top 10).
+
+Offline tests for all of this: `tests/test_edge_cases.py`, section 6.
+
+### E01. "rank of IIT Bangalore"
+- **Plan (live model gemini-2.5-flash):** `trends.rank_trajectory` · category Engineering, years 2018-2025 → **PASS**
+- **Answer:** chart: IIIT Bangalore: rank 56 in 2018 → rank 69 in 2025 (Engineering)
+  - IIIT Bangalore went from rank 56 in 2018 to rank 69 in 2025 in Engineering (−13 places); its best rank was 56 (first reached in 2018) and it had an exact rank in 8 of 8 years.
+- **Assumed:** There's no IIT Bangalore in the NIRF rankings, so I assumed you meant IIIT Bangalore (International Institute of Information Technology Bangalore). · IIIT Bangalore is not in the Overall ranking; it is ranked in Engineering (2018-2025), so I used Engineering.
+- **Buttons:** IISc, IIM Bangalore
+
+### E02. "IIIT Bangalore rankings 2017-2025"
+- **Plan (live model gemini-2.5-flash):** `trends.rank_trajectory` · category Engineering, years 2018-2025 → **PASS**
+- **Answer:** chart: IIIT Bangalore: rank 56 in 2018 → rank 69 in 2025 (Engineering)
+  - IIIT Bangalore went from rank 56 in 2018 to rank 69 in 2025 in Engineering (−13 places); its best rank was 56 (first reached in 2018) and it had an exact rank in 8 of 8 years.
+- **Assumed:** The institution 'IIIT Bangalore' was identified. · All available years from 2017 to 2025 were included. · I read 'IIIT Bangalore' as International Institute of Information Technology Bangalore. · IIIT Bangalore is not in the Overall ranking; it is ranked in Engineering (2018-2025), so I used Engineering. · You asked for 2017-2025; IIIT Bangalore is ranked in Engineering only in 2018-2025, so the chart shows those years.
+
+### E03. "IIIT Dharwad rank"
+- **Plan (live model gemini-flash-latest):** `trends.rank_trajectory` → **PASS**
+- **Answer:** not_ranked: IIIT Dharwad (Indian Institute of Information Technology, Dharwad) took part in NIRF (Engineering and Overall, 2022-2025) but was not in the published ranked list in any year, so there is no rank or score to chart.
+- **Assumed:** Category omitted to let the system identify the ranking category in which IIIT Dharwad appears (e.g., Engineering)
+- **Buttons:** IIIT Bangalore, IIT Dharwad
+
+### E04. "rank of Bangalore Institute of Technology"
+- **Plan (live model gemini-3.6-flash):** `trends.band_history` · category Engineering, years 2020-2021 → **PASS**
+- **Answer:** chart: Bangalore Institute of Technology, Bangalore slipped from Engineering band 201-250 (2020) to 251-300 (2021)
+  - Bangalore Institute of Technology, Bangalore was placed in Engineering band 201-250 in 2020 and 251-300 in 2021. NIRF publishes only a rank range and no score beyond the top list, so an exact rank line cannot be drawn.
+- **Assumed:** Showing full available history across all published years · I read 'Bangalore Institute of Technology' as Bangalore Institute of Technology, Bangalore. · Bangalore Institute of Technology, Bangalore is not in the Overall ranking; it is ranked in Engineering (2020-2021), so I used Engineering. · NIRF published no exact Engineering rank for Bangalore Institute of Technology, Bangalore in these years, only rank bands, so the chart shows the bands instead of a rank line.
+
+### E05. "IIT Dharwad engineering rank since 2017"
+- **Plan (live model gemini-flash-latest):** `trends.rank_trajectory` · category Engineering, years 2023-2025 → **PASS**
+- **Answer:** chart: IIT Dharwad: rank 93 in 2023 → rank 77 in 2025 (Engineering)
+  - IIT Dharwad went from rank 93 in 2023 to rank 77 in 2025 in Engineering (+16 places); its best rank was 77 (first reached in 2025) and it had an exact rank in 2 of 3 years. In 2024 it was placed only in the 101-150 band.
+- **Assumed:** Category: Engineering, as specified in the question · Institution: IIT Dharwad · Timeframe: 2017 to 2025 · I read 'IIT Dharwad' as Indian Institute of Technology Dharwad. · I read 'since 2017' as 2017-2025. · You asked for 2017-2025; IIT Dharwad is ranked in Engineering only in 2023-2025, so the chart shows those years.
+
+### E06. "Is IIT Mandi expected to surpass IIT Jodhpur?"
+- **Plan (live model gemini-flash-latest):** `trends.rank_trajectory` · category Engineering → **PASS**
+- **Answer:** chart: IIT Jodhpur climbed the most of these 2 in Engineering (+38 places)
+  - Of these 2 institutions, IIT Jodhpur improved the most (rank 65 in 2017 → 27 in 2025, +38 places), and none of them fell. In 2025, IIT Mandi (rank 26) was ahead of IIT Jodhpur (rank 27) by 1 place; in 2017, the first year both had an exact rank, IIT Mandi was ahead by 37 places (28 vs 65).
+- **Notice:** I can't predict future rankings; here is how they have done so far.
+- **Assumed:** Institutions: IIT Mandi and IIT Jodhpur · I read 'IIT Mandi' as Indian Institute of Technology Mandi. · I read 'IIT Jodhpur' as Indian Institute of Technology Jodhpur. · IIT Mandi and IIT Jodhpur are not all in the Overall ranking in every year; Engineering is the ranking they share for the most years (all of them in 2017-2025), so I used Engineering.
+
+### E07. "which is better, IIT Madras or IIT Bombay?"
+- **Plan (live model gemini-3.6-flash):** `trends.rank_trajectory` · category Overall → **PASS**
+- **Answer:** chart: IIT Madras climbed the most of these 2 in Overall (+1 place)
+  - Of these 2 institutions, IIT Madras improved the most (rank 2 in 2017 → 1 in 2025, +1 place), and none of them fell. In 2025, IIT Madras (rank 1) was ahead of IIT Bombay (rank 3) by 2 places; in 2017, the first year both had an exact rank, IIT Madras was ahead by 1 place (2 vs 3).
+- **Notice:** I can't judge which is better; here is how they compare in the NIRF rankings.
+- **Assumed:** I read 'IIT Madras' as Indian Institute of Technology Madras. · I read 'IIT Bombay' as Indian Institute of Technology Bombay. · Category: Overall, because none was named and IIT Madras and IIT Bombay are in the Overall ranking in every year.
+
+### E08. "NIT ranking"
+- **Plan (live model gemini-2.5-flash):** `trends.top_n_race` · category Engineering, only NITs → **PASS**
+- **Answer:** chart: Among NITs only: NIT Tiruchirappalli leads Engineering 2025; NIT Patna made the biggest climb
+  - Among NITs only: NIT Tiruchirappalli is rank 9 in Engineering 2025 and held that rank in 5 of 9 years; NIT Patna climbed the most, from rank 134 in 2019 to 53 in 2025 (+81 places). 7 of these 10 were among the list's top 10 in every year 2017–2025.
+- **Assumed:** Showing the top 10 NITs by their latest ranking. · Showing their rank trajectory across all available years. · Only NITs are included (National Institutes of Technology (incl. VNIT Nagpur, MNIT Jaipur, SVNIT Surat ...)); ranks stay national. · Most NITs are ranked in Engineering (31 of them, against 21 in Overall), so I used Engineering.
+
+### E09. "Bangalore colleges in engineering 2025"
+- **Plan (live model gemini-2.5-flash):** `trends.top_n_race` · category Engineering, year 2025, states Karnataka → **PASS**
+- **Answer:** chart: NIT Karnataka, Surathkal leads the 7 Engineering institutions with an exact rank in 2025
+  - Among institutions in Karnataka: The 7 Engineering institutions with an exact rank in 2025: NIT Karnataka, Surathkal (17), Manipal Institute of Technology (59), International Institute of Informat… (69), M. S. Ramaiah Institute of Technolo… (75), Christ University (76), IIT Dharwad (77) and Jain university, Bangalore (84). Ranks are national NIRF ranks; institutions placed only in a band are not shown.
+- **Assumed:** Category: Engineering, as specified. · Year: 2025, as specified. · Location: Bangalore, which will be mapped to Karnataka state. · 'Bangalore' = Karnataka (we filter by state, not city). · Only institutions located in Karnataka are included (ranks stay national).
+
+### E10. "SDG ranking in 2019"
+- **Plan (live model gemini-2.5-flash):** `trends.top_n_race` · category SDG, year 2025 → **PASS**
+- **Answer:** chart: IIT Madras leads the SDG top 10 in 2025
+  - The SDG top 10 in 2025: IIT Madras (1), Indian Agricultural Research Instit… (2), Jamia Millia Islamia (3), S.R.M. Institute of Science and Tec… (4), Manipal Academy of Higher Education… (5), IIT Roorkee (6), Jawaharlal Nehru University (7), IIT Delhi (8), NIT Rourkela (9) and Banaras Hindu University (10). Ranks are national NIRF ranks; institutions placed only in a band are not shown.
+- **Assumed:** Category: SDG · Year: 2019, adjusted to 2025 as it's the only year SDG rankings were published. · Showing the top 10 institutions by default. · SDG rankings exist only for 2025, so 2025 is shown (the nearest to 2019).
+
+### E11. "top 5 dental colleges ka parameter comparison"
+- **Plan (live model gemini-3.6-flash):** `multivariate.parameter_profile` · category Dental → **PASS**
+- **Answer:** chart: AIIMS Delhi leads on 3 of 5 parameters; the biggest difference is in RPC (48 points)
+  - Among the top 5 in Dental 2025, AIIMS Delhi has the highest score on GO, OI, PR. They differ most on RPC (40.3 to 88.0, a 47.6-point range) and least on TLR (9.4 points).
+- **Assumed:** Category: Dental · Year: 2025 (latest) · Institutions: Top 5 Dental colleges of 2025
+
+### E12. "rank of IIT Bombay and which state has the most top 100 colleges"
+- **Plan (live model gemini-2.5-flash):** `trends.rank_trajectory` · category Overall → **PASS**
+- **Answer:** chart: IIT Bombay: rank 3 in 2017 → rank 3 in 2025 (Overall)
+  - IIT Bombay went from rank 3 in 2017 to rank 3 in 2025 in Overall (±0 places); its best rank was 3 (first reached in 2017) and it had an exact rank in 9 of 9 years.
+- **Notice:** Your message asks two things; this chart answers the first. The second is the first suggestion below.
+- **Assumed:** I read 'IIT Bombay' as Indian Institute of Technology Bombay. · Category: Overall, because none was named and IIT Bombay is in the Overall ranking in every year.
+- **First follow-up button:** Which state has the most institutions in the top 100?

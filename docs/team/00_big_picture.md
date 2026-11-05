@@ -80,7 +80,7 @@ So: **website → saved pages → clean table → engines → charts on the dash
               v
   +------------------------+
   |  nirf_master.parquet    |   ONE table: 11,647 ranked rows x 45 columns
-  |  (single source of      |   1,692 institutions, 34 states/UTs, 17 categories, 9 years
+  |  (single source of      |   1,647 institutions, 34 states/UTs, 17 categories, 9 years
   |   truth)                |
   +-----------+------------+
               |  3. ANALYSE (core/engines/): 8 engines
@@ -143,7 +143,7 @@ files in this folder teach.
 | Web pages scraped | 290 (all OK, none failed) |
 | Raw rows | 75,626 (incl. 63,975 rows of "participant lists" that have no rank) |
 | Ranked rows in the master table | 11,647 (6,974 with an exact rank, 4,671 known only by a rank band) |
-| Distinct institutions | 1,692 (from 2,288 different spellings of names) |
+| Distinct institutions | 1,647 (from 2,288 different spellings of names) |
 | States and UTs | 34 (from 49 raw spellings) |
 | Analysis engines | 8 |
 | Annexure A questions answered | 40 of 40 |

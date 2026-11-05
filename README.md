@@ -62,9 +62,10 @@ Every page except Ask NIRF works without internet.
 .\.venv\Scripts\python -m pytest                        # all tests (about 5 minutes)
 ```
 The tests never call the Gemini model, so they do not use up the free daily quota. To test the chat against the
-live model as well: `python -m scripts.nlq_accuracy` (25 questions) or `python -m scripts.exam_simulation --live`
+live model as well: `python -m scripts.nlq_accuracy` (33 questions) or `python -m scripts.exam_simulation --live`
 (records the model's plans for the 30 exam questions), or set `NIRF_LIVE_TESTS=1` before `pytest`.
-Results of the exam simulation: [docs/exam_simulation.md](docs/exam_simulation.md).
+Results of the exam simulation, and of 12 tricky chat questions asked live (institutes that do not exist, band-only
+colleges, predictions, two questions in one message ...): [docs/exam_simulation.md](docs/exam_simulation.md).
 
 Before a demo, screenshot every page at projector size (1366x768) in the light and the dark theme and time each
 page: `python scripts/screenshot_pages.py` (saves to `docs/previews/pages/` and prints the load time of every page).

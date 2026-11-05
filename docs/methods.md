@@ -48,7 +48,7 @@ scores are only compared within the same category unless a visible note says oth
 
 ### Step 3: cleaning and integration (`pipeline/clean.py` → `data/processed/nirf_master.parquet`)
 - **What:** all 290 raw CSVs become one master table with one row per (year, category, institution):
-  11,647 ranked rows (6,976 with an exact rank, 4,671 known only by rank band), 2017–2025, 17 categories.
+  11,647 ranked rows (6,974 with an exact rank, 4,671 known only by rank band, 2 withdrawn), 2017–2025, 17 categories.
   Participant lists (63,979 rows) and the 2018 Special Mention page go to a separate
   `nirf_participants.parquet`, so they are never counted as ranked. Full numbers and examples per step:
   `docs/cleaning_report.md`.
@@ -906,6 +906,12 @@ lies wholly inside one of these four, so institutions known only by band can be 
   its end as "rank · institution" instead of a legend: neighbouring ranks are only a few pixels apart, so the labels
   are pushed apart to one text line each and joined to their line end by a thin leader. Direct labels mean no colour
   matching is needed (the best three lines are coloured, the rest grey context).
+- **With a filter or one year:** with a state or institute-type filter the N are the best N *of that group* (their
+  national ranks are kept), and "stayed in the top N every year" is counted inside the group: each year the cut-off is
+  the N-th best exact rank among those institutions. A year without an exact rank never counts as "in the top N".
+  If fewer than N have an exact rank (Karnataka has 7 in Engineering 2025), the title says how many instead of "top
+  10". With only one year chosen ("Bangalore colleges in engineering 2025") the answer lists every institution with
+  its rank.
 
 ### Data & Method page
 - **Pipeline diagram:** the four layers (scrape → clean → master table → 8 engines → dashboard and Ask NIRF) with the
@@ -1089,7 +1095,20 @@ names are resolved, fixed rules fit the plan to the data, and every change is wr
 - **Cities as places:** "Bangalore colleges", "colleges in Pune": the city goes in `states` and becomes its state, with
   the assumption "'Bangalore' = Karnataka (we filter by state, not city)." (The state of a city is read from the
   institutions located there, plus a short list of big cities.)
-- **Two questions in one message:** the first is answered; the second becomes the first follow-up button.
+- **Two questions in one message:** the first is answered; the second becomes the first follow-up button, and a
+  highlighted notice says so ("Your message asks two things; this chart answers the first. The second is the first
+  suggestion below.").
+- **Short requests are answered, not asked back:** "NIT ranking", "IIM ranks" (a type of institute and nothing else)
+  draw today's top 10 of that type followed back in time (`trends.top_n_race` with the institute-type filter).
+  "Bangalore colleges in engineering 2025" lists the Karnataka Engineering institutions of 2025 with their ranks;
+  "SDG ranking in 2019" draws the SDG list of 2025 (the nearest year) instead of a refusal.
+- **Category for a type of institute:** when the question names a type but no category, the category is the ranking
+  list with the most institutes of that type: NITs (31 in Engineering, 21 in Overall) and IITs → Engineering, IIMs →
+  Management, NLUs → Law, NIPERs → Pharmacy, AIIMS → Medical (7 in each of Medical and Overall: on a tie the subject
+  ranking wins), IISERs → Overall. The Assumed box gives the counts.
+- **Our reason replaces the model's guess:** whenever our code chooses the category (including Overall because the
+  institution is in Overall every year), the model's own sentence about the category is removed and ours is shown:
+  "Category: Overall, because none was named and IIT Bombay is in the Overall ranking in every year."
 
 ## Exam simulation (Phase 14): 30 new questions, UI path and chat
 

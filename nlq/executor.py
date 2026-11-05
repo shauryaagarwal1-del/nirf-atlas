@@ -45,7 +45,7 @@ from core.questions import QUESTION_REGISTRY, get_question
 from core.result import ChartResult
 from core.runner import run
 from nlq.adapt import (INSTITUTION_FUNCTIONS, SCORE_FUNCTIONS, NoScores, category_year_note, institution_years,
-                       missing_scores, only_bands, pick_category)
+                       missing_scores, only_bands, pick_category, type_category)
 from nlq.catalog import data_facts, functions
 from nlq.planner import ClarifyPlan, CustomPlan, EnginePlan, OutOfScopePlan
 from nlq.resolve import (resolve_category, resolve_institution, resolve_parameter, resolve_region, resolve_state,
@@ -319,15 +319,26 @@ def engine_call(plan: EnginePlan, alternatives: list[dict] | None = None, swaps:
     if follows and keys and "category" in sig and _overall_not_asked(raw, question):
         raw.pop("category", None)
         raw.pop("categories", None)
+    # A type of institute and no category ("NIT ranking"): the list most of those institutes are ranked in.
+    if types and not keys and "category" in sig and ("category" not in raw or _overall_not_asked(raw, question)):
+        pick = type_category(types)
+        if pick.note:
+            raw.pop("categories", None)
+            raw["category"] = pick.category
+            notes.append(pick.note)
+            info["category_picked"] = True
     named_category = "category" in raw or "categories" in raw
     params, category = _fit_category(raw, sig, plan.function, notes)
     others: list[tuple[str, list[str]]] = []
     if follows and keys and "category" in sig and not named_category:
         pick = pick_category(keys, _asked_years(raw))
         params["category"] = category = pick.category
-        if pick.note:
-            notes.append(pick.note)
-            info["category_picked"] = True
+        if not pick.note:        # Overall: our own reason replaces whatever the model guessed about the category
+            who = " and ".join(short_label(k) for k in keys)
+            pick.note = (f"Category: Overall, because none was named and {who} {'is' if len(keys) == 1 else 'are'} "
+                         f"in the Overall ranking in every year{' asked' if _asked_years(raw) else ''}.")
+        notes.append(pick.note)
+        info["category_picked"] = True
         others = pick.others
         keys = [k for k in keys if all(k not in ks for _, ks in others)]
     explicit_years = any(k in raw for k in YEAR_KEYS)

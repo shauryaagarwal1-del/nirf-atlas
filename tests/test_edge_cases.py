@@ -10,6 +10,8 @@ Covered:
   * predictions and opinions: a chart of the past with a notice, and who is ahead in the latest year;
   * vague names ("NIT", "Christian Medical College") -> real institutions to pick from; cities -> states;
     a year a category does not have -> the nearest year; institutions sharing no category -> one chart each;
+  * short requests: "NIT ranking" -> the NITs in Engineering (the list most NITs are in); a city's colleges
+    in one year -> a list with their ranks; "SDG ranking in 2019" -> the 2025 SDG chart;
   * the Ask NIRF page shows the notice, the pick buttons and the band-chart button.
 
     python -m pytest tests/test_edge_cases.py -v
@@ -197,6 +199,61 @@ def test_a_city_is_read_as_its_state():
     assert "'Bangalore' = Karnataka (we filter by state, not city)." in a.assumptions
     a = ask({"states": ["Pune"]}, function="state_counts", engine="geography")
     assert call(a)["params"].get("states") is None and "'Pune' = Maharashtra" in " ".join(a.assumptions)
+
+
+# ---------- 6. short requests (Phase 15f live check) ----------
+
+@pytest.mark.parametrize("types, category", [(["NIT"], "Engineering"), (["IIM"], "Management"),
+                                             (["NLU"], "Law"), (["AIIMS"], "Medical")])
+def test_a_type_of_institute_alone_uses_the_list_most_of_them_are_in(types, category):
+    a = ask({"institute_types": types}, function="top_n_race", question=f"{types[0]} ranking")
+    assert a.kind == "chart", a.message
+    assert call(a)["params"]["category"] == category and call(a)["institute_types"] == types
+    assert any(s.endswith(f"so I used {category}.") for s in a.assumptions)
+    assert a.result.insight.startswith("Among")
+
+
+def test_a_named_category_beats_the_type_pick():
+    a = ask({"institute_types": ["NIT"], "category": "Overall"}, function="top_n_race",
+            question="NIT ranking in the overall list")
+    assert call(a)["params"]["category"] == "Overall"
+
+
+def test_colleges_of_a_city_in_one_year_are_listed_with_their_ranks():
+    a = ask({"states": ["Bangalore"], "category": "Engineering", "years": [2025]}, function="top_n_race",
+            question="Bangalore colleges in engineering 2025")
+    assert a.kind == "chart", a.message
+    assert call(a)["states"] == ["Karnataka"]
+    n = len(a.result.table)
+    assert 0 < n < 10
+    title = a.result.fig.layout.title.text
+    assert f"{n} Engineering institutions with an exact rank" in title and "top 10" not in title
+    assert a.result.insight.count("(") >= n          # every institution is listed with its rank
+
+
+def test_top_n_every_year_counts_within_the_list_and_never_a_missing_year():
+    from core.runner import run
+    r = run("trends", "top_n_race", {"category": "Overall"}, states=["Karnataka"])
+    year_cols = [c for c in r.table.columns if str(c).isdigit()]
+    every_year = int(r.table[year_cols].notna().all(axis=1).sum())   # all of them are in Karnataka's top 10
+    assert 0 < every_year < len(r.table) < 10
+    assert f"{every_year} of these {len(r.table)} were among the list's top 10" in r.insight
+    r = run("trends", "top_n_race", {"category": "Engineering"}, types=["NIT"])
+    assert "0 of these 10" not in r.insight                          # the top 10 NITs, not the national top 10
+
+
+def test_sdg_2019_is_a_chart_of_2025():
+    a = ask({"category": "SDG", "years": [2019]}, function="top_n_race", question="SDG ranking in 2019")
+    assert a.kind == "chart", a.message
+    assert call(a)["params"]["years"] == [2025]
+    assert any(s.startswith("SDG rankings exist only for 2025") for s in a.assumptions)
+
+
+def test_the_planner_rules_cover_short_requests_and_two_questions():
+    from nlq.planner import RULES
+    for text in ("NIT ranking", "Bangalore colleges in engineering 2025", "SDG ranking in 2019",
+                 "Your message asks two things"):
+        assert text in RULES
 
 
 # ---------- the page ----------

@@ -137,14 +137,17 @@ ranks only, no parameter scores.
 | "Will IIT Mandi overtake IIT Jodhpur?" | Rank lines up to 2025 + notice "I can't predict future rankings ..."; answer: IIT Mandi 26 vs IIT Jodhpur 27 in 2025 |
 | "NIT", "Christian Medical College" | "Which one did you mean?" + up to 4 buttons of real institutions |
 | "Bangalore colleges" | "'Bangalore' = Karnataka (we filter by state, not city)." |
-| Two questions at once | Answers the first; the second becomes the first follow-up button |
+| Two questions at once | Answers the first, with a "Your message asks two things" notice; the second becomes the first follow-up button |
+| "NIT ranking" | Top 10 NITs in **Engineering** (the list with the most NITs: 31 vs 21 in Overall), "Among NITs only" |
+| "Bangalore colleges in engineering 2025" | The 7 Karnataka Engineering institutions with an exact rank in 2025, each with its rank |
+| "SDG ranking in 2019" | The SDG top 10 of **2025**, with "SDG rankings exist only for 2025 ..." |
 
 ---
 
 ## 6. Numbers to quote
 
 9 years (2017–2025) · 17 categories (6 in 2017 → 17 in 2025) · 290 pages · 75,626 raw rows · **11,647 ranked rows**
-(6,974 exact, 4,671 band-only) · **1,692 institutions** from 2,288 spellings · **34 states/UTs** from 49 spellings ·
+(6,974 exact, 4,671 band-only) · **1,647 institutions** from 2,288 spellings · **34 states/UTs** from 49 spellings ·
 spot check of all rows: **0 real differences** · 8 engines · 40/40 questions · 1,225 institution-category
 pairs only ever have a rank band (no exact rank, no score).
 

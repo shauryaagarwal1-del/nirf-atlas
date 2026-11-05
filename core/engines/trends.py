@@ -796,6 +796,8 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     a line that leaves the bottom was ranked below that (the hover still gives the real rank). The
     best `highlight` institutions are coloured and the rest drawn in grey; every line is named at its
     end with its last-year rank (labels pushed apart so they never overlap), so no legend is needed.
+    With a state or institute-type filter fewer than n may have an exact rank; the title then says how
+    many. With one year the answer lists the institutions and their ranks ("Bangalore colleges in 2025").
     """
     df = load_master()
     category = check_category(category, df)
@@ -857,27 +859,41 @@ def top_n_race(category: str = "Overall", years=None, n: int = 10, highlight: in
     leader = keys[0]
     lead_rank = int(ranks.at[leader, last_year])
     leader_years = int((ranks.loc[leader] == lead_rank).sum())
-    if len(years) > 1 and moves:
+    # A state or type filter can leave fewer than n institutions with an exact rank: say how many there are.
+    found = f"institution{'s' if len(keys) > 1 else ''} with an exact rank"
+    few = len(keys) < n
+    top = f"{len(keys)} {found}" if few else f"top {n}"                         # subtitle (names the category)
+    group = f"{len(keys)} {category} {found}" if few else f"{category} top {n}"   # title and answer
+    if len(years) == 1:                   # one year: the answer is the list itself
+        listed = _and([f"{labels[k]} ({int(ranks.at[k, last_year])})" for k in keys])
+        insight = (f"The {group} in {last_year}: {listed}. Ranks are national NIRF ranks; "
+                   f"institutions placed only in a band are not shown.")
+        title = f"{labels[leader]} leads the {group} in {last_year}"
+    elif moves:
         climber = max(moves, key=moves.get)
         s = first_rank[climber]
         climb = (f"; {labels[climber]} climbed the most, from rank {int(s.iloc[0])} in {int(s.index[0])} to "
                  f"{int(s.iloc[-1])} in {last_year} ({places(moves[climber])})" if moves[climber] > 0 else "")
-        always = int(sum(ranks.loc[k].le(n).all() for k in keys))
+        # "In the top n" within the list shown: with a state or type filter, the top n of those institutions
+        # (the n-th best exact rank among them that year), not the national top n.
+        cutoff = cat.groupby("year")["rank"].apply(lambda r: r.nsmallest(n).max()).reindex(years)
+        # float: a year without an exact rank is NaN (False), not a nullable <NA> that .all() would skip.
+        always = int(sum(ranks.loc[k].astype(float).le(cutoff.astype(float)).all() for k in keys))
         insight = (f"{labels[leader]} is rank {lead_rank} in {category} {last_year} and held that rank in {leader_years} of "
-                   f"{n_years(len(years))}{climb}. {always} of today's top {n} were in the top {n} in every year "
-                   f"{span}.")
+                   f"{n_years(len(years))}{climb}. {always} of these {len(keys)} were among the list's top {n} in "
+                   f"every year {span}.")
         title = (f"{labels[leader]} leads {category} {last_year}; {labels[climber]} made the biggest climb"
-                 if moves[climber] > 0 else f"{labels[leader]} leads the {category} top {n} in {last_year}")
+                 if moves[climber] > 0 else f"{labels[leader]} leads the {group} in {last_year}")
     else:
         insight = f"{labels[leader]} is rank {lead_rank} in {category} {last_year}."
-        title = f"{labels[leader]} leads the {category} top {n} in {last_year}"
+        title = f"{labels[leader]} leads the {group} in {last_year}"
 
     fig.update_yaxes(title_text="Rank (1 = best, shown at the top)", range=[depth + 0.6, 0.4], tickvals=
                      [1] + list(range(5, depth + 1, 5)), zeroline=False)
     fig.update_xaxes(title_text="Year", dtick=1, range=[min(years) - 0.3, last_year + 0.3], showgrid=True)
     fig.update_layout(margin=dict(r=230), showlegend=False, hovermode="closest")
-    finish(fig, title, f"{category} ranking, {span} · the top {n} of {last_year}, followed back in time · "
-           f"labels = {last_year} rank · institution",
+    finish(fig, title, f"{category} ranking, {span} · the {top} {'in' if few else 'of'} {last_year}"
+           + (", followed back in time" if len(years) > 1 else "") + f" · labels = {last_year} rank · institution",
            note=f"Gaps = no exact rank that year; a line leaving the bottom = ranked below {depth}.", height=560)
 
     table = pd.DataFrame({"institution": [labels[k] for k in keys]})

@@ -24,7 +24,7 @@ How to start it: `python -m streamlit run app/Home.py` (exact commands in the RE
 
 | Section | Page | What it shows |
 |---|---|---|
-| | **Home** | What NIRF Atlas is; key numbers (9 years, 17 categories, 1,692 institutions, 34 states/UTs, 11,647 rows); "today's top N followed back in time" chart; cards linking every page |
+| | **Home** | What NIRF Atlas is; key numbers (9 years, 17 categories, 1,647 institutions, 34 states/UTs, 11,647 rows); "today's top N followed back in time" chart; cards linking every page |
 | | **Question Bank** | The 40 Annexure A questions. Tabs: Trends, Geospatial, Univariate, Bivariate, Multivariate, Distribution, Mobility, Outliers. Each question: the question, a "Why this chart?" note, its own controls, the chart card. "Run all 40" grid with ticks and previews |
 | Explore | **Trends** | Rank lines, rank bands of band-only colleges, parameter lines of one institution, climbers, fallers, average/median score per year, who stayed in the top N, today's top N back in time |
 | Explore | **Geography** | Tabs: India map (year slider + play), State vs State, New entrants, More views |
@@ -66,7 +66,7 @@ How to start it: `python -m streamlit run app/Home.py` (exact commands in the RE
   have their own controls, so their sidebar says "This page uses its own controls" (the filter values are kept for
   when you come back to an Explore page).
 - **Institution lists follow the category**: in Engineering the picker offers only the 460 institutions NIRF listed
-  in Engineering, not all 1,692; "band only" marks those that never got an exact rank there. Switching category
+  in Engineering, not all 1,647; "band only" marks those that never got an exact rank there. Switching category
   removes chosen institutions that are not in the new list, with a caption saying which.
 - **Every parameter of every analysis has a control** (a test checks this), so any variation of an Annexure
   question is a few clicks away. Example: Q2.1 asks about the Overall top 100 in 2025; changing Category to

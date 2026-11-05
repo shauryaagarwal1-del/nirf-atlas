@@ -125,7 +125,9 @@ Assumed box. The chat never shows an empty chart for a year that does not exist 
 | "Will IIT Mandi overtake IIT Jodhpur?" / "Which is better, IIT Madras or IIT Bombay?" | We have no future data and no "better" | Not refused: the rank chart of the past, with a highlighted notice *"I can't predict future rankings; here is how they have done so far."* The answer states the plain fact: *"In 2025, IIT Mandi (rank 26) was ahead of IIT Jodhpur (rank 27) by 1 place; in 2017 ... by 37 places."* No forecast line |
 | "NIT rank trend", "Christian Medical College" | 31 NITs; two CMC campuses (Vellore, Ludhiana) | "Which one did you mean?" with up to 4 buttons of real institutions, best known first |
 | "Bangalore colleges", "colleges in Pune" | We filter by state, not city | *"'Bangalore' = Karnataka (we filter by state, not city)."* |
-| Two questions in one message | | Answers the first; the second is the first follow-up button |
+| Two questions in one message ("rank of IIT Bombay and which state has the most top 100 colleges") | | Answers the first, with a notice *"Your message asks two things; this chart answers the first. The second is the first suggestion below."* The second is the first follow-up button |
+| "NIT ranking", "IIM ranks" (only a type of institute) | Most NITs are in the Engineering list (31, against 21 in Overall) | Today's top 10 NITs in Engineering, followed back in time; the answer starts "Among NITs only" and the Assumed box gives the counts |
+| "Bangalore colleges in engineering 2025" | 7 Karnataka institutions have an exact Engineering rank in 2025 | Lists all 7 with their ranks; the title says "the 7 Engineering institutions with an exact rank", not "top 10" |
 
 In a rank line (`rank_trajectory`) a year with only a band is a short vertical bar (no line through it) and the
 answer lists it: *"In 2024 it was placed only in the 101-150 band."* Tests: `tests/test_edge_cases.py`.
@@ -148,7 +150,8 @@ answer lists it: *"In 2024 it was placed only in the 101-150 band."* Tests: `tes
 | Years asked that the institution or category does not have | Shows the years that exist (nearest year for a single year), and says so |
 | A band-only college (no exact rank, no score) | Band chart for a rank question; "NIRF did not publish scores" + band-chart button for a score question |
 | A prediction or opinion | The past as a chart, with a highlighted "I can't predict future rankings ..." notice |
-| A vague name ("NIT") | "Which one did you mean?" with buttons of real institutions |
+| A vague name in a chart of named institutions ("rank trend of NIT") | "Which one did you mean?" with buttons of real institutions |
+| A short request ("NIT ranking", "SDG ranking in 2019") | Drawn as a chart (the top of that list), not asked back or refused |
 
 The sidebar shows a green or red dot: is a key loaded, and does Gemini accept it (checked without generating text).
 

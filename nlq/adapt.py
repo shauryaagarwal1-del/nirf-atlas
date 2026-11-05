@@ -6,7 +6,8 @@ data instead of an error or an empty chart:
   * category auto-pick: a question that names institutions but no category uses Overall when every named
     institution is ranked there in every year asked; otherwise the category the institution is ranked in
     for the most years (ties: the most recent, then Overall). Several institutions get the category they
-    share for the most years; if they share none, each is shown in its own category;
+    share for the most years; if they share none, each is shown in its own category. A question about a
+    type of institute with no category ("NIT ranking") uses the list with the most institutes of that type;
   * years the institution actually has: the asked years are cut to the span in which the institutions
     are listed in that category ("You asked for 2017-2025; IIT Dharwad is ranked in Engineering only in
     2023-2025, so the chart shows those years"). Missing years are never filled in;
@@ -26,7 +27,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from core.data import PLACE_SYNONYMS, category_years, fmt_years, load_master, short_label
+from core.data import PLACE_SYNONYMS, category_years, fmt_years, load_master, only_types, short_label, type_plural
 
 # Analyses that follow named institutions (category and years are fitted to those institutions).
 INSTITUTION_FUNCTIONS = {("trends", "rank_trajectory"), ("trends", "parameter_trends"), ("trends", "band_history"),
@@ -116,6 +117,27 @@ def pick_category(keys: list[str], asked: list[int] | None) -> CategoryPick:
     first, *rest = groups.items()
     return CategoryPick(first[0], f"{_names(keys)} share no NIRF ranking list, so each is shown in its own "
                                   f"category: {each}. Ranks from different lists are not comparable.", rest)
+
+
+def type_category(types: list[str]) -> CategoryPick:
+    """The category for a question about a type of institute ("NIT ranking") that names no category: the
+    ranking list with the most institutes of that type (NITs -> Engineering, IIMs -> Management, NLUs -> Law);
+    on a tie the subject ranking rather than Overall (AIIMS: 7 in Medical and 7 in Overall -> Medical)."""
+    with only_types(types):
+        rows = _listed(load_master()["institution_key"].unique().tolist())
+    counts = rows.groupby("category_std")["institution_key"].nunique()
+    if counts.empty:
+        return CategoryPick("Overall")
+    best = max(counts.index, key=lambda c: (counts[c], c != "Overall"))
+    if best == "Overall":
+        return CategoryPick("Overall")
+    who = " and ".join(type_plural(t) for t in types)
+    overall = int(counts.get("Overall", 0))
+    if counts[best] == overall:
+        return CategoryPick(best, f"{who} appear as often in {best} as in Overall ({overall} each); {best} is "
+                                  f"their subject ranking, so I used {best}.")
+    return CategoryPick(best, f"Most {who} are ranked in {best} ({counts[best]} of them, against {overall} in "
+                              f"Overall), so I used {best}.")
 
 
 # ---------- years ----------
