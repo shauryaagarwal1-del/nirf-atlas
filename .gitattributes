@@ -1,0 +1,4 @@
+# Line endings for the launcher scripts: the shell script must keep LF to run on macOS / Linux,
+# the Windows batch file uses CRLF.
+*.sh  text eol=lf
+*.bat text eol=crlf

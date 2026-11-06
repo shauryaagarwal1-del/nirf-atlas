@@ -48,12 +48,19 @@ It reads every raw CSV in `data/raw/csv/`, writes `data/processed/nirf_master.pa
 tables in `data/mappings/` and `docs/cleaning_report.md`. The raw CSVs come from the scraper
 (`python -m scraper.scrape_nirf`, needs internet; not needed, the CSVs are in the repository).
 
-**2. Start the dashboard:**
+**2. Start the dashboard.** The quickest way, once Setup is done:
+- **Windows:** double-click `run_dashboard.bat` in the project folder.
+- **macOS / Linux:** run `./run_dashboard.sh` in a terminal (the first time, `chmod +x run_dashboard.sh` if needed).
+
+Both activate `.venv` and start Streamlit on `app/Home.py`. Or start it by hand:
 ```powershell
 .\.venv\Scripts\python -m streamlit run app/Home.py
 ```
 It opens at http://localhost:8501. If Streamlit asks for an e-mail address the first time, press Enter.
-Every page except Ask NIRF works without internet.
+
+**Internet:** only the **Ask NIRF** chat needs internet (it sends the typed question to the Gemini API). Every
+other page (Home, Question Bank, Explore, Chart Builder, Data & Method) runs fully on the laptop, offline.
+The pre-demo checklist is in [docs/final_checklist.md](docs/final_checklist.md).
 
 **3. Check the answers:**
 ```powershell
