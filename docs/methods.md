@@ -200,6 +200,21 @@ scores are only compared within the same category unless a visible note says oth
   teal light→dark scale for amounts, teal (up / gained) vs coral (down / lost) for changes, and `add_source_note()`,
   which writes "Source: NIRF, Ministry of Education, Govt. of India" under every chart. `dark_variant()` swaps each
   colour for its own dark-mode step (chosen for the navy dark surface), so every chart also reads well in dark mode.
+- **Light and dark theme (Phase 17):** the viewer can switch Light / Dark / System in Streamlit's ⋮ menu at any
+  moment, and only the browser knows the result for sure. So the browser decides: a small invisible component
+  (`app/components.py :: sync_theme()`) reads the app's real background colour, computes its brightness (relative
+  luminance; below 0.5 = dark) and marks the page `data-nirf-theme="dark"` or `"light"`. The stylesheet holds both
+  colour sets (`assets/style.css` light, `assets/style-dark.css` dark under that mark), so text, cards and chips
+  change in the same instant, without a reload. When the charts on screen were drawn for the other theme, the
+  component tells Python, and one quick rerun redraws them with that theme's colours. `core/theme.py :: themed()`
+  draws every chart on a transparent background (the card's colour shows through) and prints each label on a
+  coloured mark (heatmap cell, inside a bar or pie slice) in deep navy or white, whichever has the higher contrast on
+  that mark (black or white on the few mid tones where neither reaches 4.5:1).
+- **Readable text, measured (`scripts/check_contrast.py`):** contrast ratio = (L1 + 0.05) / (L2 + 0.05), where L1 is
+  the relative luminance of the lighter colour and L2 that of the darker (WCAG 2). Normal text needs at least 4.5:1,
+  large headings (24 px, or 18.66 px bold) at least 3:1. The script opens every page in both browser colour schemes ×
+  the three menu choices, switches the theme without reloading, and measures every visible piece of text against
+  what is really behind it, including chart labels against the bar, map state or heatmap cell under them.
 - **Readable titles and labels (`core/theme.py`):** Plotly never wraps a title, so a title longer than 90 characters
   is split into two balanced lines (subtitles at 130), with extra top margin per line. Point labels on scatterplots
   and strip charts (Q5.2, Q5.3, Q8.1, Q8.3, Q8.4, Q8.5) are placed by `label_points()`: each label, most important
@@ -213,7 +228,8 @@ scores are only compared within the same category unless a visible note says oth
   "Sri Ramachandra Institute of Higher…") and every cut name shows in full in the hover text. Highlighted points never
   rely on colour alone: "unusually high" points are marigold **diamonds**, jumps up teal **triangles up**, drops coral
   **triangles down**, context points grey circles (`core/theme.py :: highlight_marker()`). `with_surface()` sets the
-  white chart surface on every figure, because Streamlit otherwise paints its own page colour behind the plot.
+  white chart surface on every figure an engine returns (so a saved chart is white); on the page, `themed()` makes it
+  transparent so the chart takes its card's colour in either theme.
 - **`core/result.py`:** every engine returns `ChartResult(fig, table, insight, method, chart_type)`.
 - **State filter for any analysis (`core/data.py :: only_states()`, `core/runner.py :: run()`):** inside
   `only_states(["Kerala"])` every `load_master()` returns only the rows of institutions located in Kerala, so every

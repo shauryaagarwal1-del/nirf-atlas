@@ -7,7 +7,8 @@ Pages stay short because they only choose WHAT to show; this module decides HOW 
   * show()         runs an engine function (cached, optionally for chosen states only) and draws its
                    chart card, or a friendly empty state when the filters give no rows or the engine
                    explains why it cannot answer;
-  * kpi_cards(), empty_state(), section_title(), nav_cards() for the home and reference pages.
+  * kpi_cards(), empty_state(), section_title(), nav_cards() for the home and reference pages;
+  * sync_theme()   follows the viewer's light or dark theme (see "theme" below).
 The look itself is in assets/style.css (+ style-dark.css) and the chart template in core/theme.py.
 """
 
@@ -23,7 +24,7 @@ import streamlit as st
 from core.data import NirfInputError, SHORT
 from core.result import ChartResult
 from core.runner import run
-from core.theme import dark_variant, for_theme, with_surface
+from core.theme import for_theme, themed
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 
@@ -36,21 +37,98 @@ PLOTLY_CONFIG = {
 
 
 # ---------- theme ----------
+# The viewer can switch Light / Dark / System in Streamlit's menu at any moment, and that switch happens
+# in the browser only: the server is not told reliably (st.context.theme can lag behind it). So the
+# browser decides. A tiny invisible component reads the app's real background colour and
+#   1. marks <html data-nirf-theme="light|dark">: the stylesheet's two token sets follow it at once;
+#   2. tells Python when the charts on the page were drawn for the other theme: one quick rerun redraws
+#      them (and the KPI accent bars) with that theme's colours.
+
+THEME_KEY = "nirf-theme-sync"
+
+_THEME_JS = r"""
+export default function (component) {
+  const { data, setStateValue } = component;
+  const root = document.documentElement;
+  const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const detect = () => {
+    const app = document.querySelector('[data-testid="stApp"]');
+    const c = app && getComputedStyle(app).backgroundColor.match(/[\d.]+/g);
+    if (!c || c.length < 3) return null;
+    return 0.2126 * lin(+c[0]) + 0.7152 * lin(+c[1]) + 0.0722 * lin(+c[2]) < 0.5 ? 'dark' : 'light';
+  };
+  window.__nirfServerTheme = data.drawn;           // the theme this run's charts were drawn for
+  const sync = () => {
+    const mode = detect();
+    if (!mode) return;
+    if (root.getAttribute('data-nirf-theme') !== mode) root.setAttribute('data-nirf-theme', mode);
+    if (mode !== window.__nirfServerTheme) {       // charts were drawn for the other theme: redraw once
+      window.__nirfServerTheme = mode;
+      setStateValue('theme', mode);
+    }
+  };
+  let queued = false;
+  const soon = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; sync(); }); } };
+  if (window.__nirfThemeStop) window.__nirfThemeStop();   // one watcher per tab, never two
+  sync();
+  const watch = new MutationObserver(soon);
+  watch.observe(document.head, { childList: true, subtree: true, characterData: true });
+  const app = document.querySelector('[data-testid="stApp"]');
+  if (app) watch.observe(app, { attributes: true, attributeFilter: ['class', 'style'] });
+  const media = matchMedia('(prefers-color-scheme: dark)');
+  media.addEventListener('change', soon);
+  const stop = () => { watch.disconnect(); media.removeEventListener('change', soon); };
+  window.__nirfThemeStop = stop;
+  return stop;
+}
+"""
+
+_theme_component = st.components.v2.component("nirf_theme_sync", js=_THEME_JS, isolate_styles=False)
+
+
+def _remember_theme() -> None:
+    """Runs before the rerun the browser asked for, so this very run draws in the new theme."""
+    reported = (st.session_state.get(THEME_KEY) or {}).get("theme")
+    if reported in ("light", "dark"):
+        st.session_state["nirf_theme"] = reported
+
 
 def is_dark() -> bool:
-    """True when the viewer is using the dark theme (Settings menu, or the system setting)."""
+    """True when the viewer sees the dark theme.
+
+    The browser's own report (sync_theme) decides; before its first report (the first moments of a new
+    session) Streamlit's best guess is used, and without a browser (tests) the answer is light.
+    """
+    reported = st.session_state.get("nirf_theme")
+    if reported:
+        return reported == "dark"
     try:
         return st.context.theme.type == "dark"
-    except Exception:  # older Streamlit or no browser context (tests)
+    except Exception:  # no browser context (tests)
         return False
 
 
+def sync_theme() -> None:
+    """Mount the invisible theme follower (once per run, before any chart). See the note above."""
+    try:
+        _theme_component(key=THEME_KEY, data={"drawn": "dark" if is_dark() else "light"},
+                         on_theme_change=_remember_theme)
+    except Exception:  # e.g. a test runner without component support: the page still works (light)
+        pass
+
+
 def inject_css() -> None:
-    """Add the atlas stylesheet (and the dark-mode tokens when needed). Called once per run by app/Home.py."""
-    css = (ASSETS / "style.css").read_text(encoding="utf-8")
-    if is_dark():
-        css += "\n" + (ASSETS / "style-dark.css").read_text(encoding="utf-8")
-    st.html(f"<style>{css}</style>")
+    """Add the atlas stylesheet with BOTH token sets: light by default, dark under html[data-nirf-theme=dark].
+
+    Called once per run by app/Home.py. Which set applies is decided in the browser (sync_theme), so the
+    page follows a theme switch instantly, without waiting for the server.
+    """
+    light = (ASSETS / "style.css").read_text(encoding="utf-8")
+    dark = (ASSETS / "style-dark.css").read_text(encoding="utf-8")
+    # The first moments of a new tab, before the follower has marked the page: follow the system setting
+    # (the menu's default, "System"), so a dark screen does not flash light cards.
+    first = dark.replace('html[data-nirf-theme="dark"]', "html:not([data-nirf-theme])")
+    st.html(f"<style>{light}\n{dark}\n@media (prefers-color-scheme: dark) {{\n{first}\n}}</style>")
 
 
 def _esc(text) -> str:
@@ -139,8 +217,7 @@ def chart_card(result: ChartResult, key: str, why: str | None = None) -> None:
         if result.table is None or result.table.empty:
             empty_state("The filters left no rows for this chart.")
             return
-        fig = with_surface(result.fig)
-        fig = dark_variant(fig) if is_dark() else fig
+        fig = themed(result.fig, is_dark())
         st.plotly_chart(fig, width="stretch", theme=None, config=PLOTLY_CONFIG, key=f"chart-{key}")
         st.html(f"<div class='nirf-callout'><div class='label'>The answer</div>"
                 f"<div class='text'>{_md_inline(result.insight)}</div></div>")

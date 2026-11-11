@@ -1,7 +1,8 @@
 /* NIRF Atlas dark-mode tokens: the same names as assets/style.css, stepped for the navy dark surface.
-   Injected after style.css only when the dark theme is active. */
+   Always loaded; they apply while the page's theme follower (app/components.py) has marked
+   the html element with data-nirf-theme="dark", which it does the moment the viewer's theme turns dark. */
 
-:root {
+html[data-nirf-theme="dark"] {
   --ink: #eef0fa;
   --ink-2: #b6bbd6;
   --ink-3: #8a91b3;
@@ -16,11 +17,13 @@
   --marigold: #f0a92e;
   --marigold-ink: #f6c766;
   --marigold-soft: rgba(240, 169, 46, 0.1);
+  --indigo: #7479e6;
+  --callout-border: rgba(240, 169, 46, 0.28);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-hover: 0 8px 26px rgba(0, 0, 0, 0.35);
 }
 
-.nirf-hero {
-  border: 1px solid #283058;
+html[data-nirf-theme="dark"] .nirf-hero {
+  border: 1px solid var(--border);
   box-shadow: none;
 }

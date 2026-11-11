@@ -15,11 +15,15 @@ Design choices (kept deliberately quiet so the data stands out):
     (teal = moved up / gained, coral = moved down / lost);
   * every chart ends with the note "Source: NIRF, Ministry of Education, Govt. of India";
   * dark mode is not an automatic colour flip: dark_variant() swaps every light colour for its own
-    dark step (chosen and checked against the dark surface), so the same chart reads well on both.
+    dark step (chosen and checked against the dark surface), so the same chart reads well on both;
+  * themed() is the one place that turns a chart into what the page draws: the theme's colours, a
+    transparent background (the card's surface shows through) and labels on coloured marks in deep
+    navy or white, whichever has the higher contrast on that mark.
 """
 
 from __future__ import annotations
 
+import base64
 import re
 import textwrap
 
@@ -35,7 +39,7 @@ MONO_FONT = "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace"
 SURFACE = "#ffffff"
 INK = "#141b3d"             # deep navy
 INK_SECONDARY = "#4a5274"
-INK_MUTED = "#848aa6"
+INK_MUTED = "#6a7090"     # 4.5:1 on white (notes, leader lines)
 GRID = "#e9ebf2"
 AXIS = "#c8ccda"
 
@@ -44,6 +48,7 @@ TEAL = "#0e9c8c"
 MARIGOLD = "#e39a12"
 INDIGO = "#4a50c8"
 CORAL = "#e0564f"
+MARIGOLD_INK = "#925c00"    # marigold for TEXT in a chart (a label in the marigold of its line): 6:1 on white
 
 # Categorical palette, fixed order (teal, marigold, indigo, coral, sky, olive, orchid, brown).
 CATEGORICAL = [TEAL, MARIGOLD, INDIGO, CORAL, "#2f8fd8", "#7f8c1f", "#b35bc4", "#a8642a"]
@@ -64,6 +69,7 @@ DARK_SURFACE = "#151b34"
 _DARK = {
     SURFACE: DARK_SURFACE, INK: "#eef0fa", INK_SECONDARY: "#b6bbd6", INK_MUTED: "#7e85a8",
     GRID: "#242b4b", AXIS: "#3b4369", OTHER: "#5d6488", CONTEXT: "#2a3254", NEUTRAL: "#4a5276",
+    MARIGOLD_INK: "#f6c766",
     **dict(zip(CATEGORICAL, ["#14a090", "#c4860a", "#7479e6", "#de5850", "#3a92d8", "#8a9726", "#b468c7",
                              "#c97a3d"])),
     **dict(zip(RAMP, ["#1b3a4a", "#1d4a55", "#1e5a61", "#1e6b6c", "#1d7c78", "#1a8e84", "#14a090",
@@ -400,3 +406,171 @@ def dark_variant(fig: go.Figure) -> dict:
     Returns a plain figure dict (what st.plotly_chart accepts), so the original figure is untouched.
     """
     return _swap(fig.to_plotly_json())
+
+
+# ---------- drawing a chart on the page ----------
+
+CLEAR = "rgba(0,0,0,0)"
+# The two text colours for labels printed ON a coloured mark (a bar, a slice, a heatmap cell).
+_INKS = (INK, "#ffffff")
+
+
+def _rgb(color) -> tuple[int, int, int] | None:
+    """(r, g, b) of a hex or rgb()/rgba() colour string; None for anything else (named colours, scales)."""
+    if not isinstance(color, str):
+        return None
+    c = color.strip().lower()
+    if re.fullmatch(r"#[0-9a-f]{6}", c):
+        return int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)
+    if re.fullmatch(r"#[0-9a-f]{3}", c):
+        return tuple(int(ch * 2, 16) for ch in c[1:])
+    if c == "white":
+        return 255, 255, 255
+    m = _RGBA.match(c)
+    return tuple(int(float(x)) for x in m.groups()[:3]) if m else None
+
+
+def _luminance(rgb) -> float:
+    """WCAG relative luminance: 0 = black, 1 = white (each channel linearised, green weighs most)."""
+    def lin(v):
+        v /= 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = rgb
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def contrast(a, b) -> float:
+    """WCAG contrast ratio of two colours, from 1 (same) to 21 (black on white). 4.5 = readable text."""
+    la, lb = sorted((_luminance(_rgb(a)), _luminance(_rgb(b))), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def ink_on(fill) -> str | None:
+    """The text colour for a label printed on a mark of this colour; None if the colour is unknown.
+
+    Deep navy or white, whichever reads better. On a few mid-tone colours neither reaches 4.5:1; there
+    the label is black or white (one of the two always reaches at least 4.58:1, whatever the colour).
+    """
+    if _rgb(fill) is None:
+        return None
+    best = max(_INKS, key=lambda ink: contrast(ink, fill))
+    if contrast(best, fill) >= 4.5:
+        return best
+    return max(("#000000", "#ffffff"), key=lambda ink: contrast(ink, fill))
+
+
+def _scale_at(scale, t: float) -> tuple[float, float, float] | None:
+    """The colour at position t (0..1) of a Plotly colour scale [[pos, colour], ...], interpolated in RGB."""
+    stops = [(float(p), _rgb(c)) for p, c in scale]
+    if not stops or any(c is None for _, c in stops):
+        return None
+    t = min(max(t, 0.0), 1.0)
+    for (p0, c0), (p1, c1) in zip(stops, stops[1:]):
+        if p0 <= t <= p1:
+            f = 0.0 if p1 == p0 else (t - p0) / (p1 - p0)
+            return tuple(a + (b - a) * f for a, b in zip(c0, c1))
+    return stops[-1][1] if t >= stops[-1][0] else stops[0][1]
+
+
+def _values(v):
+    """A figure-dict array as numpy: Plotly stores numeric arrays as {"dtype", "bdata" (base64), "shape"}."""
+    if isinstance(v, dict) and "bdata" in v:
+        out = np.frombuffer(base64.b64decode(v["bdata"]), dtype=np.dtype(v["dtype"]))
+        return out.reshape([int(n) for n in str(v["shape"]).split(",")]) if v.get("shape") else out
+    return np.array(v, dtype=object)
+
+
+_TEXT_FIELD = re.compile(r"^%\{text(?::([^}]*))?\}$")
+
+
+def _heatmap_cell_inks(trace: dict, layout: dict) -> None:
+    """Give every heatmap cell label the ink that reads best on that cell's own colour.
+
+    Plotly picks one grey or white per cell, which is below 4.5:1 on the mid-teal cells. Here the cell
+    colour is worked out the way Plotly does (value -> position between zmin and zmax -> colour scale)
+    and each label is wrapped in a coloured span. Only labels drawn with texttemplate "%{text}" or
+    "%{text:<format>}" are touched; the numbers themselves do not change.
+    """
+    m = _TEXT_FIELD.match(trace.get("texttemplate") or "")
+    z, text = trace.get("z"), trace.get("text")
+    if not m or z is None or text is None:
+        return
+    scale = trace.get("colorscale") or (layout.get("template", {}).get("data", {}).get("heatmap") or [{}])[0] \
+        .get("colorscale") or layout.get("colorscale", {}).get("sequential")
+    if not isinstance(scale, (list, tuple)):
+        return
+    zs = _values(z).astype(float)
+    if zs.ndim != 2 or not np.isfinite(zs).any():
+        return
+    lo = trace.get("zmin") if trace.get("zmin") is not None else float(np.nanmin(zs))
+    hi = trace.get("zmax") if trace.get("zmax") is not None else float(np.nanmax(zs))
+    if trace.get("zmid") is not None:
+        half = max(hi - trace["zmid"], trace["zmid"] - lo)
+        lo, hi = trace["zmid"] - half, trace["zmid"] + half
+    spec = m.group(1)
+    rows = []
+    labels = _values(text)
+    for zrow, trow in zip(zs, labels):
+        out = []
+        for v, label in zip(zrow, trow):
+            if label is None or (isinstance(label, float) and np.isnan(label)) or label == "":
+                out.append("")
+                continue
+            try:
+                shown = format(float(label), spec) if spec else str(label)
+            except (TypeError, ValueError):
+                shown = str(label)
+            fill = None if not np.isfinite(v) else _scale_at(
+                scale, 1 - (v - lo) / (hi - lo or 1) if trace.get("reversescale") else (v - lo) / (hi - lo or 1))
+            ink = ink_on("#" + "".join(f"{round(x):02x}" for x in fill)) if fill else None
+            out.append(f"<span style='color:{ink}'>{shown}</span>" if ink else shown)
+        rows.append(out)
+    hover = trace.get("hovertemplate") or ""
+    if "%{text" in hover:                   # the hover keeps the plain label, not the coloured span
+        if trace.get("customdata") is not None:
+            return
+        trace["customdata"] = labels.tolist()
+        trace["hovertemplate"] = re.sub(r"%\{text(:[^}]*)?\}", r"%{customdata\1}", hover)
+    trace["text"], trace["texttemplate"] = rows, "%{text}"
+
+
+def _inside_label_inks(trace: dict) -> None:
+    """Labels printed inside bars or pie slices get the ink that reads best on that bar's or slice's colour."""
+    if trace.get("type") == "bar" and trace.get("textposition") == "inside":
+        fill = (trace.get("marker") or {}).get("color")
+    elif trace.get("type") == "pie" and trace.get("textposition") == "inside":
+        fill = (trace.get("marker") or {}).get("colors")
+    else:
+        return
+    if isinstance(fill, str):
+        ink = ink_on(fill)
+    elif isinstance(fill, (list, tuple, np.ndarray)) and len(fill):
+        inks = [ink_on(c) for c in fill]
+        ink = inks if all(inks) else None
+    else:
+        ink = None
+    if ink:
+        trace.setdefault("textfont", {})["color"] = ink
+
+
+def themed(fig: go.Figure, dark: bool) -> dict:
+    """The chart exactly as it is drawn on the page, for the viewer's theme (a plain figure dict).
+
+    * dark: every palette colour is swapped for its dark step (dark_variant);
+    * the paper, plot and map backgrounds are transparent, so the chart sits on its card's own surface
+      colour (set by the stylesheet, which follows the theme the moment it changes);
+    * labels printed on coloured marks (heatmap cells, inside bars, pie slices) get deep navy or white,
+      whichever reads better on that mark (at least 4.5:1 for the palette colours).
+    The figure the engine returned is not changed.
+    """
+    out = dark_variant(fig) if dark else go.Figure(fig).to_plotly_json()   # both are copies
+    layout = out.setdefault("layout", {})
+    layout["paper_bgcolor"] = layout["plot_bgcolor"] = CLEAR
+    for key in [k for k in layout if k.startswith("geo")]:
+        layout[key]["bgcolor"] = CLEAR
+    for trace in out.get("data", []):
+        if trace.get("type") == "heatmap":
+            _heatmap_cell_inks(trace, layout)
+        else:
+            _inside_label_inks(trace)
+    return out

@@ -30,7 +30,7 @@ from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year,
                        load_master, parameters_of, short_name)
 from core.result import ChartResult
 from core.stats import signed
-from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, OTHER, UP, add_lollipops, color_map, finish,
+from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, MARIGOLD_INK, OTHER, UP, add_lollipops, color_map, finish,
                         highlight_marker, label_points, ordinal_ramp, padded_range)
 
 MAX_INSTITUTIONS = 8
@@ -196,7 +196,7 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
                   annotation_text=f"median {SHORT[hi]} {med_hi:.1f}", annotation_position="bottom right",
                   annotation_font=dict(size=11, color=INK_SECONDARY))
     fig.add_annotation(text=f"<b>high {SHORT[hi]}, low {SHORT[lo]}</b>", xref="x domain", yref="y domain", x=0.01,
-                       y=0.99, xanchor="left", yanchor="top", showarrow=False, font=dict(color=CATEGORICAL[1], size=12))
+                       y=0.99, xanchor="left", yanchor="top", showarrow=False, font=dict(color=MARIGOLD_INK, size=12))
     fig.update_xaxes(title_text=LABELS[lo], showgrid=True)
     fig.update_yaxes(title_text=LABELS[hi])
     fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))

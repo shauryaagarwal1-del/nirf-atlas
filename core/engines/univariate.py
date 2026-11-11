@@ -27,7 +27,8 @@ from core.data import (BAND_ORDER, NirfInputError, category_years, check_categor
                        load_master, short_name)
 from core.result import ChartResult
 from core.stats import describe
-from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, INK, INK_SECONDARY, RAMP, SURFACE, finish, ordinal_ramp)
+from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, INK, INK_SECONDARY, MARIGOLD_INK, RAMP, SURFACE, finish,
+                        ordinal_ramp)
 
 
 def _scored(category: str | None, year: int | None) -> tuple[pd.DataFrame, str, int]:
@@ -71,10 +72,10 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
             x=grid, y=kde(grid) * s["n"] * width, mode="lines", name="Density curve (KDE)",
             line=dict(color=INK_SECONDARY, width=2.5),
             hovertemplate="Score %{x:.1f}<br>Smoothed: %{y:.1f} institutions per interval<extra></extra>"))
-    for value, label, color, pos in ((s["mean"], "Mean", INK, "top right"),
-                                     (s["median"], "Median", CATEGORICAL[1], "top left")):
+    for value, label, color, ink, pos in ((s["mean"], "Mean", INK, INK, "top right"),
+                                          (s["median"], "Median", CATEGORICAL[1], MARIGOLD_INK, "top left")):
         fig.add_vline(x=value, line=dict(color=color, width=2), annotation_text=f"{label} {value:.1f}",
-                      annotation_position=pos, annotation_font=dict(color=color, size=12))
+                      annotation_position=pos, annotation_font=dict(color=ink, size=12))
     fig.update_xaxes(title_text="Overall score (0-100)")
     fig.update_yaxes(title_text="Number of institutions")
     fig.update_layout(bargap=0.04, legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))

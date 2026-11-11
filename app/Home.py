@@ -1,7 +1,7 @@
 """NIRF Atlas: the Streamlit entry point. Run with:  streamlit run app/Home.py
 
 Every page visit runs this file first: it sets up the page, injects the stylesheet once, builds the
-sidebar navigation (grouped, with icons) and draws the global filters (on Home, the Explore pages and
+sidebar navigation (grouped, with icons), starts the theme follower and draws the global filters (on Home, the Explore pages and
 Data & Method; the other pages have their own controls and get a short note instead), then runs the
 chosen page from app/views/. The page catalogue itself is in app/nav.py.
 
@@ -22,13 +22,14 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from app.components import inject_css  # noqa: E402
+from app.components import inject_css, sync_theme  # noqa: E402
 from app.filters import render_own_controls_note, render_sidebar  # noqa: E402
 from app.nav import PAGES  # noqa: E402
 
 st.set_page_config(page_title="NIRF Atlas", page_icon=str(ROOT / "assets" / "mark.svg"), layout="wide",
                    initial_sidebar_state="expanded")
 inject_css()
+sync_theme()     # follows the viewer's light / dark theme (app/components.py)
 st.logo(str(ROOT / "assets" / "logo.svg"), icon_image=str(ROOT / "assets" / "mark.svg"), size="large")
 
 sections: dict[str, list] = {}

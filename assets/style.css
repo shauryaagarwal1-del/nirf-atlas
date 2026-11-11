@@ -1,18 +1,22 @@
 /* NIRF Atlas: "National Observatory" refinements on top of .streamlit/config.toml.
-   Light-mode tokens are defined here; assets/style-dark.css redefines the same tokens for dark mode
-   and is injected after this file when the dark theme is active. Chart colours live in core/theme.py. */
+   Colours come ONLY from the tokens below. Light-mode tokens are defined here; assets/style-dark.css
+   redefines the same tokens under html[data-nirf-theme="dark"], which the page's theme follower sets in
+   the browser the moment the viewer's theme changes (app/components.py). Both files are always loaded.
+   Exceptions: the hero banner and the navy sidebar are dark in BOTH themes on purpose, so they set their
+   own light text colours. Every text colour here is checked at >= 4.5:1 (>= 3:1 for large headings)
+   against its background in both themes by scripts/check_contrast.py. Chart colours live in core/theme.py. */
 
 :root {
   --ink: #141b3d;
   --ink-2: #4a5274;
-  --ink-3: #7c83a1;
+  --ink-3: #646b8a;
   --bg: #f4f5f9;
   --surface: #ffffff;
   --surface-2: #f8f9fc;
   --border: #dce0eb;
   --border-soft: #e8ebf2;
   --teal: #0e9c8c;
-  --teal-ink: #0b7f72;
+  --teal-ink: #0a7368;
   --teal-soft: #e2f4f1;
   --marigold: #e39a12;
   --marigold-ink: #925c00;
@@ -20,6 +24,9 @@
   --indigo: #4a50c8;
   --navy: #121838;
   --navy-2: #1d2450;
+  --danger: #c8433a;             /* errors (white text on it: 4.9:1) */
+  --on-accent: #121838;          /* text on marigold and teal fills: deep navy in both themes */
+  --callout-border: rgba(227, 154, 18, 0.28);
   --shadow: 0 1px 2px rgba(20, 27, 61, 0.04), 0 6px 20px rgba(20, 27, 61, 0.05);
   --shadow-hover: 0 2px 4px rgba(20, 27, 61, 0.06), 0 12px 28px rgba(20, 27, 61, 0.09);
   --font-display: "Fraunces", Georgia, serif;
@@ -39,6 +46,10 @@
 [data-testid="stDecoration"] {
   display: none;
 }
+/* The invisible theme follower (app/components.py): no space on the page. */
+.st-key-nirf-theme-sync {
+  display: none !important;
+}
 
 /* ---------- sidebar ---------- */
 [data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
@@ -49,7 +60,7 @@
   font-size: 0.68rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.55;
+  opacity: 0.85;
   margin-top: 0.6rem;
 }
 [data-testid="stSidebarNavLink"] {
@@ -179,6 +190,7 @@
     radial-gradient(900px 420px at 92% 120%, rgba(14, 156, 140, 0.32), transparent 60%),
     radial-gradient(700px 380px at 105% -30%, rgba(227, 154, 18, 0.2), transparent 60%),
     linear-gradient(135deg, #121838 0%, #1a2150 55%, #17325a 100%);
+  background-color: #121838;     /* solid navy under the gradient: the text's real backdrop */
   box-shadow: 0 20px 50px rgba(18, 24, 56, 0.18);
 }
 .nirf-hero::after {
@@ -371,7 +383,7 @@
 /* ---------- chart card parts ---------- */
 .nirf-callout {
   background: var(--marigold-soft);
-  border: 1px solid rgba(227, 154, 18, 0.28);
+  border: 1px solid var(--callout-border);
   border-left: 3px solid var(--marigold);
   border-radius: 10px;
   padding: 0.85rem 1.05rem 0.9rem;
@@ -682,13 +694,45 @@
 }
 .stButton button[kind="primary"],
 [data-testid="stDownloadButton"] button[kind="primary"] {
-  color: #141b3d;
+  color: var(--on-accent);
   font-weight: 600;
 }
 [data-testid="stPlotlyChart"] {
   border-radius: 12px;
   overflow: hidden;
 }
+/* Streamlit draws these in its primary marigold or a faded grey, below 4.5:1 on the light page.
+   On the page (not the navy sidebar) they take the theme's readable inks instead. */
+[data-testid="stCaptionContainer"]:not([data-testid="stSidebar"] *) {
+  color: var(--ink-3);
+  opacity: 1;                    /* Streamlit fades captions to 60 %: the token is already the soft grey */
+}
+/* Inline code (column names, the chat's plan keys): Streamlit's green is 2.3:1 on the light code tint. */
+[data-testid="stMarkdownContainer"] code:not(pre code):not([data-testid="stSidebar"] *),
+[data-testid="stCaptionContainer"] code:not([data-testid="stSidebar"] *) {
+  color: var(--teal-ink);
+}
+[data-testid="stJson"] .node-ellipsis {
+  color: var(--marigold-ink) !important;   /* the JSON viewer sets its colour inline */
+}
+[data-testid="stMain"] [data-testid="stTab"][aria-selected="true"] [data-testid="stMarkdownContainer"] p {
+  color: var(--marigold-ink);
+}
+[data-testid="stMain"] [data-testid="stSliderThumbValue"],
+[data-testid="stMain"] [data-testid="stSliderThumbValue"] p,
+[data-testid="stMain"] [role="radiogroup"] button[role="radio"][aria-checked="true"] p {
+  color: var(--marigold-ink);   /* the chosen option of a segmented control or pills */
+}
+/* Chosen items in a multiselect: Streamlit prints white on marigold (2:1); deep navy reads at 7:1. */
+[data-testid="stMultiSelectTagsContainer"] [role="group"],
+[data-testid="stMultiSelectTagsContainer"] [role="group"] span {
+  color: var(--on-accent);
+}
+/* Streamlit's alert text is a shade too light on its own tint in the light theme (about 4.2:1). */
+html:not([data-nirf-theme="dark"]) [data-testid="stAlertContentError"] { color: #9b2c2c; }
+html:not([data-nirf-theme="dark"]) [data-testid="stAlertContentWarning"] { color: #7a4d00; }
+html:not([data-nirf-theme="dark"]) [data-testid="stAlertContentInfo"] { color: #1d4f91; }
+html:not([data-nirf-theme="dark"]) [data-testid="stAlertContentSuccess"] { color: #1f6b3a; }
 
 /* ---------- question bank ---------- */
 .nirf-q-head {
@@ -790,13 +834,14 @@
   border-radius: 50%;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #fff;
 }
 .nirf-tick.ok {
   background: var(--teal);
+  color: var(--on-accent);
 }
 .nirf-tick.bad {
-  background: #c8433a;
+  background: var(--danger);
+  color: #ffffff;
 }
 .nirf-tile-time {
   margin-left: auto;
@@ -844,7 +889,7 @@
   padding: 0.8rem 1.05rem 0.85rem;
   margin: 0.1rem 0 0.4rem;
 }
-.nirf-ask-note.bad { border-left-color: #c8443a; }
+.nirf-ask-note.bad { border-left-color: var(--danger); }
 .nirf-ask-note.warn { border-left-color: var(--marigold); }
 .nirf-ask-note .title {
   font-weight: 600;

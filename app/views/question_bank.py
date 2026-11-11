@@ -22,7 +22,7 @@ import streamlit as st
 from app.components import is_dark, page_header, run_engine, show
 from app.question_controls import default_params, question_controls, reset_question
 from core.questions import QUESTION_REGISTRY, SECTIONS, Question, check_result
-from core.theme import dark_variant, with_surface
+from core.theme import themed
 
 TAB_NAMES = {1: "Trends", 2: "Geospatial", 3: "Univariate", 4: "Bivariate", 5: "Multivariate",
              6: "Distribution", 7: "Mobility", 8: "Outliers"}
@@ -141,8 +141,7 @@ def run_all() -> list[dict]:
 
 def mini_figure(fig: go.Figure) -> go.Figure:
     """A thumbnail of a chart: same marks and colours, no titles, axes, legends, labels or notes."""
-    fig = with_surface(go.Figure(fig))
-    mini = go.Figure(dark_variant(fig) if is_dark() else fig)
+    mini = go.Figure(themed(fig, is_dark()))
     mini.update_layout(height=150, margin=dict(l=4, r=4, t=4, b=4), showlegend=False, title=None,
                        annotations=[], hovermode=False)
     mini.update_xaxes(visible=False)
