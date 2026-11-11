@@ -658,8 +658,10 @@ def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int
                            f"%{{customdata[1]:.2f}}<br>Institutions with a score: %{{customdata[2]}}<extra></extra>"))
         if show_spread:
             offset = (i - (len(cats) - 1) / 2) * dodge
+            ends = [f"{v:.1f}" if j in (0, len(t) - 1) else "" for j, v in enumerate(t[stat])]
             fig.add_trace(go.Scatter(
-                x=t["year"] + offset, y=t[stat], mode="markers",
+                x=t["year"] + offset, y=t[stat], mode="markers+text", text=ends, textposition="middle right",
+                textfont=dict(size=12, color=INK), cliponaxis=False,
                 error_y=dict(type="data", symmetric=False, array=(t["q3"] - t[stat]).clip(lower=0),
                              arrayminus=(t[stat] - t["q1"]).clip(lower=0), color=col, thickness=1.5, width=5),
                 **common))

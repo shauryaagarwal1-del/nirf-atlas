@@ -22,12 +22,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from core.data import (LABELS, SHORT, NirfInputError, category_year, category_years, check_category, filter_df,
+from core.data import (LABELS, PLAIN, SHORT, WORD, NirfInputError, category_year, category_years, check_category, filter_df,
                        fmt_years, load_master, parameters_of)
 from core.engines import trends
 from core.result import ChartResult
 from core.stats import describe, signed
-from core.theme import CATEGORICAL, INK_SECONDARY, SURFACE, finish, tint
+from core.theme import CATEGORICAL, DOWN, INK, INK_SECONDARY, OTHER, SURFACE, UP, finish, showing, tint
 
 
 def _scored(category: str, year) -> tuple[pd.DataFrame, str, int]:
@@ -102,6 +102,14 @@ def top10_vs_rest(year: int | None = None, category: str = "Overall", top: int =
         fig.update_yaxes(title_text="Overall score (0-100)")
         fig.update_xaxes(title_text="Group")
         fig.update_layout(showlegend=False, violingap=0.35)
+        for g in names:                       # the middle value written next to each shape
+            label = rest_label if g == "Rest" else g
+            s_ = describe(scored.loc[scored["group"].eq(g), "score"])
+            fig.add_annotation(x=label, y=s_["median"], text=f"middle value (median) {s_['median']:.1f}", showarrow=False,
+                               xanchor="left", xshift=62, font=dict(size=11, color=INK), bgcolor=tint(SURFACE, 0.8))
+            fig.add_annotation(x=label, y=s_["q3"], text=f"middle half (IQR): {s_['q1']:.1f} to {s_['q3']:.1f}",
+                               showarrow=False, xanchor="left", xshift=62, yshift=12,
+                               font=dict(size=10, color=INK_SECONDARY), bgcolor=tint(SURFACE, 0.8))
     else:
         fig.update_xaxes(title_text="Overall score (0-100)")
         fig.update_yaxes(title_text="Number of institutions")
@@ -109,8 +117,8 @@ def top10_vs_rest(year: int | None = None, category: str = "Overall", top: int =
 
     a, b = stats_rows[names[0]], stats_rows["Rest"]
     gap = a["min"] - b["max"]
-    title = (f"The top {top}'s median score ({a['median']:.1f}) is {a['median'] - b['median']:.0f} points above the "
-             f"rest ({b['median']:.1f}) in {category} {year}")
+    title = (f"The top {top}'s middle score ({a['median']:.1f}) is {a['median'] - b['median']:.0f} points above the "
+             f"rest's ({b['median']:.1f}) in {category} {year}")
     insight = (f"In {category} {year}, the top {top} have a median score of {a['median']:.1f} (IQR {a['iqr']:.1f}) "
                f"against {b['median']:.1f} (IQR {b['iqr']:.1f}) for the other {b['n']} scored institutions. "
                + (f"Every top-{top} score is above every other score (gap {gap:.1f} points between the lowest top-{top} "
@@ -119,9 +127,11 @@ def top10_vs_rest(year: int | None = None, category: str = "Overall", top: int =
                   f"{a['std']:.1f}).")
                + (" The rest are right-skewed: many institutions sit just above the cut-off and few higher up."
                   if b["skew"] > 0.5 else ""))
-    finish(fig, title, f"{category} ranking {year} · {a['n'] + b['n']} institutions with a published score · "
-           + ("violin = smoothed distribution, box = median and middle 50%, dots = institutions" if view == "violin"
-              else "bars 2.5 points wide, overlapping"), legend_title="Group" if view == "histogram" else None)
+    finish(fig, title, ("Each dot is one institution · the shape is wider where more institutions have that score · "
+                        "the box inside = middle half (IQR), its line = middle value (median)" if view == "violin"
+                        else f"Two overlapping histograms (bars 2.5 points wide): taller = more institutions with that "
+                             f"score · {a['n'] + b['n']} institutions, {category} {year}"),
+           legend_title="Group" if view == "histogram" else None)
     method = (f"We split the {a['n'] + b['n']} {category} institutions with a published score in {year} into the top "
               f"{top} (exact rank ≤ {top}) and the rest, and compare their score distributions. "
               + ("A violin plot is a box plot with the distribution's shape around it: the outline is a smoothed "
@@ -164,15 +174,25 @@ def dispersion_by_year(category: str = "Overall", top_n: int | None = None, view
     table["n"] = table["n"].astype(int)
 
     fig = go.Figure()
+    most, least = int(table.loc[table["std"].idxmax(), "year"]), int(table.loc[table["std"].idxmin(), "year"])
     if view == "box":
+        sd_of = dict(zip(table["year"].astype(int), table["std"]))
+        top_of = dict(zip(table["year"].astype(int), table["max"]))
         for y in years:
             t = scored[scored["year"].eq(y)]
+            col = UP if y == most else DOWN if y == least else OTHER
             fig.add_trace(go.Box(
-                y=t["score"], x=[str(y)] * len(t), name=str(y), marker_color=CATEGORICAL[0], line_color=CATEGORICAL[0],
+                y=t["score"], x=[str(y)] * len(t), name=str(y), marker_color=col, line_color=col,
+                fillcolor=tint(col, 0.25 if y in (most, least) else 0.12),
                 boxpoints="outliers", customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
                 hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} · score %{y:.2f}<extra>" + str(y)
                               + "</extra>"))
-        fig.update_layout(showlegend=False)
+            fig.add_annotation(x=str(y), y=float(top_of[y]), yshift=14, text=f"SD {sd_of[y]:.1f}", showarrow=False,
+                               font=dict(size=11, color=INK if y in (most, least) else INK_SECONDARY))
+        for name, col in ((f"Most spread out ({most})", UP), (f"Least spread out ({least})", DOWN), ("Other years", OTHER)):
+            fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=name,
+                                     marker=dict(symbol="square", size=12, color=col)))
+        fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
         fig.update_yaxes(title_text="Overall score (0-100)")
     else:
         fig.add_trace(go.Scatter(
@@ -190,8 +210,8 @@ def dispersion_by_year(category: str = "Overall", top_n: int | None = None, view
     first, last = table.iloc[0], table.iloc[-1]
     trend = ("more" if last["std"] > first["std"] + 0.5 else "less" if last["std"] < first["std"] - 0.5
              else "about as")
-    title = (f"{category} scores were most dispersed in {int(hi.year)} (SD {hi['std']:.1f}) and least in "
-             f"{int(lo.year)} (SD {lo['std']:.1f})")
+    title = (f"{category} scores were most spread out in {int(hi.year)} (standard deviation {hi['std']:.1f}) and "
+             f"least in {int(lo.year)} ({lo['std']:.1f})")
     insight = (f"{category} scores were most spread out in {int(hi.year)} (SD {hi['std']:.1f}, IQR {hi['iqr']:.1f}) and "
                f"least in {int(lo.year)} (SD {lo['std']:.1f}, IQR {lo['iqr']:.1f}); in {int(last.year)} they were "
                f"{trend} dispersed {'than' if trend != 'about as' else 'as'} in {int(first.year)} (SD {first['std']:.1f} → "
@@ -200,10 +220,11 @@ def dispersion_by_year(category: str = "Overall", top_n: int | None = None, view
     if top_n is None and table["n"].max() > 1.1 * table["n"].min():
         insight += (" Careful: the number of scored institutions changes (" + "; ".join(f"{n} in {y}" for n, y in ns.items())
                     + "); set top_n=100 for a like-for-like comparison.")
-    finish(fig, title, f"{category} ranking, {fmt_years(years)}"
-           + (f" · exact ranks 1-{top_n} only" if top_n else "")
-           + (" · box = middle 50%, line = median, dots = outliers (1.5 × IQR rule)" if view == "box"
-              else " · standard deviation per year"))
+    finish(fig, title, ("One box per year · a taller box = scores more spread out · box = middle half (IQR), line = "
+                        "middle value (median), dots = far-out scores · SD above each box = standard deviation"
+                        if view == "box" else
+                        "Each dot is one year's standard deviation (SD): higher = scores more spread out")
+           + (f" · exact ranks 1-{top_n} only" if top_n else ""), legend_title="Key" if view == "box" else None)
     method = (f"For every year we take the {category} institutions with a published overall score"
               f"{f' and an exact rank of {top_n} or better' if top_n else ''} and measure the spread: standard "
               f"deviation (SD: the typical distance of a score from the mean, sample formula with n − 1) and IQR "
@@ -240,14 +261,18 @@ def parameter_variability(year: int | None = None, category: str = "Overall", vi
     fig = go.Figure()
     if view == "bar":
         t = table.iloc[::-1]
+        words = {table["parameter"].iloc[0]: "  ← varies the most", table["parameter"].iloc[-1]: "  ← varies the least"}
         fig.add_trace(go.Bar(
-            x=t["cv"], y=t["parameter"], orientation="h", marker_color=CATEGORICAL[0], text=t["cv"].map("{:.2f}".format),
+            x=t["cv"], y=[PLAIN[col_of[p]] for p in t["parameter"]], orientation="h",
+            marker_color=[CATEGORICAL[0] if p == table["parameter"].iloc[0] else OTHER for p in t["parameter"]],
+            text=[f"{v:.2f}{words.get(p, '')}" for v, p in zip(t["cv"], t["parameter"])],
             textposition="outside", cliponaxis=False,
             customdata=np.stack([t["parameter"].map(long_names), t["std"], t["mean"], t["iqr"]], axis=1),
             hovertemplate=("<b>%{customdata[0]}</b><br>CV %{x:.2f} = SD %{customdata[1]:.1f} / mean "
                            "%{customdata[2]:.1f}<br>IQR %{customdata[3]:.1f}<extra></extra>"), showlegend=False))
-        fig.update_xaxes(title_text="Coefficient of variation (SD / mean)", showgrid=True,
-                         range=[0, table["cv"].max() * 1.15])
+        fig.update_xaxes(title_text="How much the scores differ between institutions, relative to the average "
+                                    "(coefficient of variation, CV = SD ÷ mean)", showgrid=True,
+                         range=[0, table["cv"].max() * 1.45])
         fig.update_yaxes(title_text="NIRF parameter", showgrid=False)
     else:
         for name in table["parameter"]:
@@ -264,16 +289,19 @@ def parameter_variability(year: int | None = None, category: str = "Overall", vi
 
     hi, lo = table.iloc[0], table.iloc[-1]
     by_sd = table.sort_values("std", ascending=False).iloc[0]
-    title = f"{hi['parameter']} varies the most across {category} institutions in {year} (CV {hi['cv']:.2f})"
+    title = (f"{PLAIN[col_of[hi['parameter']]]} varies the most between {category} institutions in {year} "
+             f"(CV {hi['cv']:.2f})")
     insight = (f"In {category} {year}, {long_names[hi['parameter']]} is the most variable parameter (CV {hi['cv']:.2f}: "
                f"SD {hi['std']:.1f} around a mean of {hi['mean']:.1f}) and {lo['parameter']} the least (CV {lo['cv']:.2f}: "
                f"SD {lo['std']:.1f} around {lo['mean']:.1f}).")
     if by_sd["parameter"] != hi["parameter"]:
         insight += (f" Measured by SD alone, {by_sd['parameter']} would come first ({by_sd['std']:.1f}), because it "
                     f"sits at a higher level.")
-    finish(fig, title, f"{category} ranking {year} · {int(table['n'].max())} institutions · "
-           + ("CV = SD / mean, so parameters with different averages can be compared" if view == "bar"
-              else "box = middle 50%, dots = outliers (1.5 × IQR rule), sorted by CV"))
+    finish(fig, title, ("Each bar is one parameter · longer = scores differ more between institutions, relative to "
+                        "that parameter's average · number = CV · the answer is in colour" if view == "bar"
+                        else "One box per parameter · taller box = scores more spread out · box = middle half (IQR), "
+                             "dots = far-out scores · sorted by CV")
+           + f" · {int(table['n'].max())} institutions, {category} {year}")
     method = (f"For each parameter of the {category} institutions of {year} we compute the mean, the standard deviation "
               f"(SD) and the coefficient of variation CV = SD / mean. CV measures spread relative to the average, so "
               f"a parameter that usually scores 25 and one that usually scores 70 can be compared fairly; IQR (Q3 − Q1) "
@@ -298,8 +326,8 @@ def median_iqr_over_time(category: str = "Overall", top_n: int | None = None) ->
     a, z = t.iloc[0], t.iloc[-1]
     wide, narrow = t.loc[t["iqr"].idxmax()], t.loc[t["iqr"].idxmin()]
     cat = t["category"].iloc[0]
-    title = (f"{cat}: median score {a['median']:.1f} → {z['median']:.1f} and IQR {a['iqr']:.1f} → {z['iqr']:.1f} "
-             f"({int(a.year)}→{int(z.year)})")
+    title = (f"{cat}: the middle score (median) went {a['median']:.1f} → {z['median']:.1f} and the middle half (IQR) "
+             f"{a['iqr']:.1f} → {z['iqr']:.1f} points wide, {int(a.year)}→{int(z.year)}")
     insight = (f"The median {cat} score went from {a['median']:.1f} in {int(a.year)} to {z['median']:.1f} in "
                f"{int(z.year)} ({signed(z['median'] - a['median'], 1)} points), and the IQR from {a['iqr']:.1f} to "
                f"{z['iqr']:.1f}: the middle half of institutions "
@@ -338,24 +366,27 @@ def score_by_state(year: int | None = None, category: str = "Overall", min_insti
     if shown.empty:
         raise NirfInputError(f"No state has {min_institutions} or more scored {category} institutions in {year}.")
 
+    best = shown.iloc[0]
     fig = go.Figure()
     for _, s in shown.iloc[::-1].iterrows():
         t = scored[scored["state"].eq(s["state"])]
         label = f"{s['state']} ({int(s['n'])})"
+        col = CATEGORICAL[0] if s["state"] == best["state"] else OTHER
         fig.add_trace(go.Box(
-            x=t["score"], y=[label] * len(t), name=label, orientation="h", marker_color=CATEGORICAL[0],
-            line_color=CATEGORICAL[0], boxpoints="all", jitter=0.4, pointpos=0, fillcolor=tint(CATEGORICAL[0], 0.12),
-            marker=dict(size=6, opacity=0.75), customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
+            x=t["score"], y=[label] * len(t), name=label, orientation="h", marker_color=col,
+            line_color=col, boxpoints="all", jitter=0.4, pointpos=0, fillcolor=tint(col, 0.2 if col != OTHER else 0.12),
+            marker=dict(size=6, opacity=0.8), customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
             hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} · score %{x:.2f}<extra>" + s["state"]
                           + "</extra>"))
+        fig.add_annotation(x=float(s["max"]) + 0.8, y=label, text=f"middle value {s['median']:.1f}", showarrow=False,
+                           xanchor="left", font=dict(size=11, color=INK if col != OTHER else INK_SECONDARY))
     fig.update_layout(showlegend=False)
-    fig.update_xaxes(title_text="Overall score (0-100)", showgrid=True)
-    fig.update_yaxes(title_text="State", showgrid=False)
-
-    best = shown.iloc[0]
+    fig.update_xaxes(title_text="Overall score (0-100)", showgrid=True,
+                     range=[float(shown["min"].min()) - 2, float(shown["max"].max()) + 14])
+    fig.update_yaxes(title_text="State (number of institutions)", showgrid=False)
     widest = shown.loc[shown["iqr"].idxmax()]
-    title = (f"{best['state']} has the highest median {category} score in {year} ({best['median']:.1f}) among states "
-             f"with {min_institutions}+ institutions")
+    title = (f"{best['state']}'s institutions have the highest middle (median) {category} score in {year} "
+             f"({best['median']:.1f}) among states with {min_institutions}+ institutions")
     insight = (f"In {category} {year}, among the {len(shown)} states with at least {min_institutions} scored "
                f"institutions, {best['state']} has the highest median score ({best['median']:.1f}, n = {int(best['n'])}) "
                f"and {shown.iloc[-1]['state']} the lowest ({shown.iloc[-1]['median']:.1f}); {widest['state']} is the most "
@@ -366,8 +397,10 @@ def score_by_state(year: int | None = None, category: str = "Overall", min_insti
             + ", ".join(f"{s} ({n})" for s, n in zip(small["state"], small["n"])) if len(small) else None)
     if note and len(note) > 160:
         note = note[:157].rsplit(",", 1)[0] + ", …"
-    finish(fig, title, f"{category} ranking {year} · one box per state, sorted by median · number in brackets = "
-           f"institutions · dots = institutions", note=note, height=max(420, 170 + 34 * len(shown)))
+    finish(fig, title, f"Each dot is one institution · box = the middle half of a state's scores (IQR), its line = "
+                       f"middle value (median) · sorted by middle value · {showing(len(shown), len(table), 'states')} "
+                       f"(those with {min_institutions}+ scored institutions) · the answer is in colour",
+           note=note, height=max(420, 170 + 34 * len(shown)))
     method = (f"We take the {len(scored)} {category} institutions with a published overall score in {year}, group them by "
               f"state and draw one box plot per state with at least {min_institutions} institutions (box = Q1 to Q3, "
               f"line = median, whiskers = furthest scores within 1.5 × IQR, every institution as a dot). States are "

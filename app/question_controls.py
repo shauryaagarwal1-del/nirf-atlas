@@ -22,7 +22,7 @@ from core.questions import Question
 
 # Extra parameters worth changing live that the registry leaves at the engine default.
 EXTRA_PARAMS = {
-    "Q5.4": {"n": 12},
+    "Q5.4": {"n": 6},
     "Q6.1": {"top": 10},
     "Q7.3": {"by_band": False},
     "Q8.1": {"z_threshold": 2.0},

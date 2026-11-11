@@ -25,13 +25,13 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_year, category_years, change_years,
+from core.data import (BAND_ORDER, LABELS, PLAIN, SHORT, WORD, NirfInputError, category_year, category_years, change_years,
                        chart_labels, check_category, check_column, check_year, filter_df, find_institutions,
                        load_master, parameters_of, short_name)
 from core.result import ChartResult
 from core.stats import signed
-from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, MARIGOLD_INK, OTHER, UP, add_lollipops, color_map, finish,
-                        highlight_marker, label_points, ordinal_ramp, padded_range)
+from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, MARIGOLD, MARIGOLD_INK, OTHER, UP, add_lollipops,
+                        color_map, finish, highlight_marker, label_points, ordinal_ramp, padded_range, showing, tint)
 
 MAX_INSTITUTIONS = 8
 
@@ -96,13 +96,15 @@ def parameter_profile(institutions=None, year: int | None = None, category: str 
             vals = [sel.at[k, p] for p in params]
             where = [f"{_ordinal(int(pos.at[k, p]))} of {n_all}" for p in params]
             fig.add_trace(go.Bar(
-                x=xs, y=vals, name=name, marker_color=colors[name], customdata=np.stack([[LABELS[p] for p in params],
+                x=xs, y=vals, name=name, marker_color=colors[name], customdata=np.stack([[PLAIN[p] for p in params],
                                                                                          where], axis=1),
+                text=[f"{v:.0f}" for v in vals], textposition="outside", textfont=dict(size=10, color=INK_SECONDARY),
+                cliponaxis=False,
                 hovertemplate=(f"<b>{name}</b> (rank {sel.at[k, 'rank_raw']})<br>%{{customdata[0]}}: %{{y:.2f}}"
                                f"<br>%{{customdata[1]}} in {category} {year}<extra></extra>")))
         fig.update_layout(barmode="group", bargap=0.22, bargroupgap=0.06)
-        fig.update_yaxes(title_text="Parameter score (0-100)", range=[0, 105])
-        fig.update_xaxes(title_text="NIRF parameter")
+        fig.update_yaxes(title_text="Score (each parameter is out of 100)", range=[0, 108])
+        fig.update_xaxes(title_text="NIRF parameter", tickvals=xs, ticktext=[f"{WORD[p]}<br>({SHORT[p]})" for p in params])
     else:
         z = table[xs].to_numpy(dtype=float)
         where = [[f"{_ordinal(int(pos.at[k, p]))} of {n_all}" for p in params] for k in keys]
@@ -111,7 +113,8 @@ def parameter_profile(institutions=None, year: int | None = None, category: str 
             zmin=0, zmax=100, colorbar=dict(title=dict(text="Score")),
             hovertemplate="<b>%{y}</b><br>%{x}: %{z:.2f}<br>%{customdata} in " + f"{category} {year}<extra></extra>"))
         fig.update_yaxes(autorange="reversed", showgrid=False, title_text="Institution")
-        fig.update_xaxes(side="top", title_text="NIRF parameter")
+        fig.update_xaxes(side="top", title_text="NIRF parameter", tickvals=xs,
+                         ticktext=[f"{WORD[p]} ({SHORT[p]})" for p in params])
 
     # Insight: who leads on most parameters, and where the chosen institutions differ most / least.
     leaders = {p: table.loc[table[SHORT[p]].idxmax(), "institution"] for p in params}
@@ -123,12 +126,13 @@ def parameter_profile(institutions=None, year: int | None = None, category: str 
     if len(keys) == 1:
         best = max(params, key=lambda p: sel.at[keys[0], p])
         worst = min(params, key=lambda p: sel.at[keys[0], p])
-        title = f"{top}: strongest on {SHORT[best]} ({sel.at[keys[0], best]:.1f}), weakest on {SHORT[worst]} ({sel.at[keys[0], worst]:.1f})"
+        title = (f"{top}: strongest on {WORD[best].lower()} ({sel.at[keys[0], best]:.1f}), weakest on "
+                 f"{WORD[worst].lower()} ({sel.at[keys[0], worst]:.1f})")
         insight = (f"In {category} {year}, {top} scores highest on {SHORT[best]} ({sel.at[keys[0], best]:.1f}) and lowest "
                    f"on {SHORT[worst]} ({sel.at[keys[0], worst]:.1f}).")
     else:
-        title = (f"{top} leads on {lead_counts.iloc[0]} of {len(params)} parameters; the biggest difference is in "
-                 f"{SHORT[widest]} ({spread[widest]:.0f} points)")
+        title = (f"{top} scores highest on {lead_counts.iloc[0]} of the {len(params)} parameters; {group} differ most "
+                 f"on {WORD[widest].lower()} ({spread[widest]:.0f} points apart)")
         insight = (f"Among {group} in {category} {year}, {top} has the highest score on "
                    f"{', '.join(SHORT[p] for p in params if leaders[p] == top)}. They differ most on {SHORT[widest]} "
                    f"({table[SHORT[widest]].min():.1f} to {table[SHORT[widest]].max():.1f}, a {spread[widest]:.1f}-point "
@@ -137,7 +141,11 @@ def parameter_profile(institutions=None, year: int | None = None, category: str 
         if len(ranks) == len(keys) and ranks.nunique() == 1:
             insight += (f" All of them share rank {int(ranks.iloc[0])} (a tie: NIRF gave them the same overall rank), "
                         f"so the parameters show how each one reaches that rank.")
-    subtitle = f"{category} ranking {year}" + (f" · {chosen}" if chosen else "") + " · each parameter out of 100"
+    subtitle = (f"Each group of bars is one parameter, each colour one institution · taller = higher score · "
+                f"number = the score · {category} {year}" + (f", {chosen}" if chosen else "")
+                if view == "bar" else
+                f"One row per institution, one column per parameter · darker = higher score · number = the score · "
+                f"{category} {year}" + (f", {chosen}" if chosen else ""))
     finish(fig, title, subtitle, legend_title="Institution" if view == "bar" else None,
            height=520 if view == "bar" else max(360, 200 + 46 * len(keys)))
     shown = ("a grouped bar chart: parameters on the x-axis, one bar per institution in each group"
@@ -178,47 +186,54 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
     quad = d[d["in_quadrant"]].sort_values("z_gap", ascending=False)
     label_keys = quad["institution_key"].head(max(int(n_labels), 0)).tolist()
 
+    corner = f"Strong {WORD[hi].lower()}, weak {WORD[lo].lower()}"
     fig = go.Figure()
     groups = ((~d["in_quadrant"], "Other institutions", OTHER, 8),
-              (d["in_quadrant"], f"High {SHORT[hi]}, low {SHORT[lo]}", CATEGORICAL[1], 10))
+              (d["in_quadrant"], f"{corner} ({len(quad)})", CATEGORICAL[1], 10))
     for mask, name, color, size in groups:
         t = d[mask]
         fig.add_trace(go.Scatter(
             x=t[lo], y=t[hi], mode="markers", name=name, marker=highlight_marker(color, size, 0.85),
             customdata=np.stack([t["canonical_name"], t["rank_raw"], t["z_gap"].round(2)], axis=1),
-            hovertemplate=(f"<b>%{{customdata[0]}}</b><br>Rank %{{customdata[1]}}<br>{SHORT[hi]}: %{{y:.2f}} · "
-                           f"{SHORT[lo]}: %{{x:.2f}}<br>z-gap ({SHORT[hi]} − {SHORT[lo]}): %{{customdata[2]}}"
+            hovertemplate=(f"<b>%{{customdata[0]}}</b><br>Rank %{{customdata[1]}}<br>{PLAIN[hi]}: %{{y:.2f}} · "
+                           f"{PLAIN[lo]}: %{{x:.2f}}<br>gap in standard units (z): %{{customdata[2]}}"
                            f"<extra></extra>")))
+    x_range, y_range = padded_range(d[lo]), padded_range(d[hi])
+    # The answer corner is shaded and named in words; dashed lines are the middle values that split the chart.
+    fig.add_shape(type="rect", x0=x_range[0], x1=med_lo, y0=med_hi, y1=y_range[1], xref="x", yref="y",
+                  fillcolor=tint(MARIGOLD, 0.12), line=dict(width=0), layer="below")
     fig.add_vline(x=med_lo, line=dict(color=INK_SECONDARY, width=1, dash="dash"),
-                  annotation_text=f"median {SHORT[lo]} {med_lo:.1f}", annotation_position="bottom right",
-                  annotation_font=dict(size=11, color=INK_SECONDARY))
+                  annotation_text=f"middle value (median) of {WORD[lo].lower()} score: {med_lo:.1f}",
+                  annotation_position="bottom right", annotation_font=dict(size=11, color=INK_SECONDARY))
     fig.add_hline(y=med_hi, line=dict(color=INK_SECONDARY, width=1, dash="dash"),
-                  annotation_text=f"median {SHORT[hi]} {med_hi:.1f}", annotation_position="bottom right",
-                  annotation_font=dict(size=11, color=INK_SECONDARY))
-    fig.add_annotation(text=f"<b>high {SHORT[hi]}, low {SHORT[lo]}</b>", xref="x domain", yref="y domain", x=0.01,
-                       y=0.99, xanchor="left", yanchor="top", showarrow=False, font=dict(color=MARIGOLD_INK, size=12))
-    fig.update_xaxes(title_text=LABELS[lo], showgrid=True)
-    fig.update_yaxes(title_text=LABELS[hi])
+                  annotation_text=f"middle value (median) of {WORD[hi].lower()} score: {med_hi:.1f}",
+                  annotation_position="bottom right", annotation_font=dict(size=11, color=INK_SECONDARY))
+    fig.add_annotation(text=f"<b>{corner}</b><br>the answer: {len(quad)} institutions", xref="x domain",
+                       yref="y domain", x=0.01, y=0.99, xanchor="left", yanchor="top", showarrow=False, align="left",
+                       font=dict(color=MARIGOLD_INK, size=12))
+    fig.update_xaxes(title_text=PLAIN[lo], showgrid=True)
+    fig.update_yaxes(title_text=PLAIN[hi])
     fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
     lab = d.set_index("institution_key").loc[label_keys]
-    label_points(fig, lab[lo], lab[hi], lab["label"], padded_range(d[lo]), padded_range(d[hi]),
-                 avoid_x=d[lo], avoid_y=d[hi])
+    label_points(fig, lab[lo], lab[hi], lab["label"], x_range, y_range, avoid_x=d[lo], avoid_y=d[hi])
 
     if len(quad):
         best = quad.iloc[0]
-        title = (f"{len(quad)} {category} institutions in {year} score above the median on {SHORT[hi]} but below it "
-                 f"on {SHORT[lo]}")
+        title = (f"{len(quad)} {category} institutions have strong {WORD[hi].lower()} but weak {WORD[lo].lower()} "
+                 f"scores in {year} (above the middle on one, below it on the other)")
         insight = (f"In {category} {year}, {len(quad)} of {len(d)} institutions have {SHORT[hi]} above the median "
                    f"({med_hi:.1f}) but {SHORT[lo]} below the median ({med_lo:.1f}). The clearest case is "
                    f"{best['canonical_name']} (rank {best['rank_raw']}: {SHORT[hi]} {best[hi]:.1f}, {SHORT[lo]} "
                    f"{best[lo]:.1f}, z-gap {best['z_gap']:.2f})"
                    + (f", followed by {', '.join(quad['label'].iloc[1:4])}." if len(quad) > 1 else "."))
     else:
-        title = f"No {category} institution in {year} is above the median on {SHORT[hi]} and below it on {SHORT[lo]}"
+        title = (f"No {category} institution in {year} has strong {WORD[hi].lower()} with weak {WORD[lo].lower()} "
+                 f"scores")
         insight = (f"In {category} {year}, no institution combines {SHORT[hi]} above the median ({med_hi:.1f}) with "
                    f"{SHORT[lo]} below the median ({med_lo:.1f}); the two parameters rise and fall together here.")
-    finish(fig, title, f"{category} ranking {year} · dashed lines = medians · labelled: the {min(len(quad), int(n_labels))} "
-           f"largest gaps", legend_title="Group")
+    finish(fig, title, f"Each dot is one institution · the shaded corner is the answer · dashed lines = the middle "
+                       f"value (median) of each score · the {min(len(quad), int(n_labels))} named are the clearest cases",
+           legend_title="Key")
     method = (f"We take the {len(d)} {category} institutions of {year} with both {SHORT[hi]} and {SHORT[lo]} published. "
               f"'High' and 'low' are relative to the median of the same year and category (median = middle value; half "
               f"of the institutions are above it). The top-left quadrant holds institutions above the median on "
@@ -236,7 +251,7 @@ def gap_finder(param_high: str = "rpc", param_low: str = "tlr", year: int | None
 
 
 def improved_despite_decline(category: str = "Overall", start_year: int | None = None, end_year: int | None = None,
-                             n: int = 12) -> ChartResult:
+                             n: int = 6) -> ChartResult:
     """Answers questions like: "Which institutions have improved their overall scores despite declining scores
     in one or more parameters?" (Q5.4)
 
@@ -294,20 +309,24 @@ def improved_despite_decline(category: str = "Overall", start_year: int | None =
     fig = make_subplots(rows=rows_n, cols=cols_n, shared_yaxes=True, shared_xaxes=True,
                         subplot_titles=[short_name(labels[k], 30) for k in show.index], vertical_spacing=0.12 / max(rows_n - 1, 1) + 0.06,
                         horizontal_spacing=0.025)
-    xs = [SHORT[p] for p in params] + ["Overall"]
+    xs = [WORD[p] for p in params] + ["Overall"]
+    span_y = max(abs(float(show[cols].min().min())), abs(float(show[cols].max().max())))
     for i, k in enumerate(show.index):
         r, c = i // cols_n + 1, i % cols_n + 1
         vals = [show.at[k, p] for p in params] + [show.at[k, "score"]]
-        colors = [UP if v > 0 else DOWN for v in vals[:-1]] + [INK]
+        colors = [OTHER if v > 0 else DOWN for v in vals[:-1]] + [UP]
         fig.add_trace(go.Bar(
             x=xs, y=vals, marker_color=colors, showlegend=False,
-            customdata=[LABELS[p] for p in params] + ["Overall score"],
+            text=[f"{v:+.0f}" for v in vals], textposition="outside", textfont=dict(size=10, color=INK_SECONDARY),
+            cliponaxis=False, customdata=[PLAIN[p] for p in params] + ["Overall score"],
             hovertemplate=(f"<b>{b.at[k, 'canonical_name']}</b><br>%{{customdata}}: %{{y:+.2f}} points "
                            f"({start_year}→{end_year})<extra></extra>")), row=r, col=c)
-    for name, color in (("Parameter rose", UP), ("Parameter fell", DOWN), ("Overall score change", INK)):
+    for name, color in (("Overall score went up", UP), ("A parameter went down", DOWN),
+                        ("A parameter went up", OTHER)):
         fig.add_trace(go.Bar(x=[None], y=[None], name=name, marker_color=color), row=1, col=1)
-    fig.update_yaxes(zeroline=True, zerolinecolor=INK_SECONDARY, zerolinewidth=1)
-    fig.update_yaxes(title_text="Change (points)", col=1)
+    fig.update_yaxes(zeroline=True, zerolinecolor=INK_SECONDARY, zerolinewidth=1,
+                     range=[-span_y * 1.25, span_y * 1.25])
+    fig.update_yaxes(title_text="Change in points", col=1)
     fig.update_xaxes(tickfont=dict(size=10), showline=True)
     fig.update_xaxes(title_text="Parameter", title_font=dict(size=11), row=rows_n)
     fig.update_annotations(font=dict(size=12, color=INK))
@@ -315,16 +334,18 @@ def improved_despite_decline(category: str = "Overall", start_year: int | None =
 
     common = fell.loc[q.index].sum().sort_values(ascending=False)
     top = q.index[0]
-    title = (f"{len(q)} of {len(improved)} {category} institutions raised their score {start_year}→{end_year} "
-             f"while at least one parameter fell")
+    title = (f"{len(q)} of the {len(improved)} {category} institutions whose overall score rose from {start_year} to "
+             f"{end_year} did so although at least one parameter fell")
     insight = (f"Of the {len(both)} {category} institutions scored in both {start_year} and {end_year}, {len(improved)} "
                f"improved their overall score, and {len(q)} of those did so despite a fall in at least one parameter "
                f"(most often {SHORT[common.index[0]]}: {int(common.iloc[0])} institutions). The largest such gain is "
                f"{b.at[top, 'canonical_name']} ({signed(q.at[top, 'score'], 1)} points, although "
                f"{table.at[0, 'parameters_declined']} fell).")
-    finish(fig, title, f"{category} · change {start_year}→{end_year} · first {len(show)} of {len(q)} by overall gain · "
-           f"every small chart uses the same scale", note="NIRF adjusted some sub-metrics over the years, so part of a "
-           "change can come from the method.", height=170 + 210 * rows_n, legend_title="Change")
+    finish(fig, title, f"{showing(len(show), len(q))}: the {len(show)} with the biggest overall-score gain · each "
+                       f"small chart is one institution · bars above zero = went up, below = went down · number = "
+                       f"points changed {start_year}→{end_year} · same scale everywhere",
+           note="NIRF adjusted some sub-metrics over the years, so part of a change can come from the method.",
+           height=190 + 230 * rows_n, legend_title="Colour")
     method = (f"For each {category} institution with published scores in both {start_year} and {end_year} "
               f"({len(both)}), change = {end_year} value − {start_year} value for the overall score and for each "
               f"parameter ({', '.join(SHORT[p] for p in params)}). An institution qualifies if its overall score change "
@@ -362,31 +383,35 @@ def strongest_weakest_gap(year: int | None = None, category: str = "Overall", n:
     d["institution"] = d["institution_key"].map(labels)
     top = d.head(n).iloc[::-1]
 
+    word = {SHORT[p]: WORD[p] for p in params}
     fig = go.Figure()
     add_lollipops(
-        fig, top["gap"], top["institution"], [CATEGORICAL[0]] * len(top),
-        text=[f"{s} − {w}" for s, w in zip(top["strongest"], top["weakest"])],
+        fig, top["gap"], top["institution"], [CATEGORICAL[0] if g == top["gap"].max() else OTHER for g in top["gap"]],
+        text=[f"{word[s]} {sv:.0f} vs {word[w]} {wv:.0f}" for s, w, sv, wv in
+              zip(top["strongest"], top["weakest"], top["strongest_value"], top["weakest_value"])],
         customdata=np.stack([top["canonical_name"], top["rank_raw"], top["strongest"], top["strongest_value"],
                              top["weakest"], top["weakest_value"]], axis=1),
         hovertemplate=("<b>%{customdata[0]}</b> (rank %{customdata[1]})<br>Strongest: %{customdata[2]} "
                        "%{customdata[3]:.2f}<br>Weakest: %{customdata[4]} %{customdata[5]:.2f}<br>Gap: %{x:.2f} "
                        "points<extra></extra>"))
-    fig.update_xaxes(title_text="Gap: strongest − weakest parameter (points)", showgrid=True,
-                     range=[0, top["gap"].max() * 1.15])
+    fig.update_xaxes(title_text="Gap between the institution's best and worst parameter score (points)", showgrid=True,
+                     range=[0, top["gap"].max() * 1.45])
     fig.update_yaxes(title_text="Institution", showgrid=False)
 
     first = d.iloc[0]
     pair = (d["strongest"] + " − " + d["weakest"]).value_counts()
-    title = (f"{first['institution']} has the most lopsided profile in {category} {year}: {first['strongest']} "
-             f"{first['strongest_value']:.0f} vs {first['weakest']} {first['weakest_value']:.0f}")
+    title = (f"{first['institution']} has the most uneven scores in {category} {year}: {word[first['strongest']].lower()} "
+             f"{first['strongest_value']:.0f} vs {word[first['weakest']].lower()} {first['weakest_value']:.0f} "
+             f"(gap {first['gap']:.0f} points)")
     insight = (f"In {category} {year}, {first['canonical_name']} has the largest gap between its strongest and weakest "
                f"parameter ({first['strongest']} {first['strongest_value']:.1f} − {first['weakest']} "
                f"{first['weakest_value']:.1f} = {first['gap']:.1f} points). Across all {len(d)} institutions the median "
                f"gap is {d['gap'].median():.1f}; the most common pattern is strongest {pair.index[0].split(' − ')[0]}, "
                f"weakest {pair.index[0].split(' − ')[1]} ({pair.iloc[0]} institutions).")
-    finish(fig, title, f"{category} ranking {year} · the {len(top)} largest gaps of {len(d)} institutions · label = "
-           f"strongest − weakest parameter", note="Parameters differ in typical level (e.g. PR is usually far below GO), "
-           "so part of every gap reflects how hard each parameter is.", height=max(420, 170 + 30 * len(top)))
+    finish(fig, title, f"Each stem is one institution · longer = bigger gap between its best and worst score · label = "
+                       f"best vs worst · {showing(len(top), len(d))}, the {len(top)} biggest gaps · the answer is in colour",
+           note="Parameters differ in typical level (e.g. perception is usually far below graduation), so part of "
+                "every gap reflects how hard each parameter is.", height=max(420, 170 + 30 * len(top)))
     method = (f"For each of the {len(d)} {category} institutions of {year} with all parameters published "
               f"({', '.join(SHORT[p] for p in params)}, each out of 100) we find the highest and the lowest of its "
               f"parameter scores; gap = highest − lowest. We sort by gap and draw the {len(top)} largest as a lollipop "

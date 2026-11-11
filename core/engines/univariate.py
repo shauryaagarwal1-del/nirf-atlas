@@ -27,8 +27,8 @@ from core.data import (BAND_ORDER, NirfInputError, category_years, check_categor
                        load_master, short_name)
 from core.result import ChartResult
 from core.stats import describe
-from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, INK, INK_SECONDARY, MARIGOLD_INK, RAMP, SURFACE, finish,
-                        ordinal_ramp)
+from core.theme import (AXIS, CATEGORICAL, CROSS_CATEGORY_NOTE, INK, INK_SECONDARY, MARIGOLD_INK, OTHER, RAMP,
+                        SURFACE, finish, ordinal_ramp, tint)
 
 
 def _scored(category: str | None, year: int | None) -> tuple[pd.DataFrame, str, int]:
@@ -62,20 +62,21 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
 
     fig = go.Figure(go.Histogram(
         x=scored["score"], xbins=dict(start=start, end=s["max"] + width, size=width), marker_color=CATEGORICAL[0],
-        opacity=0.75, name="Institutions per interval",
+        opacity=0.75, name="Institutions in each score range",
         hovertemplate="Score %{x}<br>%{y} institutions<extra></extra>"))
     if s["n"] >= 3 and s["std"] > 0:
         kde = stats.gaussian_kde(scored["score"].astype(float))           # bandwidth: Scott's rule
         bw = float(np.sqrt(kde.covariance[0, 0]))                         # width (SD) of each bell curve
         grid = np.linspace(s["min"] - 3 * bw, s["max"] + 3 * bw, 300)     # 3 bell widths: curve fades to ~0
         fig.add_trace(go.Scatter(
-            x=grid, y=kde(grid) * s["n"] * width, mode="lines", name="Density curve (KDE)",
+            x=grid, y=kde(grid) * s["n"] * width, mode="lines", name="Smoothed shape (KDE)",
             line=dict(color=INK_SECONDARY, width=2.5),
             hovertemplate="Score %{x:.1f}<br>Smoothed: %{y:.1f} institutions per interval<extra></extra>"))
-    for value, label, color, ink, pos in ((s["mean"], "Mean", INK, INK, "top right"),
-                                          (s["median"], "Median", CATEGORICAL[1], MARIGOLD_INK, "top left")):
+    for value, label, color, ink, pos, shift in ((s["mean"], "Average (mean)", INK, INK, "top right", -2),
+                                                 (s["median"], "Middle value (median)", CATEGORICAL[1], MARIGOLD_INK,
+                                                  "top left", -22)):
         fig.add_vline(x=value, line=dict(color=color, width=2), annotation_text=f"{label} {value:.1f}",
-                      annotation_position=pos, annotation_font=dict(color=ink, size=12))
+                      annotation_position=pos, annotation_font=dict(color=ink, size=12), annotation_yshift=shift)
     fig.update_xaxes(title_text="Overall score (0-100)")
     fig.update_yaxes(title_text="Number of institutions")
     fig.update_layout(bargap=0.04, legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
@@ -84,12 +85,13 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
     shape = ("right-skewed: a few high scorers pull the mean above the median" if gap > 0.5 and s["skew"] > 0.3 else
              "left-skewed: a few low scorers pull the mean below the median" if gap < -0.5 and s["skew"] < -0.3 else
              "roughly symmetric: mean and median are close")
-    title = f"{category} {year}: most scores lie between {s['q1']:.0f} and {s['q3']:.0f}; the distribution is {shape.split(':')[0]}"
+    title = (f"Half of all {category} institutions score between {s['q1']:.1f} and {s['q3']:.1f} in {year}; "
+             f"the shape is {shape.split(':')[0]}")
     insight = (f"In {category} {year}, the {s['n']} published scores run from {s['min']:.1f} to {s['max']:.1f}; the mean "
                f"is {s['mean']:.1f} and the median {s['median']:.1f}, so the distribution is {shape} "
                f"(skewness {s['skew']:.2f}).")
-    finish(fig, title, f"{category} ranking {year} · {s['n']} institutions with a published score · "
-           f"bars {width:g} points wide · curve = smoothed shape (KDE)", legend_title="Layer")
+    finish(fig, title, f"Each bar = how many of the {s['n']} institutions score in that {width:g}-point range · "
+                       f"taller = more institutions · the curve is the smoothed shape (KDE)", legend_title="Key")
     method = (f"We take every {category} institution with a published overall score in {year} ({s['n']}) and count "
               f"how many fall into each {width:g}-point score interval (histogram). The grey curve is a kernel "
               f"density estimate (KDE): a small bell curve is placed on every institution's score and they are added "
@@ -97,7 +99,9 @@ def score_distribution(year: int | None = None, category: str = "Overall") -> Ch
               f"width chosen by Scott's rule; the curve is multiplied by {s['n']} × {width:g} so it is in the same "
               f"'institutions per interval' units as the bars). Because each bell has a width, the curve runs a "
               f"little beyond the lowest and highest score; it shows shape, not extra institutions. The black line is the mean (sum of scores / count), "
-              f"the orange line the median (the middle score after sorting). Skewness measures lopsidedness: "
+              f"the orange line the median (the middle score after sorting). The title's 'half of all institutions' "
+              f"is the middle half: from Q1 (a quarter score below it) to Q3 (a quarter score above it), the IQR. "
+              f"Skewness measures lopsidedness: "
               f"positive = a long tail of high scores. NIRF publishes scores only for exact ranks, so band-only "
               f"institutions are not included.")
     table = (scored[["canonical_name", "state", "rank_raw", "score"]].sort_values("score", ascending=False)
@@ -130,15 +134,20 @@ def rank_distribution(year: int | None = None, category: str = "Overall") -> Cha
     total = counts.sum(axis=1)
 
     fig = go.Figure()
+    plain = {"Exact rank published": "Given an exact rank (e.g. 7th)",
+             "Only rank band published": "Given only a band (e.g. 101-150)"}
     for k, color in (("Exact rank published", CATEGORICAL[0]), ("Only rank band published", RAMP[3])):
         if counts[k].sum():
             fig.add_trace(go.Bar(
-                x=counts.index, y=counts[k], name=k, marker_color=color,
+                x=counts.index, y=counts[k], name=plain[k], marker_color=color,
+                text=counts[k].where(counts[k] > 0, ""), textposition="inside", insidetextanchor="middle",
+                textfont=dict(size=12),
                 customdata=np.stack([total, width, (10 * total / width).round(1)], axis=1),
                 hovertemplate=("<b>Ranks %{x}</b><br>" + k + ": %{y}<br>All in band: %{customdata[0]} "
                                "(band covers %{customdata[1]} positions, %{customdata[2]} per 10 positions)<extra></extra>")))
-    fig.add_trace(go.Scatter(x=counts.index, y=total, mode="text", text=total, textposition="top center",
-                             textfont=dict(color=INK_SECONDARY, size=11), showlegend=False, hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=counts.index, y=total, mode="text", text=[f"{v} in all" for v in total],
+                             textposition="top center", textfont=dict(color=INK, size=12), showlegend=False,
+                             hoverinfo="skip"))
     fig.update_layout(barmode="stack", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
     fig.update_xaxes(title_text="Rank band (1 = best)", type="category")
     fig.update_yaxes(title_text="Number of institutions", range=[0, total.max() * 1.15])
@@ -146,14 +155,16 @@ def rank_distribution(year: int | None = None, category: str = "Overall") -> Cha
     n_exact, n_band = int(counts["Exact rank published"].sum()), int(counts["Only rank band published"].sum())
     ties = int(rows["is_tie"].sum())
     max_exact = rows["rank"].max()
-    title = f"{category} {year}: {len(ranked)} institutions ranked, {n_exact} with an exact rank"
+    title = (f"{category} {year}: {len(ranked)} institutions ranked; {n_exact} got an exact rank"
+             + (f", {n_band} only a band" if n_band else ""))
     insight = (f"In {category} {year}, NIRF ranked {len(ranked)} institutions: {n_exact} with an exact rank "
                f"(1-{max_exact})" + (f" and {n_band} only within bands (" + ", ".join(
                    f"{b}: {int(counts.at[b, 'Only rank band published'])}" for b in order
                    if counts.at[b, "Only rank band published"]) + ")" if n_band else "") +
                (f"; {ties} institutions share a rank with another (ties)." if ties else "."))
-    finish(fig, title, f"{category} ranking {year} · institutions per rank band",
-           note="Bands have different widths (1-10 covers 10 positions, 51-100 covers 50).")
+    finish(fig, title, f"Each bar is one rank band (1 = best, on the left) · taller = more institutions · "
+                       f"the number on top = all institutions in that band",
+           note="Bands have different widths (1-10 covers 10 positions, 51-100 covers 50).", legend_title="Key")
     method = (f"Every institution in the {category} {year} list is placed in a standard rank band using its exact "
               f"rank, or the band NIRF published for it. We count institutions per band and colour the part with "
               f"an exact rank differently from the part NIRF published only as a band. Because NIRF numbers ranks "
@@ -200,6 +211,18 @@ def summary_stats(year: int | None = None, category: str = "Overall") -> ChartRe
     fig.update_xaxes(title_text="Overall score (0-100)", showgrid=True)
     fig.update_yaxes(showgrid=False, showticklabels=False)
     fig.update_layout(showlegend=False)
+    # Plain-word labels on the picture itself: lowest, highest, middle value, average, typical range.
+    if s["n"] > 1:
+        for value, label, y, anchor in ((s["min"], f"lowest {s['min']:.1f}", 0.5, "left"),
+                                        (s["max"], f"highest {s['max']:.1f}", 0.5, "right"),
+                                        (s["median"], f"middle value (median) {s['median']:.1f}", 0.42, "center"),
+                                        (s["mean"], f"average (mean) {s['mean']:.1f}", -0.72, "center")):
+            fig.add_annotation(x=value, y=y, yref="y", text=label, showarrow=False, xanchor=anchor, yanchor="bottom",
+                               font=dict(size=11, color=INK), bgcolor=tint(SURFACE, 0.8))
+        fig.add_annotation(x=(s["q1"] + s["q3"]) / 2, y=0.26, yref="y", showarrow=False, xanchor="center",
+                           text=f"typical range: middle half (IQR) {s['q1']:.1f} to {s['q3']:.1f}",
+                           font=dict(size=11, color=INK_SECONDARY), bgcolor=tint(SURFACE, 0.8))
+        fig.update_yaxes(range=[-0.85, 0.62])
 
     if s["n"] == 1:      # one institution (e.g. a state filter): its score is the mean, median, min and max
         title = f"{category} {year}: only one published score ({s['mean']:.1f}, {short_name(lo['canonical_name'])})"
@@ -207,13 +230,15 @@ def summary_stats(year: int | None = None, category: str = "Overall") -> ChartRe
                    f" with {s['mean']:.1f}, which is at once the mean, median, minimum and maximum; one value has "
                    f"no spread, so the standard deviation and IQR cannot be calculated.")
     else:
-        title = f"{category} {year}: mean score {s['mean']:.1f}, median {s['median']:.1f}, range {s['min']:.1f}-{s['max']:.1f}"
+        title = (f"{category} {year}: average score {s['mean']:.1f}, middle value {s['median']:.1f}, "
+                 f"lowest {s['min']:.1f}, highest {s['max']:.1f}")
         insight = (f"In {category} {year}, the {s['n']} published scores have a mean of {s['mean']:.1f} and a median "
                    f"of {s['median']:.1f}; the lowest is {s['min']:.1f} ({short_name(lo['canonical_name'])}) and the "
                    f"highest {s['max']:.1f} ({short_name(hi['canonical_name'])}), with a standard deviation of "
                    f"{s['std']:.1f}.")
-    finish(fig, title, "Box = middle 50% (Q1 to Q3), line inside = median, dashed diamond = mean ± 1 SD, "
-           "dots = institutions", height=400)
+    finish(fig, title, "Each dot is one institution · box = the middle half of institutions (IQR) · line in the "
+                       "box = middle value (median) · dashed diamond = average (mean) ± 1 standard deviation",
+           height=420)
     method = (f"Calculated on the {s['n']} institutions with a published {category} score in {year}. Mean = sum / "
               f"count; median = the middle value after sorting; min and max = lowest and highest; standard "
               f"deviation (sample, divide by n−1) = typical distance from the mean; Q1 and Q3 = the scores below "
@@ -253,22 +278,26 @@ def quartile_shares(year: int | None = None, category: str = "Overall", mode: st
                           "score_to": [round(b[1], 2) for b in bounds], "institutions": counts.values,
                           "share_pct": shares.round(1).values})
 
-    colors = ordinal_ramp(4)
+    # The biggest group (the answer) in teal, the other groups in greys that get lighter away from it.
+    biggest = int(shares.values.argmax())
+    greys = [OTHER, "#c9cdda", "#dfe2ec", "#eceef4"]
+    colors = [CATEGORICAL[0] if i == biggest else greys[min(abs(i - biggest), 3)] for i in range(4)]
+    legend_names = [f"Scores {n}" for n in names] if mode == "score_range" else names
     fig = go.Figure()
-    for name, c, n, p in zip(names, colors, counts.values, shares.values):
+    for name, c, n, p in zip(legend_names, colors, counts.values, shares.values):
         fig.add_trace(go.Bar(
             x=[p], y=[f"{category} {year}"], name=name, orientation="h", marker=dict(color=c, line=dict(width=2, color=SURFACE)),
-            text=[f"{p:.0f}%" if p >= 6 else ""], textposition="inside", insidetextanchor="middle",
-            textfont=dict(color="white" if colors.index(c) >= 2 else INK, size=13),
+            text=[f"{p:.0f}% ({n})" if p >= 9 else f"{p:.0f}%" if p >= 4 else ""], textposition="inside",
+            insidetextanchor="middle", textfont=dict(size=14),
             hovertemplate=f"<b>{name}</b><br>{n} institutions ({p:.1f}%)<extra></extra>"))
     fig.update_layout(barmode="stack", barcornerradius=0, legend=dict(orientation="h", x=0, y=1.02, yanchor="bottom"),
-                      margin=dict(t=130))
+                      margin=dict(t=130), bargap=0.15)
     fig.update_xaxes(title_text="Share of scored institutions (%)", range=[0, 100], ticksuffix="%", showgrid=True)
     fig.update_yaxes(showgrid=False, showticklabels=False)
 
     if mode == "score_range":
         main = shares.idxmax()
-        title = f"{shares.max():.0f}% of {category} {year} institutions score {main}"
+        title = f"{shares.max():.0f}% of {category} institutions score between {main.replace('-', ' and ')} in {year}"
         insight = (f"On the fixed 0-100 scale, {category} {year} scores fall " + ", ".join(
             f"{p:.0f}% in {n}" for n, p in shares.items()) + f" (n = {s['n']}); most institutions sit in the "
                    f"{main} quarter of the scale.")
@@ -278,8 +307,9 @@ def quartile_shares(year: int | None = None, category: str = "Overall", mode: st
                    f"25% each by construction ({', '.join(f'{p:.0f}%' for p in shares)}); what they tell us are the "
                    f"cut points: a quarter score below {s['q1']:.1f}, half below {s['median']:.1f}, and the top "
                    f"quarter above {s['q3']:.1f}.")
-    finish(fig, title, f"{'Fixed score ranges 0-25 / 25-50 / 50-75 / 75-100' if mode == 'score_range' else 'Statistical quartiles of this year’s scores'}"
-           f" · {s['n']} institutions", height=360, legend_title="Score group")
+    finish(fig, title, f"One bar = all {s['n']} institutions · each piece = the share scoring in that range "
+                       f"({'fixed quarters of the 0-100 scale' if mode == 'score_range' else 'this year’s statistical quartiles'})"
+                       f" · the biggest piece is in colour", height=400, legend_title="Score group")
     method = ("Two meanings of 'quartile'. Score-range quartiles cut the 0-100 scale into four fixed quarters "
               "(0-25, 25-50, 50-75, 75-100) and count institutions in each, so the shares show where institutions "
               "sit on the absolute scale and can be very uneven (NIRF scores rarely fall below 25). Statistical "
@@ -315,26 +345,33 @@ def spread_by_category(year: int | None = None) -> ChartResult:
     table = table.sort_values("median", ascending=False).round(2)
     table.index.name = "category"
 
+    wide, narrow = table["iqr"].idxmax(), table["iqr"].idxmin()
     fig = go.Figure()
-    for c in table.index[::-1]:          # highest median drawn at the top
+    for c in table.index[::-1]:          # highest median drawn at the top; the widest box (the answer) in colour
         t = scored[scored["category_std"].eq(c)]
+        col = CATEGORICAL[0] if c == wide else OTHER
         fig.add_trace(go.Box(
-            x=t["score"], name=c, orientation="h", marker_color=CATEGORICAL[0], line_color=CATEGORICAL[0],
+            x=t["score"], name=c, orientation="h", marker_color=col, line_color=col,
+            fillcolor=tint(col, 0.25 if c == wide else 0.12),
             boxpoints="outliers", customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
             hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} · score %{x:.2f}<extra>" + c + "</extra>"))
+        fig.add_annotation(x=float(table.at[c, "max"]) + 1, y=c, text=f"middle half spans {table.at[c, 'iqr']:.1f} pts",
+                           showarrow=False, xanchor="left", font=dict(size=11, color=INK if c == wide else INK_SECONDARY))
     fig.update_layout(showlegend=False)
-    fig.update_xaxes(title_text="Overall score (0-100, within each category)", showgrid=True)
+    fig.update_xaxes(title_text="Overall score (0-100, within each category)", showgrid=True,
+                     range=[float(table["min"].min()) - 2, float(table["max"].max()) + 22])
     fig.update_yaxes(title_text="Category", showgrid=False)
 
-    wide, narrow = table["iqr"].idxmax(), table["iqr"].idxmin()
-    title = f"In {year}, {wide} scores are the most spread out (IQR {table.at[wide, 'iqr']:.1f})"
+    title = (f"{wide} has the most spread-out scores in {year}: its middle half spans {table.at[wide, 'iqr']:.1f} "
+             f"points (IQR)")
     insight = (f"In {year}, {wide} has the widest spread of scores (IQR {table.at[wide, 'iqr']:.1f}, SD "
                f"{table.at[wide, 'std']:.1f}) and {narrow} the narrowest (IQR {table.at[narrow, 'iqr']:.1f}); "
                f"{table.index[0]} has the highest median ({table['median'].iloc[0]:.1f}).")
     if no_scores:
         insight += f" No scores are published for {', '.join(no_scores)}."
-    finish(fig, title, f"{year} · one box per category, sorted by median · box = middle 50%, dots = outliers (1.5 × IQR rule)",
-           note=CROSS_CATEGORY_NOTE, height=max(420, 170 + 34 * len(table)))
+    finish(fig, title, f"One box per category ({year}) · the box is the middle half of its scores (IQR): a wider box = "
+                       f"more spread out · line in the box = middle value (median) · dots = far-out scores · the "
+                       f"answer is in colour", note=CROSS_CATEGORY_NOTE, height=max(420, 170 + 34 * len(table)))
     method = (f"For each category ranked in {year} we take the published overall scores and draw a box plot: the box "
               f"runs from Q1 to Q3 (the middle half), the line inside is the median, whiskers reach the furthest "
               f"scores within 1.5 × IQR of the box, and dots beyond are outliers. Spread is measured by the IQR "

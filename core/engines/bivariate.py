@@ -23,12 +23,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from core.data import (BAND_ORDER, LABELS, SHORT, NirfInputError, category_years, check_category, check_column, check_year,
-                       filter_df, fmt_years, load_master, parameters_of)
+from core.data import (BAND_ORDER, LABELS, PLAIN, SHORT, WORD, NirfInputError, category_years, check_category,
+                       check_column, check_year, filter_df, fmt_years, load_master, parameters_of)
 from core.result import ChartResult
 from core.stats import correlate, p_text, signed, strength
-from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, DIVERGING, DOWN, INK_SECONDARY, UP, color_map, finish,
-                        ordinal_ramp)
+from core.theme import (CATEGORICAL, CROSS_CATEGORY_NOTE, DIVERGING, DOWN, INK, INK_SECONDARY, MARIGOLD, OTHER, UP,
+                        color_map, finish, ordinal_ramp, rank_axis_words)
 
 COLOR_BY = {"region", "state", "rank_band", "category"}
 MAX_STATE_COLORS = 7
@@ -44,6 +44,17 @@ def _category_year(category: str, year: int | None) -> tuple[pd.DataFrame, str, 
 def _stat_line(c: dict) -> str:
     return (f"Pearson r = {c['pearson_r']:.2f} · Spearman ρ = {c['spearman_rho']:.2f} · "
             f"R² = {c['r2']:.2f} · {p_text(c['pearson_p'])} · n = {c['n']}")
+
+
+def _plain_stat_line(c: dict) -> str:
+    """The same statistics with plain words first, for the note under the chart."""
+    return (f"Straight-line link (Pearson r) = {c['pearson_r']:.2f} · rank-order link (Spearman ρ) = "
+            f"{c['spearman_rho']:.2f} · share explained (R²) = {c['r2']:.2f} · {p_text(c['pearson_p'])} · n = {c['n']}")
+
+
+def _plain_axis(col: str) -> str:
+    """The plain-word axis title of a column: 'Research score (RPC)', 'Rank (1 = best, at the top)'."""
+    return PLAIN.get(col, LABELS.get(col, col))
 
 
 def _pooled_year(categories: list[str], year: int | None) -> tuple[pd.DataFrame, list[str], int, list[str]]:
@@ -124,23 +135,33 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
             x=t[x], y=t[y], mode="markers", name=gname, marker=dict(color=colors[gname], size=9, opacity=0.85),
             customdata=np.stack([t["canonical_name"], t["state"], t["rank_raw"], t["category_std"]], axis=1),
             hovertemplate=(f"<b>%{{customdata[0]}}</b> (%{{customdata[1]}})<br>%{{customdata[3]}} rank "
-                           f"%{{customdata[2]}}<br>{SHORT[x]}: %{{x:.2f}}<br>{SHORT[y]}: %{{y:.2f}}<extra></extra>")))
+                           f"%{{customdata[2]}}<br>{_plain_axis(x)}: %{{x:.2f}}<br>{_plain_axis(y)}: %{{y:.2f}}<extra></extra>")))
     if trendline and pd.notna(c["slope"]):
         xs = np.array([d[x].min(), d[x].max()])
         fig.add_trace(go.Scatter(
-            x=xs, y=c["intercept"] + c["slope"] * xs, mode="lines", name="Least-squares line",
+            x=xs, y=c["intercept"] + c["slope"] * xs, mode="lines", name="Best-fit line",
             line=dict(color=INK_SECONDARY, width=2),
             hovertemplate=(f"{SHORT[y]} = {c['intercept']:.2f} + {c['slope']:.3f} × {SHORT[x]}"
                            f"<br>R² = {c['r2']:.2f}<extra></extra>")))
-    fig.update_xaxes(title_text=LABELS[x] + (" (1 = best, on the right)" if x == "rank" else ""), showgrid=True,
+    fig.update_xaxes(title_text=_plain_axis(x) + (" (1 = best, on the right)" if x == "rank" else ""), showgrid=True,
                      autorange="reversed" if x == "rank" else True)
-    fig.update_yaxes(title_text=LABELS[y] + (" (1 = best, at the top)" if y == "rank" else ""),
+    fig.update_yaxes(title_text=_plain_axis(y) + (" (1 = best, at the top)" if y == "rank" else ""),
                      autorange="reversed" if y == "rank" else True)
+    if y == "rank":
+        rank_axis_words(fig, x=0.012)
     if color_by is None:
         fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
-
     words = strength(c["pearson_r"])
-    title = f"{SHORT[x]} and {SHORT[y]}: {words} relationship in {category_words} {year} (r = {c['pearson_r']:.2f})"
+    together = ("rise together" if c["pearson_r"] >= 0.4 else "move in opposite directions" if c["pearson_r"] <= -0.4
+                else "are only weakly linked" if abs(c["pearson_r"]) >= 0.2 else "are hardly linked")
+    if "rank" in (x, y):
+        together = ("go together: a higher score, a better rank" if c["pearson_r"] < -0.2 else
+                    "a higher score goes with a worse rank" if c["pearson_r"] > 0.2 else "are hardly linked")
+    title = (f"{WORD[x] if x != 'score' else 'Overall'} score and {WORD[y].lower() if y != 'score' else 'overall'} "
+             f"{'rank' if y == 'rank' else 'score'} {together}: r = {c['pearson_r']:.2f} ({words} link; "
+             f"{'−1' if c['pearson_r'] < 0 else '1'} would be perfect), {category_words} {year}"
+             if x != "rank" else
+             f"{WORD[y]} score and rank {together}: r = {c['pearson_r']:.2f} ({words} link), {category_words} {year}")
     insight = (f"In {category_words} {year}, {SHORT[x]} and {SHORT[y]} have a {words} relationship ({_stat_line(c)}); "
                f"the straight line explains {100 * c['r2']:.0f}% of the variation in {SHORT[y]}"
                + (f", and 10 more {SHORT[x]} points go with {signed(10 * c['slope'], 1)} {SHORT[y]} points on average."
@@ -159,16 +180,20 @@ def scatter_relation(x: str = "rpc", y: str = "score", year: int | None = None, 
         notes.append(f"Not ranked in {year}, so left out: {', '.join(missing)}.")
     if "score" in (x, y) and "rank" not in (x, y):
         notes.append("The overall score is a weighted sum of the parameters, so part of this association is built in.")
-    legend = {None: None, "rank_band": "Rank band"}.get(color_by, str(color_by).title())
-    finish(fig, title, _stat_line(c), note="<br>".join(notes) or None, legend_title=legend)
+    legend = {None: "Key", "rank_band": "Rank band"}.get(color_by, str(color_by).title())
+    how = (f"Each dot is one institution · dots close to the line = the two numbers move together · "
+           f"the line is the best-fit straight line")
+    notes.insert(0, _plain_stat_line(c))
+    finish(fig, title, how, note="<br>".join(notes) or None, legend_title=legend)
     method = (f"We take the {c['n']} {category_words} institutions of {year} with both {SHORT[x]} and {SHORT[y]} published "
               f"and compute: Pearson r (how close the dots are to a straight line, −1 to +1), Spearman ρ "
               f"(Pearson on the ranks of the values, so it captures any steadily rising or falling pattern and is "
               f"robust to outliers), R² = r² (share of {SHORT[y]}'s variation explained by the line) and "
               f"the p-value (chance of seeing a correlation this strong if there were truly none; < 0.05 = "
               f"significant). The trend line is the least-squares line {SHORT[y]} = {c['intercept']:.2f} + "
-              f"{c['slope']:.3f} × {SHORT[x]}. Strength words: |r| < 0.2 very weak, < 0.4 weak, < 0.6 "
-              f"moderate, < 0.8 strong, otherwise very strong. Only ranked institutions with published scores are "
+              f"{c['slope']:.3f} × {SHORT[x]}. The words in the title follow fixed thresholds on |r|: below 0.2 "
+              f"very weak, 0.2 to 0.4 weak, 0.4 to 0.6 moderate, 0.6 to 0.8 strong, 0.8 and above very strong; "
+              f"r = 1 (or −1) would mean a perfect straight line. Only ranked institutions with published scores are "
               f"included, i.e. the top of the list, which can make correlations weaker than over all institutions."
               + (" Several categories are pooled into one set of dots (one dot per institution and category), "
                  "although each category weighs the parameters differently." if len(cats) > 1 else ""))
@@ -209,7 +234,9 @@ def correlation_with_overall(year: int | None = None, category: str = "Overall",
     table = pd.DataFrame(rows).sort_values("pearson_r", ascending=False).reset_index(drop=True)
 
     top, low = table.iloc[0], table.iloc[-1]
-    title = f"{top['parameter']} tracks the overall score most closely in {category} {year} (r = {top['pearson_r']:.2f})"
+    plain_top = PLAIN.get(next(p for p in params if SHORT[p] == top["parameter"]), top["name"])
+    title = (f"{plain_top} is the parameter most closely linked to the overall score in {category} {year} "
+             f"(r = {top['pearson_r']:.2f}; 1 would be perfect)")
     insight = (f"In {category} {year}, {top['name']} has the strongest correlation with the overall score "
                f"(r = {top['pearson_r']:.2f}, {p_text(top['p_value'])}), followed by {table.iloc[1]['parameter']} "
                f"(r = {table.iloc[1]['pearson_r']:.2f}); the weakest is {low['parameter']} (r = {low['pearson_r']:.2f}).")
@@ -218,21 +245,21 @@ def correlation_with_overall(year: int | None = None, category: str = "Overall",
     if view == "correlogram":
         return _correlogram(cat, params, category, year, title, insight, weight_note)
     plot = table.iloc[::-1]
-
     fig = go.Figure(go.Bar(
-        x=plot["pearson_r"], y=plot["name"], orientation="h",
-        marker_color=[UP if r >= 0 else DOWN for r in plot["pearson_r"]],
+        x=plot["pearson_r"], y=[PLAIN.get(next(p for p in params if SHORT[p] == s), s) for s in plot["parameter"]],
+        orientation="h",
+        marker_color=[UP if r == plot["pearson_r"].max() else OTHER if r >= 0 else DOWN for r in plot["pearson_r"]],
         text=[f"{r:.2f}" for r in plot["pearson_r"]], textposition="outside", cliponaxis=False, showlegend=False,
         customdata=np.stack([plot["spearman_rho"], plot["p_value"].map(p_text), plot["n"]], axis=1),
         hovertemplate=("<b>%{y}</b><br>Pearson r = %{x:.3f}<br>Spearman ρ = %{customdata[0]:.3f}"
                        "<br>%{customdata[1]} · n = %{customdata[2]}<extra></extra>")))
     lo = min(0, table["pearson_r"].min())
-    fig.update_xaxes(title_text="Pearson correlation with the overall score (r)", showgrid=True,
+    fig.update_xaxes(title_text="Straight-line link with the overall score (Pearson r; 1 = perfect)", showgrid=True,
                      range=[lo - 0.12 if lo < 0 else 0, 1.08], zeroline=True, zerolinecolor=INK_SECONDARY)
     fig.update_yaxes(title_text="NIRF parameter", showgrid=False)
-
-    finish(fig, title, f"{category} ranking {year} · {int(table['n'].max())} institutions with published scores · "
-           f"ranked bar chart of r", note=weight_note, height=420)
+    finish(fig, title, f"Each bar is one parameter · longer = moves more closely with the overall score · "
+                       f"{int(table['n'].max())} institutions in {category} {year} · the answer is in colour",
+           note=weight_note, height=420)
     method = (f"For each parameter published for {category} in {year}, we compute the Pearson correlation r with the "
               f"overall score across all institutions that have both values. r runs from −1 to +1; the closer to "
               f"+1, the more institutions that score high on the parameter also score high overall. We also report "
@@ -255,16 +282,23 @@ def _correlogram(cat: pd.DataFrame, params: list[str], category: str, year: int,
     has = d.notna().astype(int)
     n = has.T @ has                                       # institutions with both values, per pair
     names = [SHORT[c] for c in cols]
-
+    shown = ["Overall score"] + [f"{WORD[c]} ({SHORT[c]})" for c in params]      # plain words on the axes
     fig = go.Figure(go.Heatmap(
-        z=corr.values, x=names, y=names, zmin=-1, zmax=1, colorscale=DIVERGING,
-        text=corr.round(2).values, texttemplate="%{text:.2f}", textfont=dict(size=13),
+        z=corr.values, x=shown, y=shown, zmin=-1, zmax=1, colorscale=DIVERGING,
+        text=corr.round(2).values, texttemplate="%{text:.2f}", textfont=dict(size=14),
         customdata=n.values, xgap=2, ygap=2,
-        colorbar=dict(title=dict(text="Pearson r", side="top"), tickvals=[-1, -0.5, 0, 0.5, 1], thickness=12),
+        colorbar=dict(title=dict(text="How closely<br>they move<br>together (r)", side="top"),
+                      tickvals=[-1, -0.5, 0, 0.5, 1], ticktext=["−1 opposite", "−0.5", "0 no link", "0.5", "1 perfect"],
+                      thickness=12),
         hovertemplate="<b>%{y} and %{x}</b><br>Pearson r = %{z:.3f}<br>n = %{customdata} institutions<extra></extra>"))
     fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text="Parameter")
     fig.update_yaxes(showgrid=False, showline=False, ticks="", autorange="reversed", title_text="Parameter")
-    fig.update_layout(margin=dict(t=130))
+    # The row that answers the question is outlined in marigold.
+    fig.add_shape(type="rect", x0=-0.5, x1=len(cols) - 0.5, y0=-0.5, y1=0.5, xref="x", yref="y",
+                  line=dict(color=MARIGOLD, width=3), fillcolor="rgba(0,0,0,0)")
+    fig.add_annotation(x=len(cols) - 0.45, y=0, xref="x", yref="y", text="<b>the answer row</b>", showarrow=False,
+                       xanchor="left", font=dict(size=11, color=INK))
+    fig.update_layout(margin=dict(t=130, r=150))
 
     pairs = corr.where(np.triu(np.ones(corr.shape, dtype=bool), k=1)).stack()
     pp = pairs.drop(index=[("score", p) for p in params], errors="ignore")    # parameter-parameter pairs only
@@ -273,8 +307,9 @@ def _correlogram(cat: pd.DataFrame, params: list[str], category: str, year: int,
         insight += (f" Among the parameters themselves, {SHORT[a]} and {SHORT[b]} move together the most "
                     f"(r = {r:.2f}).")
     size = 140 + 62 * len(cols)
-    finish(fig, title, f"{category} ranking {year} · correlogram: Pearson r for every pair, read the "
-           f"'Overall score' row for the answer", note=note, height=max(460, size))
+    finish(fig, title, f"Each cell = how closely two scores move together (Pearson r): 1 = perfectly, 0 = no link, "
+                       f"teal = together, coral = opposite · read the outlined 'Overall score' row · {category} {year}",
+           note=note, height=max(460, size))
     method = (f"We take the {category} institutions of {year} and compute the Pearson correlation r for every pair of "
               f"the overall score and the {len(params)} parameters ({', '.join(SHORT[p] for p in params)}), each pair "
               f"using the institutions that have both values. The correlogram (correlation heatmap) shows one cell per "
@@ -315,14 +350,19 @@ def correlation_over_time(param: str = "rpc", category: str = "Overall") -> Char
     table = pd.DataFrame(rows)
 
     fig = go.Figure()
-    for col, name, color in (("pearson_r", "Pearson r", CATEGORICAL[0]), ("spearman_rho", "Spearman ρ", CATEGORICAL[1])):
+    for col, name, color in (("pearson_r", "Straight-line link (Pearson)", CATEGORICAL[0]),
+                             ("spearman_rho", "Rank-order link (Spearman)", CATEGORICAL[1])):
+        ends = [f"{v:.2f}" if j in (0, len(table) - 1) else "" for j, v in enumerate(table[col])]
         fig.add_trace(go.Scatter(
-            x=table["year"], y=table[col], name=name, mode="lines+markers", line=dict(color=color),
+            x=table["year"], y=table[col], name=name, mode="lines+markers+text", line=dict(color=color),
             marker=dict(color=color), customdata=np.stack([table["p_value"].map(p_text), table["n"]], axis=1),
+            text=ends, textposition="top center" if col == "pearson_r" else "bottom center",
+            textfont=dict(size=12, color=INK), cliponaxis=False,
             hovertemplate=f"<b>{name}</b> %{{x}}: %{{y:.3f}}<br>%{{customdata[0]}} · n = %{{customdata[1]}}<extra></extra>"))
     lo = min(0, table[["pearson_r", "spearman_rho"]].min().min())
-    fig.update_yaxes(title_text=f"Correlation of {SHORT[param]} with the overall score",
-                     range=[lo - 0.05 if lo < 0 else 0, 1.02], zeroline=True, zerolinecolor=INK_SECONDARY)
+    fig.update_yaxes(title_text="How closely the two move together (1 = perfectly)",
+                     range=[lo - 0.05 if lo < 0 else 0, 1.06], zeroline=True, zerolinecolor=INK_SECONDARY)
+    fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
     fig.update_xaxes(title_text="Year", dtick=1)
     fig.update_layout(hovermode="x unified")
 
@@ -330,8 +370,9 @@ def correlation_over_time(param: str = "rpc", category: str = "Overall") -> Char
     hi, lo_row = table.loc[table["pearson_r"].idxmax()], table.loc[table["pearson_r"].idxmin()]
     change = z["pearson_r"] - a["pearson_r"]
     verb = "strengthened" if change > 0.05 else "weakened" if change < -0.05 else "stayed about the same"
-    title = (f"The {SHORT[param]}-score correlation in {category} {verb}: r = {a['pearson_r']:.2f} in {int(a.year)} "
-             f"→ {z['pearson_r']:.2f} in {int(z.year)}")
+    title = (f"The link between {WORD[param].lower()} score ({SHORT[param]}) and overall score {verb} in {category}: "
+             f"r = {a['pearson_r']:.2f} in {int(a.year)} → {z['pearson_r']:.2f} in {int(z.year)} "
+             f"({strength(z['pearson_r'])} link; 1 would be perfect)")
     insight = (f"In {category}, the correlation between {SHORT[param]} and the overall score went from r = "
                f"{a['pearson_r']:.2f} in {int(a.year)} to {z['pearson_r']:.2f} in {int(z.year)} "
                f"({signed(change, 2)}); it was highest in {int(hi.year)} ({hi['pearson_r']:.2f}) and lowest in "
@@ -340,8 +381,9 @@ def correlation_over_time(param: str = "rpc", category: str = "Overall") -> Char
     ns = table.groupby("n")["year"].apply(fmt_years)
     note = ("The number of scored institutions changes: " + "; ".join(f"{n} in {y}" for n, y in ns.items()) + "."
             if table["n"].max() > 1.1 * table["n"].min() else None)
-    finish(fig, title, f"{category} ranking, {fmt_years(years)} · {LABELS[param]} vs overall score", note=note,
-           legend_title="Coefficient")
+    finish(fig, title, f"Each dot is one year · higher = the two scores move together more closely · "
+                       f"{PLAIN[param]} vs overall score, {category} {fmt_years(years)}", note=note,
+           legend_title="Key")
     method = (f"For every year we take the {category} institutions with both {SHORT[param]} and the overall score "
               f"published and compute Pearson r (straight-line association) and Spearman ρ (association of the "
               f"ranks). One point per year; a rising line means {SHORT[param]} and the overall score move together "
