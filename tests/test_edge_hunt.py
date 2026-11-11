@@ -76,7 +76,7 @@ def test_top_n_larger_than_the_list_is_capped():
     r = geography.state_counts(category="Overall", top_n=500)
     assert r.insight.startswith("Overall lists 200 institutions in 2025, so the top 200 is used.")
     assert "of the 200 places" in r.insight and "top 500" not in r.insight
-    assert "top-200" in r.fig.layout.title.text
+    assert "top 200" in r.fig.layout.title.text
     r = geography.state_share_over_time(category="Overall", top_n=500)
     assert r.insight.startswith("Overall lists 200 institutions a year, so the top 200 is used.")
     r = geography.state_counts(category="Law", top_n=100)
