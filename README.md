@@ -2,6 +2,10 @@
 
 An interactive dashboard exploring India's NIRF institutional rankings (2017–2025) across every ranking category.
 
+# Deployed On Streamlit (No need to run locally):
+
+Cloud Link: https://nirf-atlas-yc4xpzhunqocryytq7buhd.streamlit.app/
+
 ## Setup: run the app on your own laptop
 
 Steps 1 to 3 are done once per laptop (about 15 minutes, needs internet). After that, step 5 is all you need.
