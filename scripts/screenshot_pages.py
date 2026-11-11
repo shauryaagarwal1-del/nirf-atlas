@@ -122,10 +122,27 @@ def question_shots(args) -> None:
                                      .get(view, view), exact=True).first.click()
                     page.wait_for_timeout(500)
                     wait_until_drawn(page)
+                # The question text and the whole chart card must both be in the picture: make the window as
+                # tall as that needs (the width stays 1366), then photograph exactly that stretch of the page.
+                need = page.evaluate("""() => {
+                    const head = document.querySelector('.nirf-q-head').getBoundingClientRect();
+                    const card = document.querySelector('.js-plotly-plot').closest('[data-testid="stVerticalBlockBorderWrapper"]');
+                    const c = (card || document.querySelector('.js-plotly-plot')).getBoundingClientRect();
+                    return Math.ceil(c.bottom - head.top) + 40;
+                }""")
+                page.set_viewport_size({"width": WIDTH, "height": max(HEIGHT, min(need + 120, 4000))})
+                page.wait_for_timeout(1200)
                 page.evaluate("document.querySelector('.nirf-q-head').scrollIntoView({block: 'start'})")
                 page.wait_for_timeout(2500 if page.locator('.geolayer').count() else 800)
+                box = page.evaluate("""() => {
+                    const head = document.querySelector('.nirf-q-head').getBoundingClientRect();
+                    const card = document.querySelector('.js-plotly-plot').closest('[data-testid="stVerticalBlockBorderWrapper"]');
+                    const c = (card || document.querySelector('.js-plotly-plot')).getBoundingClientRect();
+                    return {x: 0, y: Math.max(head.top - 16, 0), width: window.innerWidth, height: c.bottom - head.top + 32};
+                }""")
                 name = f"{qid}_{view}.png" if view else f"{qid}.png"
-                page.screenshot(path=str(out / name))
+                page.screenshot(path=str(out / name), clip=box)
+                page.set_viewport_size({"width": WIDTH, "height": HEIGHT})
                 print(f"saved {out / name}", flush=True)
             browser.close()
     finally:
