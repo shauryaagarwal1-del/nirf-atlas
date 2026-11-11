@@ -63,8 +63,12 @@ VARIANTS = [
     ("distribution.dispersion_by_year(sd)", lambda: distribution.dispersion_by_year(view="sd")),
     ("distribution.parameter_variability(box)", lambda: distribution.parameter_variability(view="box")),
     ("mobility.band_retention(by_band)", lambda: mobility.band_retention(by_band=True)),
-    ("geography.new_entrants_by_state(stacked)", lambda: geography.new_entrants_by_state(by_year=True)),
-    ("geography.new_entrants_by_state(bars)", lambda: geography.new_entrants_by_state(by_year=False)),
+    ("geography.state_counts(ranked)", lambda: geography.state_counts(view="ranked")),
+    ("geography.state_share_over_time(lines)", lambda: geography.state_share_over_time(view="lines")),
+    ("geography.state_representation_change(ranked)", lambda: geography.state_representation_change(view="ranked")),
+    ("geography.compare_states(boxes)", lambda: geography.compare_states(view="boxes")),
+    ("geography.new_entrants_by_state(stacked)", lambda: geography.new_entrants_by_state(by_year=True, view="ranked")),
+    ("geography.new_entrants_by_state(bars)", lambda: geography.new_entrants_by_state(by_year=False, view="ranked")),
     ("geography.state_vs_state(three states, top 100)",
      lambda: geography.state_vs_state(["Kerala", "Delhi", "Maharashtra"], "Engineering", top_n=100)),
     ("bivariate.scatter_relation(categories pooled)",
@@ -237,13 +241,144 @@ def test_state_counts_agree_with_pipeline_top100_flag(m):
 
 
 def test_state_shares_add_up_to_100():
-    r = geography.state_share_over_time("Overall", 100)
+    r = geography.state_share_over_time("Overall", 100, view="lines")
     t = r.table
     assert np.allclose(t.groupby("year")["share_pct"].sum(), 100, atol=0.6)
     # Multi-series line chart: top 8 states + "Other states", no stacking.
     names = [tr.name for tr in r.fig.data]
     assert len(names) == 9 and names[-1] == "Other states"
     assert all(tr.mode == "lines+markers" and not tr.stackgroup for tr in r.fig.data)
+    assert r.chart_type == "multi-series line chart"
+    assert r.table.equals(geography.state_share_over_time("Overall", 100).table)     # same numbers as the maps
+
+
+# ---------- Section 2 on the map (Phase 20) ----------
+
+MAP_CALLS = [
+    ("Q2.1", lambda: geography.state_counts(2025, "Overall", 100)),
+    ("Q2.2", lambda: geography.state_share_over_time("Overall", 100)),
+    ("Q2.3", lambda: geography.state_representation_change("Overall", 2017, 2025, 100)),
+    ("Q2.4", lambda: geography.compare_states(["Karnataka", "Tamil Nadu"], "Overall")),
+    ("Q2.5", lambda: geography.new_entrants_by_state("Overall")),
+]
+
+
+def _maps(fig):
+    return [t for t in fig.data if t.type == "choropleth"]
+
+
+@pytest.mark.parametrize("qid,call", MAP_CALLS, ids=[c[0] for c in MAP_CALLS])
+def test_section2_maps_paint_every_state_in_the_data(m, qid, call):
+    from core.geo import state_polygons
+    polys, data_states = state_polygons(), set(m["state"].dropna())
+    maps = _maps(call().fig)
+    assert maps, f"{qid} draws no map"
+    for t in maps:
+        locations = set(t.locations)
+        for s in data_states:
+            assert set(polys[s]) <= locations, (qid, s)
+        assert len(t.locations) == len(t.z) == len(t.text)
+
+
+@pytest.mark.parametrize("qid,call", MAP_CALLS, ids=[c[0] for c in MAP_CALLS])
+def test_section2_maps_show_india_only(qid, call):
+    fig = call().fig
+    geos = [k for k in fig.layout if str(k).startswith("geo")]
+    assert geos
+    for k in geos:
+        g = fig.layout[k]
+        assert g.visible is False and g.showframe is False            # no world map, no other countries
+        assert 60 <= g.lonaxis.range[0] <= 68 and g.lonaxis.range[1] == 98 and g.lataxis.range == (6, 37.5)
+
+
+def _on_state_labels(fig):
+    return [t for t in fig.data if t.type == "scattergeo" and t.meta == "map-label"]
+
+
+def _callouts(fig):
+    return [str(t.text[0]) for t in fig.data if t.type == "scattergeo" and t.mode == "text" and t.meta != "map-label"]
+
+
+def test_state_counts_map_matches_the_table_and_marks_delhi():
+    r = geography.state_counts(2025, "Overall", 100)
+    assert r.chart_type == "choropleth map"
+    t = r.table.set_index("state")["institutions"]
+    z = dict(zip(r.fig.data[0].locations, r.fig.data[0].z))
+    assert z["Tamil Nadu"] == t["Tamil Nadu"] and z["Delhi"] == t["Delhi"] and z["Lakshadweep"] == 0
+    assert r.fig.data[0].zmin == 0 and r.fig.data[0].zmax == t.max()
+    assert r.fig.data[0].colorscale[0][1] == r.fig.data[0].colorscale[1][1]       # 0 has its own grey
+    labels = _on_state_labels(r.fig)
+    assert labels and 5 <= len(labels[0].text) <= 8                              # numbers on the leading states
+    assert f"Delhi: {t['Delhi']}" in _callouts(r.fig)                            # Delhi is written beside the map
+    hover = dict(zip(r.fig.data[0].locations, r.fig.data[0].text))
+    assert hover["Tamil Nadu"] == f"Tamil Nadu: {t['Tamil Nadu']} institutions in the top 100 (2025)"
+    assert "none (grey)" in "".join(r.fig.data[0].colorbar.ticktext)
+    ranked = geography.state_counts(2025, "Overall", 100, view="ranked")
+    assert ranked.chart_type == "bar chart" and ranked.table.equals(r.table)
+
+
+def test_state_share_map_is_two_years_on_one_scale():
+    r = geography.state_share_over_time("Overall", 100)
+    maps = _maps(r.fig)
+    assert len(maps) == 2 and maps[0].zmax == maps[1].zmax and maps[0].zmin == maps[1].zmin == 0
+    assert maps[0].showscale is False and maps[1].showscale is not False          # one shared colour bar
+    first = geography.state_counts(2017, "Overall", 100).table.set_index("state")["institutions"]
+    last = geography.state_counts(2025, "Overall", 100).table.set_index("state")["institutions"]
+    assert dict(zip(maps[0].locations, maps[0].z))["Tamil Nadu"] == first["Tamil Nadu"]
+    assert dict(zip(maps[1].locations, maps[1].z))["Tamil Nadu"] == last["Tamil Nadu"]
+    assert maps[0].zmax == max(first.max(), last.max())
+    titles = [a.text for a in r.fig.layout.annotations]
+    assert "2017" in titles and "2025" in titles
+
+
+def test_representation_change_map_is_two_directional():
+    r = geography.state_representation_change("Overall", 2017, 2025, 100)
+    assert r.chart_type == "choropleth map"
+    t = r.table.set_index("state")["change"]
+    tr = r.fig.data[0]
+    z = dict(zip(tr.locations, tr.z))
+    assert z["Tamil Nadu"] == t["Tamil Nadu"] and z["Jammu & Kashmir"] == t["Jammu and Kashmir"]
+    assert tr.zmid == 0 and tr.zmin == -tr.zmax and tr.zmax == t.abs().max()
+    assert "no change" in "".join(tr.colorbar.ticktext)
+    labels = _on_state_labels(r.fig)[0]
+    assert all(x[0] in "+−" for x in labels.text)                              # "+3", "-2" (real minus sign)
+    ranked = geography.state_representation_change("Overall", 2017, 2025, 100, view="ranked")
+    assert ranked.chart_type == "bar chart" and ranked.table.equals(r.table)
+
+
+def test_compare_states_dots_never_place_band_only_institutions(m):
+    r = geography.compare_states(["Karnataka", "Tamil Nadu"], "Overall")
+    assert r.chart_type == "jittered strip chart"
+    rows = m[(m["category_std"] == "Overall") & (m["year"] == 2025) & m["state"].isin(["Karnataka", "Tamil Nadu"])]
+    dots = {t.name: t for t in r.fig.data if t.type == "scatter" and t.mode == "markers" and t.marker.symbol != "square"}
+    squares = {t.name: t for t in r.fig.data if t.type == "scatter" and t.mode == "markers" and t.marker.symbol == "square"}
+    for s in ("Karnataka", "Tamil Nadu"):
+        exact = rows[rows["state"].eq(s) & rows["rank"].notna()]
+        band = rows[rows["state"].eq(s) & rows["rank"].isna()]
+        assert sorted(dots[s].y) == sorted(exact["rank"].astype(float))            # one dot per exact rank
+        assert len(squares[s].y) == len(band) and len(set(squares[s].y)) == 1      # band-only: a strip, no rank
+        assert max(squares[s].y) > rows["rank"].max()                              # below every real rank
+    assert any("counted, not placed" in (a.text or "") for a in r.fig.layout.annotations)
+    assert r.fig.layout.yaxis.range[0] > r.fig.layout.yaxis.range[1]              # rank 1 at the top
+    assert len(_maps(r.fig)) == 1                                                 # the small map of the two states
+    boxes = geography.compare_states(["Karnataka", "Tamil Nadu"], "Overall", view="boxes")
+    assert boxes.chart_type == "box-and-whisker plot" and boxes.table.equals(r.table)
+    with pytest.raises(NirfInputError, match="dots can only show"):
+        geography.compare_states(["Karnataka", "Tamil Nadu"], "Overall", years=[2020, 2021], dots_year=2025)
+
+
+def test_new_entrants_map_matches_the_totals():
+    r = geography.new_entrants_by_state("Overall")
+    assert r.chart_type == "choropleth map"
+    totals = r.table.set_index("state")["total"]
+    z = dict(zip(r.fig.data[0].locations, r.fig.data[0].z))
+    assert all(z[p] == totals[s] for s in totals.index for p in geography.state_polygons()[s])
+    assert r.fig.data[0].zmax == totals.max()
+
+
+def test_unknown_view_is_refused():
+    with pytest.raises(NirfInputError, match="view must be"):
+        geography.state_counts(view="pie")
 
 
 def test_representation_change_is_end_minus_start():
@@ -323,8 +458,9 @@ def test_state_rank_boxes_quartiles_match_pandas(m):
 
 
 def test_new_entrants_plain_bars_match_the_stacked_totals():
-    stacked = geography.new_entrants_by_state("Overall").table.set_index("state")["total"]
-    bars = geography.new_entrants_by_state("Overall", by_year=False)
+    stacked = geography.new_entrants_by_state("Overall", view="ranked").table.set_index("state")["total"]
+    assert geography.new_entrants_by_state("Overall", view="ranked").chart_type == "stacked bar chart"
+    bars = geography.new_entrants_by_state("Overall", by_year=False, view="ranked")
     assert bars.chart_type == "bar chart" and len(bars.fig.data) == 1
     assert dict(zip(bars.fig.data[0].y, bars.fig.data[0].x)) == stacked.to_dict()
 

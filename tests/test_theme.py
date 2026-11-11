@@ -93,3 +93,29 @@ def test_themed_leaves_the_engine_figure_untouched(results):
     themed(fig, True)
     themed(fig, False)
     assert fig.to_json() == before
+
+
+# ---------- Section 2 maps (Phase 20) ----------
+
+@pytest.mark.parametrize("qid", ["Q2.1", "Q2.2", "Q2.3", "Q2.5"])      # Q2.4 names its states beside the map
+@pytest.mark.parametrize("dark", [False, True], ids=["light", "dark"])
+def test_numbers_printed_on_map_states_are_readable(results, qid, dark):
+    """Every number printed on a state reads at 4.5:1 against that state's colour, in both themes."""
+    from core.theme import color_at, scale_positions
+    out = themed(results[qid].fig, dark)
+    labels = [t for t in out["data"] if t.get("type") == "scattergeo" and t.get("meta") == "map-label"]
+    assert labels, f"{qid} prints no number on its states"
+    for lab in labels:
+        chor = next(t for t in out["data"]
+                    if t.get("type") == "choropleth" and t.get("geo", "geo") == lab.get("geo", "geo"))
+        zs = _values(chor["z"]).astype(float)
+        lo = chor.get("zmin") if chor.get("zmin") is not None else zs.min()
+        hi = chor.get("zmax") if chor.get("zmax") is not None else zs.max()
+        inks = lab["textfont"]["color"]
+        assert isinstance(inks, list) and len(inks) == len(lab["text"])
+        positions = scale_positions(_values(lab["customdata"]).astype(float).ravel(), lo, hi, chor.get("zmid"))
+        for ink, t in zip(inks, positions):
+            fill = color_at(chor["colorscale"], t)
+            assert contrast(ink, fill) >= 4.5, (qid, dark, ink, fill)
+    for key in [k for k in out["layout"] if str(k).startswith("geo")]:
+        assert out["layout"][key]["bgcolor"] == "rgba(0,0,0,0)"

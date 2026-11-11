@@ -472,6 +472,27 @@ def _scale_at(scale, t: float) -> tuple[float, float, float] | None:
     return stops[-1][1] if t >= stops[-1][0] else stops[0][1]
 
 
+def color_at(scale, t: float) -> str | None:
+    """The colour at position t (0..1) of a Plotly colour scale, as a hex string (None if unknown)."""
+    rgb = _scale_at(scale, t)
+    return None if rgb is None else "#" + "".join(f"{round(x):02x}" for x in rgb)
+
+
+def scale_positions(values, zmin: float, zmax: float, zmid: float | None = None) -> list[float]:
+    """Where each value sits on a colour scale (0..1), the way Plotly maps z to colour (zmid centres it)."""
+    lo, hi = float(zmin), float(zmax)
+    if zmid is not None:
+        half = max(hi - zmid, zmid - lo)
+        lo, hi = zmid - half, zmid + half
+    span = hi - lo or 1.0
+    return [min(max((float(v) - lo) / span, 0.0), 1.0) for v in values]
+
+
+def inks_on_scale(scale, values, zmin: float, zmax: float, zmid: float | None = None) -> list[str]:
+    """The text colour for a label printed on each value's colour of a scale (deep navy or white per mark)."""
+    return [ink_on(color_at(scale, t)) or INK for t in scale_positions(values, zmin, zmax, zmid)]
+
+
 def _values(v):
     """A figure-dict array as numpy: Plotly stores numeric arrays as {"dtype", "bdata" (base64), "shape"}."""
     if isinstance(v, dict) and "bdata" in v:
@@ -553,14 +574,37 @@ def _inside_label_inks(trace: dict) -> None:
         trace.setdefault("textfont", {})["color"] = ink
 
 
+MAP_LABEL = "map-label"      # meta of a scattergeo text trace whose labels sit on the coloured states
+
+
+def _map_label_inks(trace: dict, data: list) -> None:
+    """Numbers printed on the states of a map get the ink that reads best on each state's own colour.
+
+    The label trace carries the state's value in customdata; its map (the choropleth on the same geo axis)
+    says how that value becomes a colour. Worked out after the dark-mode swap, so a state that is dark
+    teal in the light theme and light teal in the dark one gets white and navy respectively.
+    """
+    if trace.get("type") != "scattergeo" or trace.get("meta") != MAP_LABEL or trace.get("customdata") is None:
+        return
+    geo = trace.get("geo", "geo")
+    chor = next((t for t in data if t.get("type") == "choropleth" and t.get("geo", "geo") == geo), None)
+    if not chor or not isinstance(chor.get("colorscale"), (list, tuple)):
+        return
+    zs = _values(chor["z"]).astype(float)
+    lo = chor.get("zmin") if chor.get("zmin") is not None else float(np.nanmin(zs))
+    hi = chor.get("zmax") if chor.get("zmax") is not None else float(np.nanmax(zs))
+    values = _values(trace["customdata"]).astype(float).ravel()
+    trace.setdefault("textfont", {})["color"] = inks_on_scale(chor["colorscale"], values, lo, hi, chor.get("zmid"))
+
+
 def themed(fig: go.Figure, dark: bool) -> dict:
     """The chart exactly as it is drawn on the page, for the viewer's theme (a plain figure dict).
 
     * dark: every palette colour is swapped for its dark step (dark_variant);
     * the paper, plot and map backgrounds are transparent, so the chart sits on its card's own surface
       colour (set by the stylesheet, which follows the theme the moment it changes);
-    * labels printed on coloured marks (heatmap cells, inside bars, pie slices) get deep navy or white,
-      whichever reads better on that mark (at least 4.5:1 for the palette colours).
+    * labels printed on coloured marks (heatmap cells, inside bars, pie slices, the states of a map) get deep
+      navy or white, whichever reads better on that mark (at least 4.5:1 for the palette colours).
     The figure the engine returned is not changed.
     """
     out = dark_variant(fig) if dark else go.Figure(fig).to_plotly_json()   # both are copies
@@ -571,6 +615,8 @@ def themed(fig: go.Figure, dark: bool) -> dict:
     for trace in out.get("data", []):
         if trace.get("type") == "heatmap":
             _heatmap_cell_inks(trace, layout)
+        elif trace.get("type") == "scattergeo":
+            _map_label_inks(trace, out.get("data", []))
         else:
             _inside_label_inks(trace)
     return out

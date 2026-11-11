@@ -78,6 +78,40 @@ def polygon_names() -> list[str]:
     return [f["properties"][GEO_PROPERTY] for f in india_geojson()["features"]]
 
 
+def _ring_centroid(ring) -> tuple[float, float, float]:
+    """(lon, lat, area) of one ring: the area-weighted centre of its polygon (shoelace formula)."""
+    a = cx = cy = 0.0
+    for (x0, y0), (x1, y1) in zip(ring, ring[1:]):
+        cross = x0 * y1 - x1 * y0
+        a += cross
+        cx += (x0 + x1) * cross
+        cy += (y0 + y1) * cross
+    if a == 0:
+        return ring[0][0], ring[0][1], 0.0
+    return cx / (3 * a), cy / (3 * a), abs(a) / 2
+
+
+@lru_cache(maxsize=1)
+def polygon_centroids() -> dict[str, tuple[float, float, float]]:
+    """Polygon name -> (lon, lat, area) of its largest part: where a number printed on that state goes.
+
+    The largest outer ring decides (an island chain's label sits on its biggest island); area is in
+    square degrees, used only to tell big states from the small places whose label needs a callout.
+    """
+    out = {}
+    for f in india_geojson()["features"]:
+        g = f["geometry"]
+        polygons = [g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]
+        out[f["properties"][GEO_PROPERTY]] = max((_ring_centroid(p[0]) for p in polygons), key=lambda c: c[2])
+    return out
+
+
+def state_centroids() -> dict[str, tuple[float, float, float]]:
+    """Official state/UT name -> (lon, lat, area) of its largest polygon (the merged UT: its bigger part)."""
+    cents = polygon_centroids()
+    return {state: max((cents[p] for p in polys), key=lambda c: c[2]) for state, polys in state_polygons().items()}
+
+
 @lru_cache(maxsize=1)
 def state_polygons() -> dict[str, tuple[str, ...]]:
     """Official state/UT name -> the polygon name(s) that draw it, from the geo_name column of state_map.csv."""

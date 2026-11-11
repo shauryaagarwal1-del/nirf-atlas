@@ -29,10 +29,19 @@ EXTRA_PARAMS = {
     "Q8.3": {"z_threshold": 2.0},
 }
 FIXED = {"direction", "view", "mode"}           # define the chart itself, so not editable here
+# Section 2 questions draw a map by default; a switch offers the ranked chart behind it ("Map | Ranked list").
+# The view is the only fixed parameter with a switch, because a map shows where but not the exact order.
+VIEW_SWITCH = {
+    "Q2.1": {"map": "Map", "ranked": "Ranked list"},
+    "Q2.2": {"map": "Map", "lines": "Lines per state"},
+    "Q2.3": {"map": "Map", "ranked": "Ranked list"},
+    "Q2.4": {"dots": "Map + dots", "boxes": "Boxes per year"},
+    "Q2.5": {"map": "Map", "ranked": "Ranked list"},
+}
 PAIRS = {"start_year": "end_year", "year_a": "year_b"}
 # Left-to-right order of the controls: what is ranked (category), who, when, then the details.
 ORDER = ["category", "categories", "institutions", "states", "years", "year", "start_year", "end_year", "year_a",
-         "year_b", "x", "y", "param", "param_high", "param_low"]
+         "year_b", "x", "y", "param", "param_high", "param_low", "view"]
 TOP_CUTS = [10, 25, 50, 100, 150, 200]
 TOP_SMALL = [3, 5, 10, 15, 20, 25]
 Z_LEVELS = [1.5, 2.0, 2.5, 3.0]
@@ -55,6 +64,8 @@ def default_params(q: Question) -> dict:
     defaults), with institution names turned into the keys the picker uses. The page compares the
     current controls with this to tell whether the question was changed."""
     params = {**q.default_params, **EXTRA_PARAMS.get(q.id, {})}
+    if q.id in VIEW_SWITCH:
+        params["view"] = next(iter(VIEW_SWITCH[q.id]))
     if params.get("institutions"):
         params["institutions"] = _default_keys(params["institutions"]) or None
     return params
@@ -79,7 +90,8 @@ def _default_keys(names) -> list[str]:
 def question_controls(q: Question) -> dict:
     """Draw the controls for question `q` and return the parameters to run it with."""
     params = default_params(q)
-    shown = sorted((n for n in params if n not in FIXED), key=lambda n: ORDER.index(n) if n in ORDER else len(ORDER))
+    fixed = FIXED - ({"view"} if q.id in VIEW_SWITCH else set())
+    shown = sorted((n for n in params if n not in fixed), key=lambda n: ORDER.index(n) if n in ORDER else len(ORDER))
     out = dict(params)
     cats = category_years_map()
 
@@ -204,5 +216,12 @@ def _widget(q: Question, name: str, params: dict, category: str | None, years: l
     if name == "by_band":
         value = st.toggle("Split by band", value=default, key=_key(q, name))
         return {name: value}
+
+    if name == "view" and q.id in VIEW_SWITCH:
+        options = VIEW_SWITCH[q.id]
+        value = st.segmented_control("View", list(options), default=default, format_func=options.__getitem__,
+                                     key=_key(q, name), help="A map shows where; the other view shows the exact "
+                                                             "order or the yearly detail.")
+        return {name: value or default}
 
     return {name: default}                       # anything else keeps its registered value

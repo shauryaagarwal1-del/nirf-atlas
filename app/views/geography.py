@@ -15,7 +15,7 @@ import streamlit as st
 
 from app.components import chart_card, empty_state, kpi_cards, page_header, run_engine, show
 from app.explorer import (CATEGORY, PERIOD, SCOPE, STATE_PAIR, TOP_CUT, YEAR, YEARS_RANGE, C, View, controls,
-                          explore, explore_view)
+                          explore, explore_view, variant)
 from core.data import short_name
 from core.theme import color_map
 
@@ -39,21 +39,25 @@ VS_BOX_VIEW = View("State vs State: all their ranks side by side", "geography", 
                    (STATE_PAIR, CATEGORY, YEARS_RANGE, VS_TOP),
                    why="A box plot compares whole rank distributions: median, middle 50% and outliers, with every "
                        "institution-year as a dot.")
+MAP_OR_RANKED = variant("view", "View", {"map": "Map", "ranked": "Ranked list"}, "map")
 NEW_VIEW = View("States with the most new entrants", "geography", "new_entrants_by_state",
-                (CATEGORY, YEARS_RANGE, C("choice", "by_year", "Split by year", default=False,
-                                          widget="toggle"), SCOPE),
-                why="A ranked bar chart compares the states' totals directly; switch on the split to see in which "
-                    "years the new entrants arrived.")
+                (CATEGORY, YEARS_RANGE, MAP_OR_RANKED, C("choice", "by_year", "Split bars by year", default=False,
+                                                         widget="toggle"), SCOPE),
+                why="The map shows where the newcomers come from; the ranked list compares the states' totals "
+                    "directly, and the split shows in which years the new entrants arrived.")
 MORE_VIEWS = [
     View("States with the most institutions in the top list", "geography", "state_counts",
-         (CATEGORY, YEAR, TOP_CUT, SCOPE)),
+         (CATEGORY, YEAR, TOP_CUT, MAP_OR_RANKED, SCOPE)),
     View("Each state's share of the top list over time", "geography", "state_share_over_time",
-         (CATEGORY, TOP_CUT, SCOPE)),
+         (CATEGORY, TOP_CUT, variant("view", "View", {"map": "First and last year on the map", "lines": "Lines"},
+                                     "map"), SCOPE)),
     View("States that gained or lost places in the top list", "geography", "state_representation_change",
-         (CATEGORY, PERIOD, TOP_CUT, SCOPE)),
-    View("Compare the ranks of up to 8 states, year by year", "geography", "compare_states",
-         (CATEGORY, C("states", default=DEFAULT_STATES), YEARS_RANGE),
-         hint="No states chosen = Karnataka and Tamil Nadu. Pick up to 8 states."),
+         (CATEGORY, PERIOD, TOP_CUT, MAP_OR_RANKED, SCOPE)),
+    View("Compare the ranks of up to 8 states", "geography", "compare_states",
+         (CATEGORY, C("states", default=DEFAULT_STATES), YEARS_RANGE, C("year", "dots_year", "Dots for year"),
+          variant("view", "View", {"dots": "Map + dots", "boxes": "Boxes per year"}, "dots")),
+         hint="No states chosen = Karnataka and Tamil Nadu. Pick up to 8 states. The dots show one year; the "
+              "boxes show every year of the range."),
 ]
 VIEWS = [MAP_VIEW, VS_VIEW, VS_BOX_VIEW, NEW_VIEW, *MORE_VIEWS]
 TABS = {"map": "India map", "vs": "State vs State", "new": "New entrants", "more": "More views"}

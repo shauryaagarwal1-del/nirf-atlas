@@ -99,7 +99,7 @@ def render_question(q: Question) -> None:
     question_header(q)
     with st.container(border=True, key=f"qb-controls-{q.id}"):
         params = question_controls(q)
-        changed = params != default_params(q)
+        changed = {k: v for k, v in params.items() if k != "view"} !=             {k: v for k, v in default_params(q).items() if k != "view"}     # the view switch asks nothing new
         left, right = st.columns([5, 1], vertical_alignment="center")
         with left:
             note = ("Changed from the default: the chart below answers your new question."

@@ -1,14 +1,19 @@
 """Geography engine: where the ranked institutions are and how that changes (Annexure A section 2, Q2.1-Q2.5).
 
-Functions
-  state_counts()                 institutions per state in the top N of one year (ranked horizontal bar chart)
-  state_share_over_time()        each state's share of the top N, year by year (multi-series line chart)
-  state_representation_change()  change in a state's top-N count between two years (ranked horizontal bar
-                                 chart, bars left of zero = lost places)
-  compare_states()               rank distributions of chosen states per year (box-and-whisker plot + a thin
-                                 line through the yearly medians)
-  new_entrants_by_state()        institutions appearing for the first time, by state (bar chart of totals, or
-                                 a stacked bar chart split by year)
+Functions (the Question Bank draws the first view of each; `view` switches to the second)
+  state_counts()                 institutions per state in the top N of one year: on the map of India
+                                 (choropleth map) or as ranked horizontal bars (view="ranked", bar chart)
+  state_share_over_time()        each state's share of the top N, year by year: the first and the last year as
+                                 two maps on one colour scale (choropleth map) or one line per state
+                                 (view="lines", multi-series line chart)
+  state_representation_change()  change in a state's top-N count between two years: a two-direction map,
+                                 teal = gained, coral = lost (choropleth map) or bars either side of zero
+                                 (view="ranked", bar chart)
+  compare_states()               ranks of chosen states: a small map of the states beside one dot per
+                                 institution on a rank axis for one year (jittered strip chart) or a box per
+                                 state and year (view="boxes", box-and-whisker plot)
+  new_entrants_by_state()        institutions appearing for the first time, by state: on the map (choropleth
+                                 map) or as bars (view="ranked": stacked by year, or plain totals)
   state_map()                    institutions per state in the top N, on the map of India, with a year slider and
                                  a play button that animates the map from the first to the last year (choropleth map)
   state_vs_state()               two (or more) states head to head: ranked institutions per year and median rank
@@ -25,6 +30,8 @@ names after cleaning (e.g. Pondicherry -> Puducherry).
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -32,11 +39,12 @@ from plotly.subplots import make_subplots
 
 from core.data import (NirfInputError, category_years, change_years, check_category, check_states, check_year,
                        check_years, filter_df, fmt_years, list_sizes, load_master, n_years, short_name)
-from core.geo import FEATURE_KEY, india_geojson, polygon_frame, state_polygons
+from core.geo import FEATURE_KEY, india_geojson, polygon_frame, state_centroids, state_polygons
 from core.result import ChartResult
 from core.stats import signed
-from core.theme import (AXIS, CATEGORICAL, CONTEXT, DOWN, GRID, INK, INK_MUTED, INK_SECONDARY, RAMP, SURFACE, TEAL,
-                        TITLE_WRAP, UP, color_map, finish, ordinal_ramp, tint, wrap_text)
+from core.theme import (AXIS, CATEGORICAL, CONTEXT, DIVERGING, DOWN, GRID, INK, INK_MUTED, INK_SECONDARY, MAP_LABEL,
+                        OTHER, RAMP, SURFACE, TEAL, TITLE_WRAP, UP, color_map, finish, inks_on_scale, jitter,
+                        ordinal_ramp, tint, wrap_text)
 
 MAX_LINES = 8          # states drawn as their own line; the rest are summed as "Other states"
 MAX_STATES = 8
@@ -82,14 +90,165 @@ def _list_note(cat: pd.DataFrame, top_n: int, years: list[int]) -> str | None:
     return f"NIRF ranks fewer than {top_n} here ({parts}), so every ranked institution is counted."
 
 
-def state_counts(year: int | None = None, category: str = "Overall", top_n: int = 100) -> ChartResult:
+# ---------- drawing on the map of India (Q2.1, Q2.2, Q2.3, Q2.5, and the small map of Q2.4) ----------
+
+LON_RANGE, LAT_RANGE = (66.5, 98.0), (6.0, 37.5)      # India only, with a little room for the callouts
+MAX_MAP_LABELS = 8                                     # numbers printed on the states: the leading ones
+SIDE_LON = 60.5                                        # where a state name beside the small map starts
+# Places too small to carry a number on an all-India map (Delhi has many top institutions and is a dot).
+# Their number is written beside the map, joined to the place by a thin line: (lon, lat) of the text and
+# the side of that point the text sits on. The text points lie over the sea or beyond the border, where
+# nothing is drawn.
+CALLOUTS = {
+    "Delhi": (71.6, 29.2, "middle left"),
+    "Chandigarh": (71.6, 31.4, "middle left"),
+    "Puducherry": (82.8, 11.2, "middle right"),
+    "Goa": (70.8, 15.4, "middle left"),
+    "Dadra and Nagar Haveli and Daman and Diu": (69.6, 19.4, "middle left"),
+    "Sikkim": (89.8, 30.2, "middle right"),
+}
+CALLOUT_NAMES = {"Dadra and Nagar Haveli and Daman and Diu": "Dadra & Nagar Haveli<br>and Daman & Diu"}
+VIEWS = {"state_counts": ("map", "ranked"), "state_share_over_time": ("map", "lines"),
+         "state_representation_change": ("map", "ranked"), "compare_states": ("dots", "boxes"),
+         "new_entrants_by_state": ("map", "ranked")}
+
+
+def _check_view(function: str, view: str) -> str:
+    allowed = VIEWS[function]
+    if view not in allowed:
+        raise NirfInputError(f"view must be one of {', '.join(repr(v) for v in allowed)}, not {view!r}.")
+    return view
+
+
+def _count_scale(zmax: int) -> list:
+    """0 = grey ('none'); 1..zmax = the teal ramp from a mid step, so 1 is clearly not grey."""
+    step, ramp = 0.5 / max(zmax, 1), RAMP[3:]
+    return [[0, CONTEXT], [step, CONTEXT]] + [[step + (1 - step) * i / (len(ramp) - 1), c] for i, c in enumerate(ramp)]
+
+
+def _all_states_frame() -> pd.DataFrame:
+    """One row per polygon of every state/UT (the merged UT twice), so no part of India stays unpainted."""
+    return polygon_frame(pd.DataFrame({"state": sorted(state_polygons())}))
+
+
+def _india_map(values: pd.Series, hover: dict, scale, zmin, zmax, zmid=None, colorbar: dict | None = None,
+               showscale: bool = True) -> go.Choropleth:
+    """Every state coloured by its value (states missing from `values` count as 0), with plain hover text."""
+    shape = _all_states_frame()
+    z = shape["state"].map(values).fillna(0)
+    z = z.astype(int) if (z == z.round()).all() else z.astype(float)
+    bar = dict(_MAP_COLORBAR, **(colorbar or {}))
+    return go.Choropleth(
+        geojson=india_geojson(), featureidkey=FEATURE_KEY, locations=shape["polygon"], z=z.tolist(),
+        zmin=zmin, zmax=zmax, zmid=zmid, colorscale=scale, text=[hover[s] for s in shape["state"]],
+        hovertemplate="%{text}<extra></extra>", marker_line=dict(color=SURFACE, width=0.7), name="",
+        showscale=showscale, colorbar=bar)
+
+
+_MAP_COLORBAR = dict(thickness=12, len=0.55, x=0.99, xanchor="right", y=0.5, outlinewidth=0,
+                     tickfont=dict(color=INK_SECONDARY, size=11),
+                     title=dict(side="top", font=dict(size=12, color=INK_SECONDARY)))
+
+
+def _map_labels(values: pd.Series, fmt, scale, zmin, zmax, zmid=None, states=None, n: int = MAX_MAP_LABELS) -> list:
+    """Numbers printed on the leading states, and callouts beside the map for the small places.
+
+    `values`: state -> number. The states with the largest numbers (ignoring sign, at most `n`, or exactly
+    `states` when given) get the number printed at their centre in the ink that reads best on their colour;
+    a small place with a non-zero number (CALLOUTS) gets its name and number beside the map instead.
+    """
+    cents = state_centroids()
+    present = values[values.ne(0)] if states is None else values.reindex(states).fillna(0)
+    callouts = [s for s in present.index if s in CALLOUTS and states is None]
+    lead = present.drop(callouts).abs().sort_values(ascending=False).index[:n].tolist()
+    traces = []
+    if lead:
+        traces.append(go.Scattergeo(
+            lon=[cents[s][0] for s in lead], lat=[cents[s][1] for s in lead], mode="text",
+            text=[fmt(values.get(s, 0)) for s in lead], customdata=[float(values.get(s, 0)) for s in lead],
+            textfont=dict(size=14, weight=700, color=inks_on_scale(scale, [values.get(s, 0) for s in lead],
+                                                                     zmin, zmax, zmid)),
+            meta=MAP_LABEL, hoverinfo="skip", showlegend=False))
+    for s in callouts:
+        lon, lat, side = CALLOUTS[s]
+        x0, y0 = cents[s][:2]
+        traces.append(go.Scattergeo(lon=[x0, lon], lat=[y0, lat], mode="lines+markers",
+                                    line=dict(color=INK_MUTED, width=1),
+                                    marker=dict(size=[5, 0], color=INK_MUTED), hoverinfo="skip", showlegend=False))
+        traces.append(go.Scattergeo(lon=[lon], lat=[lat], mode="text",
+                                    text=[f"{CALLOUT_NAMES.get(s, s)}: {fmt(values[s])}"],
+                                    textposition=side, textfont=dict(size=12, color=INK), hoverinfo="skip",
+                                    showlegend=False))
+    return traces
+
+
+def _side_labels(states: list[str]) -> list:
+    """The names of the chosen states written beside the small map, each joined to its state by a line.
+
+    A name printed on a state spills over the page when the state is narrow, and the ink chosen for the
+    state's colour can vanish on the page outside it; beside the map, in the page ink, it always reads.
+    The names sit over the sea west of India (from SIDE_LON, well clear of Gujarat's coast at 68 E) at
+    their state's latitude, pushed apart when two would overlap.
+    """
+    cents = state_centroids()
+    order = sorted(states, key=lambda s: -cents[s][1])
+    lats = []
+    for s in order:
+        lat = cents[s][1]
+        if lats and lats[-1] - lat < 2.6:
+            lat = lats[-1] - 2.6
+        lats.append(lat)
+    traces = []
+    for s, lat in zip(order, lats):
+        x0, y0 = cents[s][:2]
+        end = SIDE_LON + 0.7 * len(s) + 0.3                   # where the name ends (about 0.7 degrees a letter)
+        traces.append(go.Scattergeo(lon=[x0, end], lat=[y0, lat], mode="lines+markers",
+                                    line=dict(color=INK_MUTED, width=1), marker=dict(size=[5, 0], color=INK_MUTED),
+                                    hoverinfo="skip", showlegend=False))
+        traces.append(go.Scattergeo(lon=[SIDE_LON], lat=[lat], mode="text", text=[f"<b>{s}</b>"],
+                                    textposition="middle right", textfont=dict(size=12, color=INK),
+                                    hoverinfo="skip", showlegend=False))
+    return traces
+
+
+def _finish_map(fig: go.Figure) -> go.Figure:
+    """India only: no world map, no other countries, no frame; the same window on every map.
+
+    A callout written to the left of its point needs room beyond India's west coast: the window grows
+    to the left by about 0.6 degrees per character of the longest such label (the maps are drawn at
+    roughly 11 px per degree, 6.5 px per character).
+    """
+    lon_min = LON_RANGE[0]
+    for t in fig.data:
+        if t.type == "scattergeo" and t.mode == "text" and t.textposition == "middle left":
+            longest = max(len(re.sub(r"<[^>]+>", "", line)) for line in str(t.text[0]).split("<br>"))
+            lon_min = min(lon_min, float(t.lon[0]) - 0.6 * longest - 0.5)
+        elif t.type == "scattergeo" and t.mode == "text" and t.textposition == "middle right":
+            lon_min = min(lon_min, float(t.lon[0]) - 1.0)
+    fig.update_geos(visible=False, showframe=False, projection_type="mercator", lonaxis_range=[lon_min, LON_RANGE[1]],
+                    lataxis_range=list(LAT_RANGE), bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(margin=dict(l=16, r=16, b=64))
+    return fig
+
+
+def _plural(n: int, word: str = "institution") -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+# ---------- Q2.1 ----------
+
+def state_counts(year: int | None = None, category: str = "Overall", top_n: int = 100,
+                 view: str = "map") -> ChartResult:
     """Answers questions like: "Which states have the most institutions in the top 100 in 2025?" (Q2.1)
 
     Definition: number of institutions of each state certainly ranked within the top N of the
     chosen category and year.
     Method: filter the year's list to ranks <= N, count institutions per state, sort from most to
     fewest. Share = state count / all top-N institutions x 100.
+    view="map": every state coloured by its count on the map of India (choropleth map, the default);
+    view="ranked": the same counts as sorted horizontal bars (bar chart).
     """
+    view = _check_view("state_counts", view)
     df = load_master()
     category = check_category(category, df)
     year = check_year(category_years(category, df)[-1] if year is None else year, category, df)
@@ -108,25 +267,13 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
     }).sort_values(["institutions", "state"], ascending=[False, True]).reset_index()
     table.insert(2, "share_pct", (100 * table["institutions"] / len(top)).round(1))
 
-    plot = table.iloc[::-1]
-    fig = go.Figure(go.Bar(
-        x=plot["institutions"], y=plot["state"], orientation="h", marker_color=CATEGORICAL[0],
-        text=plot["institutions"], textposition="outside", cliponaxis=False, name="Institutions",
-        customdata=np.stack([plot["share_pct"], plot["best_rank"], plot["examples"]], axis=1),
-        hovertemplate=("<b>%{y}</b><br>%{x} institutions (%{customdata[0]}% of the top " + str(top_n) + ")"
-                       "<br>Best rank: %{customdata[1]}<br>%{customdata[2]}<extra></extra>")))
-    fig.update_xaxes(title_text=f"Institutions in the {category} top {top_n}, {year}", showgrid=True,
-                     range=[0, table["institutions"].max() * 1.12])
-    fig.update_yaxes(title_text="State / UT", showgrid=False)
-
     lead = table[table["institutions"].eq(table["institutions"].max())]["state"].tolist()
     top3 = table.head(3)
     who = _join(lead)
+    most = int(table["institutions"].max())
     group = f"top-{top_n}" if cat["rank_upper"].max() >= top_n else "ranked"
-    title = (f"{who} {'has' if len(lead) == 1 else 'share'} the most {category} {group} institutions "
-             f"in {year} ({table['institutions'].max()})")
     insight = (f"In {year}, {who} {'has' if len(lead) == 1 else 'share'} the most institutions in the {category} "
-               f"top {top_n} ({table['institutions'].max()}{' each' if len(lead) > 1 else ''}); the top three states ("
+               f"top {top_n} ({most}{' each' if len(lead) > 1 else ''}); the top three states ("
                f"{', '.join(f'{s} {c}' for s, c in zip(top3['state'], top3['institutions']))}) hold "
                f"{top3['share_pct'].sum():.0f}% of the {len(top)} places, spread over {len(table)} states/UTs.")
     if capped:
@@ -137,13 +284,52 @@ def state_counts(year: int | None = None, category: str = "Overall", top_n: int 
         insight += (f" The top {top_n} holds {len(top)} institutions because {len(sharing)} share rank {int(last)}: "
                     f"{_join([short_name(n, 40) for n in sharing['canonical_name']])}.")
     note = _list_note(cat, top_n, [year])
-    finish(fig, title, f"{category} ranking {year} · {len(top)} institutions in the top {top_n}", note=note,
-           height=max(380, 160 + 24 * len(table)))
+    list_name = f"{category} top {top_n}" if group != "ranked" else f"{category} ranked list"
+
+    if view == "ranked":
+        plot = table.iloc[::-1]
+        fig = go.Figure(go.Bar(
+            x=plot["institutions"], y=plot["state"], orientation="h",
+            marker_color=[CATEGORICAL[0] if s in lead else OTHER for s in plot["state"]],
+            text=plot["institutions"], textposition="outside", cliponaxis=False, name="Institutions",
+            customdata=np.stack([plot["share_pct"], plot["best_rank"], plot["examples"]], axis=1),
+            hovertemplate=("<b>%{y}</b><br>%{x} institutions (%{customdata[0]}% of the top " + str(top_n) + ")"
+                           "<br>Best rank: %{customdata[1]}<br>%{customdata[2]}<extra></extra>")))
+        fig.update_xaxes(title_text=f"Institutions in the {list_name}, {year}", showgrid=True,
+                         range=[0, most * 1.12])
+        fig.update_yaxes(title_text="State / UT", showgrid=False)
+        title = (f"{who} {'has' if len(lead) == 1 else 'share'} the most institutions in the {list_name}: "
+                 f"{most}{' each' if len(lead) > 1 else ''} in {year}")
+        finish(fig, title, f"Each bar is one state · the number at its end = institutions in the top {top_n} "
+                           f"in {year} · the answer is in colour", note=note, height=max(380, 160 + 24 * len(table)))
+        chart = "bar chart"
+    else:
+        values = table.set_index("state")["institutions"]
+        hover = {s: (f"{s}: {_plural(int(values[s]))} in the top {top_n} ({year})" if s in values.index else
+                     f"{s}: no institution in the top {top_n} ({year})") for s in state_polygons()}
+        scale = _count_scale(most)
+        bar = dict(title=dict(text=f"Institutions<br>in the top {top_n}"), tickvals=[0, most],
+                   ticktext=["0 = none (grey)", str(most)])
+        fig = go.Figure(_india_map(values, hover, scale, 0, most, colorbar=bar))
+        for t in _map_labels(values, lambda v: f"{int(v)}", scale, 0, most):
+            fig.add_trace(t)
+        _finish_map(fig)
+        title = (f"{who} {'has' if len(lead) == 1 else 'share'} the most institutions in the {list_name}: "
+                 f"{most}{' each' if len(lead) > 1 else ''} in {year}")
+        finish(fig, title, f"Darker = more institutions in the top {top_n} in {year} · grey = none · numbers on "
+                           f"the leading states · hover any state for its count", note=note, height=640)
+        chart = "choropleth map"
     method = (f"We take the {category} list of {year} and keep institutions whose rank is certainly {top_n} or "
               f"better (exact rank ≤ {top_n}, or a NIRF band ending at or before {top_n}). We count them per "
               f"state (official state names after cleaning) and sort from most to fewest. Share = state count / "
-              f"{len(top)} × 100.")
-    return ChartResult(fig, table, insight, method, "bar chart")
+              f"{len(top)} × 100. "
+              + ("The map colours each state by its count (grey = none; light to dark teal = few to many) and "
+                 "prints the number on the leading states; Delhi, Chandigarh, Puducherry and Goa are too small "
+                 "to read on an all-India map, so their numbers are written beside it. A choropleth map shows "
+                 "where the top institutions are; the 'Ranked list' view gives the exact order."
+                 if view == "map" else
+                 "Sorted horizontal bars give the exact order; the 'Map' view shows where the states are."))
+    return ChartResult(fig, table, insight, method, chart)
 
 
 def _join(names) -> str:
@@ -174,16 +360,21 @@ def _state_year_counts(cat: pd.DataFrame, years: list[int], top_n: int) -> pd.Da
     return counts
 
 
-def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartResult:
+# ---------- Q2.2 ----------
+
+def state_share_over_time(category: str = "Overall", top_n: int = 100, view: str = "map") -> ChartResult:
     """Answers questions like: "How is the geographical distribution of top-ranked institutions changing
     from 2017 to 2025?" (Q2.2)
 
     Definition: a state's share in a year = its institutions in the top N / all institutions in the
     top N that year x 100 (so the shares of a year add up to 100%).
-    Method: compute every state's share per year; draw the 8 states with the most top-N places over
-    all years as their own line and add the rest together as one "Other states" line (multi-series
-    line chart: one line with markers per state, so each state's rise or fall can be read directly).
+    Method: compute every state's share per year. view="map" (default): two maps of India side by side,
+    the first and the last year, every state coloured by its top-N count on ONE shared colour scale, so
+    the change is visible at a glance (choropleth map). view="lines": the 8 states with the most top-N
+    places over all years as their own line of shares, the rest added together as "Other states"
+    (multi-series line chart).
     """
+    view = _check_view("state_share_over_time", view)
     df = load_master()
     category = check_category(category, df)
     years = change_years(category, df)
@@ -194,39 +385,16 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
 
     order = counts.sum().sort_values(ascending=False).index.tolist()
     main = order[:MAX_LINES]
-    plot = shares[main].copy()
-    plot_counts = counts[main].copy()
-    if len(order) > MAX_LINES:
-        plot["Other states"] = shares[order[MAX_LINES:]].sum(axis=1)
-        plot_counts["Other states"] = counts[order[MAX_LINES:]].sum(axis=1)
-    colors = color_map(list(plot.columns), other_label="Other states")
-
-    fig = go.Figure()
-    for s in plot.columns:
-        other = s == "Other states"
-        fig.add_trace(go.Scatter(
-            x=plot.index, y=plot[s], name=s, mode="lines+markers",
-            line=dict(color=colors[s], dash="dot" if other else "solid"), marker=dict(color=colors[s]),
-            customdata=plot_counts[s],
-            hovertemplate=f"<b>{s}</b> %{{x}}<br>%{{y:.1f}}% of the top {top_n} (%{{customdata}} institutions)<extra></extra>"))
-    fig.update_yaxes(title_text=f"Share of the {category} top {top_n} (%)", range=[0, plot.max().max() * 1.08],
-                     ticksuffix="%")
-    fig.update_xaxes(title_text="Year", dtick=1)
-    fig.update_layout(hovermode="x unified")
-
     a, z = years[0], years[-1]
     diff = (shares.loc[z] - shares.loc[a]).sort_values()
     gain, loss = diff.index[-1], diff.index[0]
     leader = shares.loc[z].idxmax()
-    title = (f"{gain} gained the largest share of the {category} top {top_n} from {a} to {z} "
-             f"({signed(diff[gain], 1)} points)")
     insight = (f"{gain}'s share of the {category} top {top_n} grew from {shares.at[a, gain]:.0f}% in {a} to "
                f"{shares.at[z, gain]:.0f}% in {z} (the largest gain), while {loss} fell from "
                f"{shares.at[a, loss]:.0f}% to {shares.at[z, loss]:.0f}%; {leader} holds the largest share in {z} "
                f"({shares.at[z, leader]:.0f}%).")
     hidden = [s for s in dict.fromkeys([gain, loss]) if s not in main]
     if hidden:
-        title = title[:-1] + "; inside 'Other states')" if gain in hidden else title
         insight += f" {_join(hidden)} {'is' if len(hidden) == 1 else 'are'} part of the 'Other states' line."
     if capped:
         insight = f"{capped} {insight}"
@@ -234,26 +402,92 @@ def state_share_over_time(category: str = "Overall", top_n: int = 100) -> ChartR
     table["institutions"] = counts.stack().values
     table = table[table["institutions"].gt(0)].sort_values(["year", "share_pct"], ascending=[True, False])
     note = _list_note(cat, top_n, years)
-    finish(fig, title, f"{category} ranking {fmt_years(years)} · one line per state (top {len(main)} states "
-           f"by top-{top_n} places; the rest summed as 'Other states')", note=note, legend_title="State")
+
+    if view == "lines":
+        plot = shares[main].copy()
+        plot_counts = counts[main].copy()
+        if len(order) > MAX_LINES:
+            plot["Other states"] = shares[order[MAX_LINES:]].sum(axis=1)
+            plot_counts["Other states"] = counts[order[MAX_LINES:]].sum(axis=1)
+        colors = color_map(list(plot.columns), other_label="Other states")
+        fig = go.Figure()
+        for s in plot.columns:
+            other = s == "Other states"
+            fig.add_trace(go.Scatter(
+                x=plot.index, y=plot[s], name=s, mode="lines+markers",
+                line=dict(color=colors[s], dash="dot" if other else "solid"), marker=dict(color=colors[s]),
+                customdata=plot_counts[s],
+                hovertemplate=f"<b>{s}</b> %{{x}}<br>%{{y:.1f}}% of the top {top_n} (%{{customdata}} institutions)<extra></extra>"))
+        fig.update_yaxes(title_text=f"Share of the {category} top {top_n} (%)", range=[0, plot.max().max() * 1.08],
+                         ticksuffix="%")
+        fig.update_xaxes(title_text="Year", dtick=1)
+        fig.update_layout(hovermode="x unified")
+        title = (f"{gain} gained the largest share of the {category} top {top_n} from {a} to {z} "
+                 f"({signed(diff[gain], 1)} points)")
+        if gain in hidden:
+            title = title[:-1] + "; inside 'Other states')"
+        finish(fig, title, f"One line per state = its share of the top {top_n} each year · the {len(main)} states "
+                           f"with the most places get a line, the rest are summed as 'Other states'",
+               note=note, legend_title="State")
+        chart = "multi-series line chart"
+    else:
+        ca, cz = counts.loc[a], counts.loc[z]
+        zmax = int(max(ca.max(), cz.max()))
+        scale = _count_scale(zmax)
+        fig = make_subplots(rows=1, cols=2, specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
+                            horizontal_spacing=0.01, subplot_titles=(f"{a}", f"{z}"))
+        for col, (y, c) in enumerate(((a, ca), (z, cz)), start=1):
+            hover = {s: (f"{s}: {_plural(int(c[s]))} in the top {top_n} ({y})" if s in c.index and c[s] else
+                         f"{s}: no institution in the top {top_n} ({y})") for s in state_polygons()}
+            bar = dict(title=dict(text=f"Institutions in the top {top_n}", side="top"), tickvals=[0, zmax],
+                       ticktext=["0 = none (grey)", str(zmax)], orientation="h", x=0.5, xanchor="center", y=0.0,
+                       yanchor="bottom", len=0.4, thickness=10)
+            fig.add_trace(_india_map(c, hover, scale, 0, zmax, colorbar=bar, showscale=col == 2), row=1, col=col)
+            for t in _map_labels(c, lambda v: f"{int(v)}", scale, 0, zmax):
+                fig.add_trace(t, row=1, col=col)
+        fig.update_annotations(font=dict(size=15, color=INK, weight=600), yshift=-6)
+        _finish_map(fig)
+        change = (cz.reindex(order, fill_value=0) - ca.reindex(order, fill_value=0))
+        best = int(change.max())
+        winners = change.index[change.eq(best)].tolist()
+        if best > 0:
+            w = winners[0]
+            title = (f"{_join(winners)} gained the most places in the {category} top {top_n} between {a} and {z} "
+                     + (f"({int(ca.get(w, 0))} → {int(cz.get(w, 0))})" if len(winners) == 1 else f"({signed(best)} each)"))
+        else:
+            title = f"No state gained places in the {category} top {top_n} between {a} and {z}"
+        finish(fig, title, f"Same colour scale on both maps: darker = more institutions in the top {top_n} · "
+                           f"grey = none · numbers on the leading states · hover any state", note=note, height=640)
+        chart = "choropleth map"
     method = (f"For each year we count the institutions of every state that are certainly in the {category} top "
               f"{top_n}, and divide by the total for that year (× 100), so each year's shares add up to 100%. "
-              f"The {len(main)} states with the most top-{top_n} places over all years get their own line; the "
-              f"other {max(len(order) - MAX_LINES, 0)} states are added together as 'Other states' (dotted grey "
-              f"line) so the chart stays readable. A multi-series line chart puts every state on the same 0% "
-              f"baseline, so each state's rise or fall can be read and compared directly.")
-    return ChartResult(fig, table.reset_index(drop=True), insight, method, "multi-series line chart")
+              + (f"The two maps show the first and the last year ({a} and {z}) with every state coloured by its "
+                 f"top-{top_n} count on one shared scale (grey = none, light to dark teal = few to many), so a "
+                 f"state that darkened gained places and one that lightened lost them; the number is printed on "
+                 f"the leading states and written beside the map for Delhi and the other small places. The table "
+                 f"holds every year; the 'Lines' view draws every year's shares."
+                 if view == "map" else
+                 f"The {len(main)} states with the most top-{top_n} places over all years get their own line; the "
+                 f"other {max(len(order) - MAX_LINES, 0)} states are added together as 'Other states' (dotted grey "
+                 f"line) so the chart stays readable. A multi-series line chart puts every state on the same 0% "
+                 f"baseline, so each state's rise or fall can be read and compared directly."))
+    return ChartResult(fig, table.reset_index(drop=True), insight, method, chart)
 
+
+# ---------- Q2.3 ----------
 
 def state_representation_change(category: str = "Overall", start_year: int | None = None,
-                                end_year: int | None = None, top_n: int = 100) -> ChartResult:
+                                end_year: int | None = None, top_n: int = 100, view: str = "map") -> ChartResult:
     """Answers questions like: "Which states have improved their representation in the top 100 over time?" (Q2.3)
 
     Definition: change = (institutions in the top N in end_year) - (institutions in the top N in
     start_year), per state. Positive = the state gained places.
-    Method: count top-N institutions per state in both years, subtract, and sort; states with no
-    change are left out of the chart but kept in the table.
+    Method: count top-N institutions per state in both years, subtract, and sort. view="map" (default):
+    every state coloured by its change, teal = gained, coral = lost, light grey = no change (choropleth
+    map); view="ranked": bars either side of zero, states with no change left out of the chart but kept
+    in the table (bar chart).
     """
+    view = _check_view("state_representation_change", view)
     df = load_master()
     category = check_category(category, df)
     available = change_years(category, df)
@@ -273,64 +507,103 @@ def state_representation_change(category: str = "Overall", start_year: int | Non
         raise NirfInputError(f"No state changed its number of {category} top-{top_n} institutions between "
                              f"{start_year} and {end_year}.")
 
-    fig = go.Figure(go.Bar(
-        x=moved["change"], y=moved["state"], orientation="h",
-        marker_color=[UP if c > 0 else DOWN for c in moved["change"]],
-        text=[f"{a} → {b}" for a, b in zip(moved[f"count_{start_year}"], moved[f"count_{end_year}"])],
-        textposition="outside", cliponaxis=False, showlegend=False,
-        customdata=np.stack([moved[f"count_{start_year}"], moved[f"count_{end_year}"]], axis=1),
-        hovertemplate=(f"<b>%{{y}}</b><br>{start_year}: %{{customdata[0]}} institutions<br>{end_year}: "
-                       f"%{{customdata[1]}} institutions<br>Change: %{{x:+d}}<extra></extra>")))
-    for name, c, show in (("Gained places", UP, (moved["change"] > 0).any()),
-                          ("Lost places", DOWN, (moved["change"] < 0).any())):
-        if show:
-            fig.add_trace(go.Bar(x=[None], y=[None], name=name, marker_color=c, orientation="h"))
-    lo, hi = min(0, moved["change"].min()), max(0, moved["change"].max())
-    pad = 0.22 * (hi - lo)
-    fig.update_xaxes(title_text=f"Change in top-{top_n} institutions ({end_year} − {start_year})", showgrid=True,
-                     range=[lo - (pad if lo < 0 else 0), hi + (pad if hi > 0 else 0)], zeroline=True,
-                     zerolinecolor=INK_SECONDARY, dtick=1 if hi - lo <= 12 else None)
-    fig.update_yaxes(title_text="State / UT", showgrid=False)
-    fig.update_layout(barmode="overlay", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
-
     best, worst = table["change"].max(), table["change"].min()
     winners = _join(table.loc[table["change"].eq(best), "state"])
     losers_ = _join(table.loc[table["change"].eq(worst), "state"])
     gainers, losers = int((table["change"] > 0).sum()), int((table["change"] < 0).sum())
     if best > 0:
-        title = (f"{winners} gained the most {category} top-{top_n} places, {start_year}→{end_year} "
+        title = (f"{winners} gained the most places in the {category} top {top_n} from {start_year} to {end_year} "
                  f"({signed(best)})")
         detail = table[table["change"].eq(best)].iloc[0]
         insight = (f"Between {start_year} and {end_year}, {winners} improved {category} top-{top_n} representation "
                    f"the most ({signed(best)}" + (f", {detail[f'count_{start_year}']} → "
                                                   f"{detail[f'count_{end_year}']})" if (table['change'] == best).sum() == 1 else ")"))
     else:
-        title = f"No state gained {category} top-{top_n} places, {start_year}→{end_year}"
+        title = f"No state gained places in the {category} top {top_n} from {start_year} to {end_year}"
         insight = f"Between {start_year} and {end_year}, no state gained places in the {category} top {top_n}"
     insight += (f"; {losers_} lost the most ({signed(worst)}). {gainers} states gained, "
                 f"{losers} lost and {len(table) - gainers - losers} stayed the same."
                 if worst < 0 else "; no state lost places.")
     if capped:
         insight = f"{capped} {insight}"
-    finish(fig, title, f"{category} ranking · labels show the number of institutions {start_year} → {end_year}",
-           note=_list_note(cat, top_n, [start_year, end_year]), height=max(380, 170 + 26 * len(moved)),
-           legend_title="Change")
+    note = _list_note(cat, top_n, [start_year, end_year])
+    c0, c1 = f"count_{start_year}", f"count_{end_year}"
+
+    if view == "ranked":
+        fig = go.Figure(go.Bar(
+            x=moved["change"], y=moved["state"], orientation="h",
+            marker_color=[UP if c > 0 else DOWN for c in moved["change"]],
+            text=[f"{a} → {b}" for a, b in zip(moved[c0], moved[c1])],
+            textposition="outside", cliponaxis=False, showlegend=False,
+            customdata=np.stack([moved[c0], moved[c1]], axis=1),
+            hovertemplate=(f"<b>%{{y}}</b><br>{start_year}: %{{customdata[0]}} institutions<br>{end_year}: "
+                           f"%{{customdata[1]}} institutions<br>Change: %{{x:+d}}<extra></extra>")))
+        for name, c, show in (("Gained places", UP, (moved["change"] > 0).any()),
+                              ("Lost places", DOWN, (moved["change"] < 0).any())):
+            if show:
+                fig.add_trace(go.Bar(x=[None], y=[None], name=name, marker_color=c, orientation="h"))
+        lo, hi = min(0, moved["change"].min()), max(0, moved["change"].max())
+        pad = 0.22 * (hi - lo)
+        fig.update_xaxes(title_text=f"Change in top-{top_n} institutions ({end_year} − {start_year})", showgrid=True,
+                         range=[lo - (pad if lo < 0 else 0), hi + (pad if hi > 0 else 0)], zeroline=True,
+                         zerolinecolor=INK_SECONDARY, dtick=1 if hi - lo <= 12 else None)
+        fig.update_yaxes(title_text="State / UT", showgrid=False)
+        fig.update_layout(barmode="overlay", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
+        finish(fig, title, f"Bars to the right = gained places, to the left = lost · label = institutions in "
+                           f"{start_year} → {end_year} · states with no change are only in the table",
+               note=note, height=max(380, 170 + 26 * len(moved)), legend_title="Change")
+        chart = "bar chart"
+    else:
+        values = table.set_index("state")["change"]
+        both = table.set_index("state")
+        m = int(max(abs(best), abs(worst), 1))
+        hover = {}
+        for s in state_polygons():
+            if s in both.index:
+                hover[s] = (f"{s}: {int(both.at[s, c0])} in {start_year} → {int(both.at[s, c1])} in {end_year} "
+                            f"({'no change' if both.at[s, 'change'] == 0 else signed(both.at[s, 'change'])})")
+            else:
+                hover[s] = f"{s}: no institution in the top {top_n} in {start_year} or {end_year}"
+        bar = dict(title=dict(text=f"Change in top-{top_n}<br>places, {start_year} → {end_year}"),
+                   tickvals=[-m, 0, m], ticktext=[f"−{m} lost", "0 = no change (light grey)", f"+{m} gained"])
+        fig = go.Figure(_india_map(values, hover, DIVERGING, -m, m, zmid=0, colorbar=bar))
+        for t in _map_labels(values, signed, DIVERGING, -m, m, zmid=0):
+            fig.add_trace(t)
+        _finish_map(fig)
+        finish(fig, title, f"Teal = gained places in the top {top_n}, coral = lost, light grey = no change · "
+                           f"number = the change · hover for both years' counts", note=note, height=640)
+        chart = "choropleth map"
     method = (f"For {start_year} and {end_year} we count, per state, the institutions certainly in the {category} "
               f"top {top_n}. Change = count in {end_year} − count in {start_year}: positive means the state "
-              f"gained places. States with no change are not drawn but are listed in the table. Because the top "
-              f"{top_n} always has the same number of places, one state's gain is another state's loss.")
-    return ChartResult(fig, table, insight, method, "bar chart")
+              f"gained places. Because the top {top_n} always has the same number of places, one state's gain is "
+              f"another state's loss. "
+              + ("The map colours each state by its change on a two-direction scale with a neutral middle: teal = "
+                 "gained, coral = lost, light grey = no change (also for states in neither year); the change is "
+                 "printed on the states that moved most and written beside the map for the small places. The "
+                 "'Ranked list' view sorts the movers; states with no change appear only in the table."
+                 if view == "map" else
+                 "States with no change are not drawn but are listed in the table; the 'Map' view shows where "
+                 "the gains and losses are."))
+    return ChartResult(fig, table, insight, method, chart)
 
 
-def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall", years=None) -> ChartResult:
+# ---------- Q2.4 ----------
+
+def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall", years=None,
+                   view: str = "dots", dots_year: int | None = None) -> ChartResult:
     """Answers questions like: "How do the rankings of institutions in Karnataka compare with those in
     Tamil Nadu?" (Q2.4)
 
     Definition: the exact ranks of all ranked institutions located in each chosen state.
-    Method: per year and state, a box plot of those ranks (median line, box = middle 50%, whiskers
-    and dots for the rest) plus a line through each state's yearly median rank. Lower = better, so
-    the rank axis is reversed. Exact ranks only: band-only positions (e.g. 101-150) have no number.
+    Method: per year and state, the median, quartiles and spread of those ranks; pooled over all years,
+    the median rank and the average number of ranked institutions per year.
+    view="dots" (default): a small map of India with only the chosen states coloured, beside a chart in
+    which every institution is one dot on a rank axis (1 at the top), the states side by side, for one
+    year (`dots_year`, default the last year); institutions NIRF lists only in a band (e.g. 101-150)
+    have no exact rank, so they are counted under the dots, never placed (jittered strip chart).
+    view="boxes": one box per state and year plus a line through the yearly medians (box-and-whisker plot).
     """
+    view = _check_view("compare_states", view)
     df = load_master()
     category = check_category(category, df)
     years = check_years(years, category, df)
@@ -346,27 +619,9 @@ def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
         raise NirfInputError(f"{', '.join(missing)} has no institution with an exact {category} rank in "
                              f"{fmt_years(years)}.")
     exact["rank"] = exact["rank"].astype(float)
-
     colors = color_map(states)
-    fig = go.Figure()
-    for s in states:
-        t = exact[exact["state"].eq(s)]
-        fig.add_trace(go.Box(
-            x=t["year"], y=t["rank"], name=s, legendgroup=s, offsetgroup=s, marker_color=colors[s],
-            line_color=colors[s], fillcolor="rgba(0,0,0,0)", boxpoints="all", jitter=0.4, pointpos=0,
-            customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
-            hovertemplate="<b>%{customdata[0]}</b><br>%{x}: rank %{customdata[1]}<extra>" + s + "</extra>"))
-    med = exact.groupby(["state", "year"])["rank"].agg(["median", "size"]).reset_index()
-    for s in states:
-        m = med[med["state"].eq(s)]
-        fig.add_trace(go.Scatter(
-            x=m["year"], y=m["median"], mode="lines", name=f"{s} median", legendgroup=s, showlegend=False,
-            line=dict(color=colors[s], width=1.5), customdata=m["size"],
-            hovertemplate=f"<b>{s}</b> %{{x}}<br>Median rank %{{y:.1f}} of %{{customdata}} institutions<extra></extra>"))
-    fig.update_layout(boxmode="group", boxgap=0.25, boxgroupgap=0.1)
-    fig.update_yaxes(title_text="Exact rank (1 = best, shown at the top)", autorange="reversed")
-    fig.update_xaxes(title_text="Year", dtick=1)
 
+    med = exact.groupby(["state", "year"])["rank"].agg(["median", "size"]).reset_index()
     pooled = exact.groupby("state").agg(median_rank=("rank", "median"), mean_rank=("rank", "mean"),
                                         best_rank=("rank", "min"), ranked_rows=("rank", "size"))
     pooled["avg_per_year"] = pooled["ranked_rows"] / len(years)
@@ -377,13 +632,11 @@ def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
     more = pooled["avg_per_year"].idxmax()
     span = fmt_years(years)
     if len(states) == 1:
-        title = f"{states[0]}: median {category} rank {pooled.at[states[0], 'median_rank']:.0f} over {span}"
         insight = (f"Over {span}, {states[0]} had on average {pooled.at[states[0], 'avg_per_year']:.1f} institutions "
                    f"with an exact {category} rank per year, with a median rank of "
                    f"{pooled.at[states[0], 'median_rank']:.0f} (best {pooled.at[states[0], 'best_rank']:.0f}).")
     else:
         other = [s for s in states if s != better]
-        title = f"{better}'s institutions rank better in {category} (median {pooled.at[better, 'median_rank']:.0f})"
         insight = (f"Over {span}, {better}'s {category}-ranked institutions had the best median rank "
                    f"({pooled.at[better, 'median_rank']:.0f} vs "
                    + ", ".join(f"{pooled.at[s, 'median_rank']:.0f} for {s}" for s in other) + "), while "
@@ -392,29 +645,157 @@ def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
     table = med.rename(columns={"median": "median_rank", "size": "institutions"})
     table = table.merge(exact.groupby(["state", "year"])["rank"].agg(best_rank="min", worst_rank="max")
                         .astype(int).reset_index(), on=["state", "year"])
-    finish(fig, title, f"{category} ranking, {span} · box = middle 50% of ranks, line = median rank",
-           note="Exact ranks only; institutions NIRF lists only in a band (e.g. 101-150) are not drawn.",
-           legend_title="State")
+    band_note = "Exact ranks only; institutions NIRF lists only in a band (e.g. 101-150) are not drawn."
+
+    if view == "boxes":
+        fig = go.Figure()
+        for s in states:
+            t = exact[exact["state"].eq(s)]
+            fig.add_trace(go.Box(
+                x=t["year"], y=t["rank"], name=s, legendgroup=s, offsetgroup=s, marker_color=colors[s],
+                line_color=colors[s], fillcolor="rgba(0,0,0,0)", boxpoints="all", jitter=0.4, pointpos=0,
+                customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
+                hovertemplate="<b>%{customdata[0]}</b><br>%{x}: rank %{customdata[1]}<extra>" + s + "</extra>"))
+        for s in states:
+            m = med[med["state"].eq(s)]
+            fig.add_trace(go.Scatter(
+                x=m["year"], y=m["median"], mode="lines", name=f"{s} median", legendgroup=s, showlegend=False,
+                line=dict(color=colors[s], width=1.5), customdata=m["size"],
+                hovertemplate=f"<b>{s}</b> %{{x}}<br>Median rank %{{y:.1f}} of %{{customdata}} institutions<extra></extra>"))
+        fig.update_layout(boxmode="group", boxgap=0.25, boxgroupgap=0.1)
+        fig.update_yaxes(title_text="Exact rank (1 = best, shown at the top)", autorange="reversed")
+        fig.update_xaxes(title_text="Year", dtick=1)
+        if len(states) == 1:
+            title = f"{states[0]}: middle {category} rank {pooled.at[states[0], 'median_rank']:.0f} over {span}"
+        else:
+            title = (f"{better}'s institutions rank higher in {category} over {span} "
+                     f"(middle rank {pooled.at[better, 'median_rank']:.0f})")
+        finish(fig, title, f"{category} ranking, {span} · every dot is one institution · box = middle half of the "
+                           f"ranks, line = middle rank (median) · higher on the chart = better",
+               note=band_note, legend_title="State")
+        chart = "box-and-whisker plot"
+    else:
+        y = years[-1] if dots_year is None else check_year(dots_year, category, df)
+        if y not in years:
+            raise NirfInputError(f"The dots can only show a year of the chosen range ({span}), not {y}.")
+        rows = sub[sub["year"].eq(y)]
+        if rows[rows["rank"].notna()].empty:
+            raise NirfInputError(f"No institution of {_join(states)} has an exact {category} rank in {y}.")
+        fig = make_subplots(rows=1, cols=2, specs=[[{"type": "choropleth"}, {"type": "xy"}]],
+                            column_widths=[0.36, 0.64], horizontal_spacing=0.03)
+        # The small map: the chosen states in their chart colours, everything else grey.
+        k = len(states)
+        index = pd.Series({s: i + 1 for i, s in enumerate(states)})
+        steps = [CONTEXT] + [colors[s] for s in states]          # z = 0 grey, z = i the i-th state's colour
+        n = len(steps)
+        scale = [[p, c] for i, c in enumerate(steps) for p in (i / n, (i + 1) / n)]
+        hover = {s: (f"{s}: compared on the right" if s in states else f"{s}: not compared")
+                 for s in state_polygons()}
+        fig.add_trace(_india_map(index, hover, scale, 0, n - 1, showscale=False), row=1, col=1)
+        for t in _side_labels(states):
+            fig.add_trace(t, row=1, col=1)
+        # The dots: one per institution with an exact rank in year y, the states side by side. Institutions
+        # NIRF listed only in a band that year have no rank number, so they sit as squares in a separate
+        # shaded strip under the dots ("not placed"), with their band in the hover.
+        worst = float(rows["rank"].max())
+        strip_top, strip_mid, strip_bottom = worst * 1.08 + 2, worst * 1.19 + 3, worst * 1.30 + 4
+        counts, band_counts = {}, {}
+        for i, s in enumerate(states):
+            t = rows[rows["state"].eq(s) & rows["rank"].notna()].sort_values("rank")
+            n = len(t)
+            counts[s] = n
+            fig.add_trace(go.Scatter(
+                x=i + jitter(n, 0.16, seed=i), y=t["rank"].astype(float), mode="markers", name=s,
+                marker=dict(color=colors[s], size=11, line=dict(width=1, color=SURFACE)),
+                customdata=np.stack([t["canonical_name"].map(lambda x: short_name(x, 44)), t["rank_raw"]], axis=1),
+                hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} in " + str(y) + "<extra>" + s + "</extra>",
+                showlegend=False), row=1, col=2)
+            if n:
+                m_y = float(t["rank"].median())
+                fig.add_trace(go.Scatter(x=[i - 0.32, i + 0.32], y=[m_y, m_y], mode="lines",
+                                         line=dict(color=INK, width=2), hoverinfo="skip", showlegend=False),
+                              row=1, col=2)
+                fig.add_annotation(x=i + 0.34, y=m_y, xref="x", yref="y", text=f"middle rank {m_y:g}",
+                                   showarrow=False, xanchor="left", font=dict(size=11, color=INK), row=1, col=2)
+            band = rows[rows["state"].eq(s) & rows["rank"].isna()]
+            band_counts[s] = len(band)
+            if len(band):
+                fig.add_trace(go.Scatter(
+                    x=i + jitter(len(band), 0.22, seed=10 + i), y=[strip_mid] * len(band), mode="markers", name=s,
+                    marker=dict(color=colors[s], size=9, symbol="square", opacity=0.75,
+                                line=dict(width=1, color=SURFACE)),
+                    customdata=np.stack([band["canonical_name"].map(lambda x: short_name(x, 44)),
+                                         band["rank_band_nirf"].astype(str)], axis=1),
+                    hovertemplate="<b>%{customdata[0]}</b><br>Only a band in " + str(y) + ": %{customdata[1]}"
+                                  "<br>No exact rank, so not placed<extra>" + s + "</extra>",
+                    showlegend=False), row=1, col=2)
+        if sum(band_counts.values()):
+            fig.add_shape(type="rect", xref="x", yref="y", x0=-0.6, x1=k - 0.3, y0=strip_top, y1=strip_bottom,
+                          fillcolor=CONTEXT, line=dict(width=0), layer="below", row=1, col=2)
+            fig.add_annotation(x=-0.58, y=strip_top, xref="x", yref="y", xanchor="left", yanchor="top",
+                               text="<i>Listed only in a band (e.g. 101-150), no exact rank: counted, not placed</i>",
+                               showarrow=False, font=dict(size=11, color=INK_SECONDARY), row=1, col=2)
+        ticks = [f"<b>{s}</b><br>{_plural(counts[s])} ranked" + (f"<br>+ {band_counts[s]} only in a band"
+                                                                  if band_counts[s] else "") for s in states]
+        fig.update_xaxes(tickvals=list(range(k)), ticktext=ticks, range=[-0.6, k - 0.3], title_text="State",
+                         showgrid=False, row=1, col=2)
+        bottom = strip_bottom if sum(band_counts.values()) else worst * 1.06 + 2
+        fig.update_yaxes(title_text=f"{category} rank in {y}", range=[bottom, -2], showgrid=True,
+                         tickvals=[1] + list(range(20, int(worst) + 1, 20)), row=1, col=2)
+        for text, yy, anchor in (("better ▲", 0, "top"), ("worse ▼", worst * 1.02, "bottom")):
+            fig.add_annotation(x=-0.58, y=yy, xref="x", yref="y", text=f"<i>{text}</i>", showarrow=False,
+                               xanchor="left", yanchor=anchor, font=dict(size=11, color=INK_SECONDARY), row=1, col=2)
+        _finish_map(fig)
+        fig.update_layout(margin=dict(l=16, r=24))
+        med_y = med[med["year"].eq(y)].set_index("state")["median"].reindex(states)
+        if len(states) == 1:
+            title = f"{states[0]}: middle {category} rank {med_y.iloc[0]:g} in {y}"
+        else:
+            best_s = med_y.idxmin()
+            rest = [s for s in states if s != best_s]
+            if len(states) == 2:
+                title = (f"In {y}, {best_s}'s institutions rank higher than {rest[0]}'s "
+                         f"(middle rank {med_y[best_s]:g} vs {med_y[rest[0]]:g})")
+            else:
+                title = f"In {y}, {best_s}'s institutions have the best middle rank ({med_y[best_s]:g})"
+        finish(fig, title, f"Each dot is one institution's {category} rank in {y} · higher = better · "
+                           f"black line = middle rank (median) · map shows the states compared",
+               note=f"Institutions NIRF lists only in a band (e.g. 101-150) have no exact rank: they are counted "
+                    f"in the grey strip, not placed. The answer below pools {span}.", height=600)
+        chart = "jittered strip chart"
     method = (f"For every year we collect the exact {category} ranks of institutions located in "
-              f"{', '.join(states)}. Each box shows that year's ranks of one state: the line inside is the median "
-              f"(middle value), the box spans Q1 to Q3 (middle half), dots are individual institutions. A thin line "
-              f"joins each state's yearly medians. The insight pools all years: the median rank (lower = better) "
-              f"and the average number of ranked institutions per year, because a state with many institutions "
-              f"naturally also has more of them further down the list. Band-only positions "
-              f"({int(pooled['band_only_rows'].sum())} rows) have no exact rank and are left out.")
-    return ChartResult(fig, table, insight, method, "box-and-whisker plot")
+              f"{', '.join(states)}. "
+              + (f"The chart shows {y}: each dot is one institution at its rank (1 at the top), the states side by "
+                 f"side, with a line at each state's median (the middle rank when sorted). Institutions NIRF listed "
+                 f"only in a band that year have no exact rank, so they sit as squares in a separate grey strip "
+                 f"under the dots (counted, never given a made-up position). The small map shows where the "
+                 f"compared states are. "
+                 if view == "dots" else
+                 "Each box shows one year's ranks of one state: the line inside is the median (middle value), the "
+                 "box spans Q1 to Q3 (middle half), dots are individual institutions. A thin line joins each state's "
+                 "yearly medians. ")
+              + f"The insight pools all years: the median rank (lower = better) and the average number of ranked "
+                f"institutions per year, because a state with many institutions naturally also has more of them "
+                f"further down the list. Band-only positions ({int(pooled['band_only_rows'].sum())} rows) have no "
+                f"exact rank and are left out of the medians.")
+    return ChartResult(fig, table, insight, method, chart)
 
 
-def new_entrants_by_state(category: str = "Overall", years=None, by_year: bool = True) -> ChartResult:
+# ---------- Q2.5 ----------
+
+def new_entrants_by_state(category: str = "Overall", years=None, by_year: bool = True,
+                          view: str = "map") -> ChartResult:
     """Answers questions like: "Which states have produced the largest number of newly appearing
     institutions in the rankings?" (Q2.5)
 
     Definition: a new entrant is an institution appearing in the category's ranked list (exact rank
     or band) for the first time, in a year when the category already existed the year before.
-    Method: count new entrants per state and year and add them up per state; states sorted by their
-    total. by_year=True splits each state's bar into years (stacked bar chart, darker = later);
+    Method: count new entrants per state and year and add them up per state. view="map" (default):
+    every state coloured by its total on the map of India (choropleth map). view="ranked": states sorted
+    by their total; by_year=True splits each state's bar into years (stacked bar chart, darker = later),
     by_year=False draws one plain bar per state (bar chart) with the yearly split in the hover text.
     """
+    view = _check_view("new_entrants_by_state", view)
     df = load_master()
     category = check_category(category, df)
     available = category_years(category, df)
@@ -431,40 +812,12 @@ def new_entrants_by_state(category: str = "Overall", years=None, by_year: bool =
     totals = counts.sum(axis=1).sort_values(ascending=True)
     counts = counts.loc[totals.index]
 
-    fig = go.Figure()
-    if by_year:
-        shades = dict(zip(counts.columns, ordinal_ramp(len(counts.columns))))
-        for y in counts.columns:
-            fig.add_trace(go.Bar(
-                y=counts.index, x=counts[y], name=str(y), orientation="h", marker_color=shades[y],
-                marker_line=dict(width=1, color=SURFACE),
-                hovertemplate=f"<b>%{{y}}</b><br>{y}: %{{x}} new institutions<extra></extra>"))
-        fig.add_trace(go.Scatter(
-            y=totals.index, x=totals.values, mode="text", text=[f"  {v}" for v in totals.values],
-            textposition="middle right", textfont=dict(color=INK_SECONDARY, size=11), showlegend=False,
-            hoverinfo="skip", cliponaxis=False))
-        fig.update_layout(barmode="stack", barcornerradius=0)
-    else:
-        split = ["<br>".join(f"{y}: {v}" for y, v in row.items() if v) for _, row in counts.iterrows()]
-        examples = new.sort_values("rank_upper").groupby("state")["canonical_name"].apply(
-            lambda n: ", ".join(short_name(x, 34) for x in n.head(3)) + (f" (+{len(n) - 3} more)" if len(n) > 3 else ""))
-        fig.add_trace(go.Bar(
-            y=totals.index, x=totals.values, orientation="h", marker_color=CATEGORICAL[0], name="New entrants",
-            text=totals.values, textposition="outside", cliponaxis=False, showlegend=False,
-            customdata=np.stack([split, examples.reindex(totals.index).fillna("")], axis=1),
-            hovertemplate=("<b>%{y}</b><br>%{x} new institutions<br>%{customdata[0]}"
-                           "<br><i>Best placed: %{customdata[1]}</i><extra></extra>")))
-    fig.update_xaxes(title_text=f"New {category} entrants, {fmt_years(years)}", showgrid=True,
-                     range=[0, totals.max() * 1.12])
-    fig.update_yaxes(title_text="State / UT", showgrid=False)
-
     ranked = totals.iloc[::-1]
     total = int(ranked.sum())
     top3 = ranked.head(3)
     lead = ranked[ranked.eq(ranked.iloc[0])].index.tolist()
-    title = (f"{_join(lead)} produced the most new {category} entrants ({ranked.iloc[0]}"
-             f"{' each' if len(lead) > 1 else ''}, {fmt_years(years)})")
-    insight = (f"Of {total} institutions that entered the {category} ranking for the first time in {fmt_years(years)}, "
+    span = fmt_years(years)
+    insight = (f"Of {total} institutions that entered the {category} ranking for the first time in {span}, "
                f"{_join(lead)} produced the most ({ranked.iloc[0]}{' each' if len(lead) > 1 else ''}, "
                f"{100 * ranked.iloc[0] / total:.0f}%{' each' if len(lead) > 1 else ''})")
     rest = top3[~top3.index.isin(lead)]
@@ -475,21 +828,76 @@ def new_entrants_by_state(category: str = "Overall", years=None, by_year: bool =
     table.columns = [str(c) for c in table.columns]
     table["total"] = table.sum(axis=1)
     table = table.reset_index()
-    how = ("bar = new institutions per state, split by year (darker = later)" if by_year else
-           "bar = new institutions per state over the chosen years (hover for the split by year)")
-    finish(fig, title, f"{category} ranking · {how}",
-           note=f"Busiest year: {busiest} ({per_year.max()} new entrants). Years when NIRF lengthened the list "
-                f"add more entrants.", height=max(380, 170 + 22 * len(totals)), legend_title="Year" if by_year else None)
+    title = (f"{_join(lead)} brought the most new institutions into the {category} ranking "
+             f"({int(ranked.iloc[0])}{' each' if len(lead) > 1 else ''}, {span})")
+    note = (f"Busiest year: {busiest} ({per_year.max()} new entrants). Years when NIRF lengthened the list "
+            f"add more entrants.")
+    split = {s: " · ".join(f"{y}: {v}" for y, v in row.items() if v) for s, row in counts.iterrows()}
+
+    if view == "ranked":
+        fig = go.Figure()
+        if by_year:
+            shades = dict(zip(counts.columns, ordinal_ramp(len(counts.columns))))
+            for y in counts.columns:
+                fig.add_trace(go.Bar(
+                    y=counts.index, x=counts[y], name=str(y), orientation="h", marker_color=shades[y],
+                    marker_line=dict(width=1, color=SURFACE),
+                    hovertemplate=f"<b>%{{y}}</b><br>{y}: %{{x}} new institutions<extra></extra>"))
+            fig.add_trace(go.Scatter(
+                y=totals.index, x=totals.values, mode="text", text=[f"  {v}" for v in totals.values],
+                textposition="middle right", textfont=dict(color=INK_SECONDARY, size=11), showlegend=False,
+                hoverinfo="skip", cliponaxis=False))
+            fig.update_layout(barmode="stack", barcornerradius=0)
+        else:
+            examples = new.sort_values("rank_upper").groupby("state")["canonical_name"].apply(
+                lambda n: ", ".join(short_name(x, 34) for x in n.head(3)) + (f" (+{len(n) - 3} more)" if len(n) > 3 else ""))
+            fig.add_trace(go.Bar(
+                y=totals.index, x=totals.values, orientation="h",
+                marker_color=[CATEGORICAL[0] if s in lead else OTHER for s in totals.index], name="New entrants",
+                text=totals.values, textposition="outside", cliponaxis=False, showlegend=False,
+                customdata=np.stack([[split[s].replace(" · ", "<br>") for s in totals.index],
+                                     examples.reindex(totals.index).fillna("")], axis=1),
+                hovertemplate=("<b>%{y}</b><br>%{x} new institutions<br>%{customdata[0]}"
+                               "<br><i>Best placed: %{customdata[1]}</i><extra></extra>")))
+        fig.update_xaxes(title_text=f"New {category} entrants, {span}", showgrid=True,
+                         range=[0, totals.max() * 1.12])
+        fig.update_yaxes(title_text="State / UT", showgrid=False)
+        how = ("each bar is one state · the pieces are the years (darker = later) · the number at the end = total"
+               if by_year else "each bar is one state · number at the end = new institutions over the years · "
+                               "hover for the split by year")
+        finish(fig, title, how, note=note, height=max(380, 170 + 22 * len(totals)),
+               legend_title="Year" if by_year else None)
+        chart = "stacked bar chart" if by_year else "bar chart"
+    else:
+        values = totals
+        most = int(values.max())
+        hover = {s: (f"{s}: {_plural(int(values[s]), 'new institution')} ({span})<br>{split[s]}" if s in values.index else
+                     f"{s}: no new institution ({span})") for s in state_polygons()}
+        scale = _count_scale(most)
+        bar = dict(title=dict(text=f"New institutions<br>{span}"), tickvals=[0, most],
+                   ticktext=["0 = none (grey)", str(most)])
+        fig = go.Figure(_india_map(values, hover, scale, 0, most, colorbar=bar))
+        for t in _map_labels(values, lambda v: f"{int(v)}", scale, 0, most):
+            fig.add_trace(t)
+        _finish_map(fig)
+        finish(fig, title, f"Darker = more institutions entering the {category} ranking for the first time, "
+                           f"{span} · grey = none · numbers on the leading states · hover for the split by year",
+               note=note, height=640)
+        chart = "choropleth map"
     method = (f"An institution is a new entrant in the year it first appears in the {category} ranked list "
               f"(exact rank or band), provided the {category} list already existed the year before, so nobody is "
               f"'new' in {available[0]}, the category's first year. We count new entrants per state and year and "
               f"sort states by their total. "
-              + ("Each bar is split by year (a stacked bar chart). " if by_year else
-                 "One plain bar per state (a ranked bar chart) keeps the comparison of totals simple; the hover "
-                 "text gives the split by year. ")
+              + ("The map colours each state by its total (grey = none, light to dark teal = few to many), prints "
+                 "the number on the leading states and writes it beside the map for the small places; hovering a "
+                 "state gives its split by year. The 'Ranked list' view gives the exact order. "
+                 if view == "map" else
+                 ("Each bar is split by year (a stacked bar chart). " if by_year else
+                  "One plain bar per state (a ranked bar chart) keeps the comparison of totals simple; the hover "
+                  "text gives the split by year. "))
               + "Years in which NIRF lengthened the list (e.g. more ranks or bands published) naturally bring more "
                 "new entrants.")
-    return ChartResult(fig, table, insight, method, "stacked bar chart" if by_year else "bar chart")
+    return ChartResult(fig, table, insight, method, chart)
 
 
 # ---------- the map of India ----------

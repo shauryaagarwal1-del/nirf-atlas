@@ -81,20 +81,25 @@ QUESTION_REGISTRY: dict[str, Question] = {q.id: q for q in [
     # 2. Geospatial and regional analysis
     _q("Q2.1", "Which states have the highest number of institutions in the top 100?",
        "geography", "state_counts", {"year": LAST, "category": "Overall", "top_n": 100},
-       "bar chart", "Counts per state are amounts; sorted bars rank the states from most to fewest."),
+       "choropleth map", "The question is about states, so the map of India shows at a glance where the top-100 "
+                         "institutions are: darker = more. The ranked-list view gives the exact order."),
     _q("Q2.2", "How is the geographical distribution of top-ranked institutions changing from 2017 to 2025?",
        "geography", "state_share_over_time", {"category": "Overall", "top_n": 100},
-       "multi-series line chart", "One line per state's share shows each state's rise or fall from a common baseline."),
+       "choropleth map", "Two maps of India, the first and the last year, on one colour scale: a state that darkened "
+                         "gained places and one that lightened lost them. The lines view shows every year."),
     _q("Q2.3", "Which states have improved their representation in the top 100 over time?",
        "geography", "state_representation_change",
        {"category": "Overall", "start_year": FIRST, "end_year": LAST, "top_n": 100},
-       "bar chart", "Bars either side of zero separate states that gained places from those that lost them."),
+       "choropleth map", "A two-direction map: teal states gained top-100 places, coral states lost them, light grey "
+                         "means no change. The ranked-list view sorts the movers."),
     _q("Q2.4", "How do the rankings of institutions in Karnataka compare with those in Tamil Nadu?",
        "geography", "compare_states", {"states": ["Karnataka", "Tamil Nadu"], "category": "Overall"},
-       "box-and-whisker plot", "Side-by-side boxes compare the level and spread of the two states' ranks each year."),
+       "jittered strip chart", "Every institution is one dot on a rank axis (1 at the top), the two states side by side, "
+                               "so whose institutions sit higher is seen directly; a small map shows the two states."),
     _q("Q2.5", "Which states have produced the largest number of newly appearing institutions in the rankings?",
        "geography", "new_entrants_by_state", {"category": "Overall"},
-       "stacked bar chart", "Each state's bar is its total of new entrants, split by the year they appeared."),
+       "choropleth map", "The map of India coloured by each state's number of new entrants shows where the newcomers "
+                         "come from; the ranked-list view splits each state's total by year."),
 
     # 3. Univariate analysis
     _q("Q3.1", "What is the distribution of NIRF scores for a selected year?",
