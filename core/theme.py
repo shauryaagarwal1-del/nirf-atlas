@@ -276,6 +276,21 @@ def label_points(fig: go.Figure, x, y, labels, x_range, y_range, avoid_x=(), avo
     return fig
 
 
+def rank_axis_words(fig: go.Figure, x: float = 0.004, top: float = 0.995, bottom: float = 0.005,
+                    xref: str = "paper", yref: str = "paper") -> go.Figure:
+    """Write "better" at the top and "worse" at the bottom of a reversed rank axis (rank 1 at the top),
+    so nobody has to work out which way is up."""
+    for text, y, anchor in (("better ▲", top, "top"), ("worse ▼", bottom, "bottom")):
+        fig.add_annotation(x=x, y=y, xref=xref, yref=yref, text=f"<i>{text}</i>", showarrow=False, xanchor="left",
+                           yanchor=anchor, font=dict(size=11, color=INK_SECONDARY))
+    return fig
+
+
+def showing(n: int, total: int, what: str = "institutions") -> str:
+    """'showing 10 of 64 institutions' (or '' when everything is shown) for a chart subtitle."""
+    return f"showing {n} of {total} {what}" if n < total else f"all {total} {what}"
+
+
 def padded_range(values, pad: float = 0.06) -> tuple[float, float]:
     """(min, max) of the values with a margin of `pad` x the span on both sides (like Plotly's autorange)."""
     lo, hi = float(np.nanmin(values)), float(np.nanmax(values))

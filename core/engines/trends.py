@@ -25,12 +25,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from core.data import (LABELS, SHORT, NirfInputError, category_years, change_years, chart_labels, check_category, check_year,
+from core.data import (LABELS, SHORT, NirfInputError, category_years, change_years, chart_labels, check_category, check_year, short_name,
                        check_years, filter_df, find_institutions, fmt_years, load_master, n_years,
                        parameters_of, short_label)
 from core.result import ChartResult
 from core.stats import places, signed
 from core.theme import (CATEGORICAL, CONTEXT, CROSS_CATEGORY_NOTE, DOWN, INK, INK_MUTED, INK_SECONDARY, OTHER,
+                        rank_axis_words, showing, AXIS,
                         SURFACE, UP, color_map, finish)
 
 MAX_LINES = 8
@@ -175,9 +176,12 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
             (f"only band {r.rank_band_nirf} published" if r.rank_status == "band" else f"not ranked in {category}")
             for r in t.itertuples()
         ]
+        few = len(keys) <= 3                     # with few lines every point can carry its rank
         fig.add_trace(go.Scatter(
-            x=t["year"], y=t["rank"].astype("float"), name=name, mode="lines+markers", connectgaps=False,
-            line=dict(color=c), marker=dict(color=c), legendgroup=name, customdata=hover,
+            x=t["year"], y=t["rank"].astype("float"), name=name, mode="lines+markers+text" if few else "lines+markers",
+            connectgaps=False, line=dict(color=c), marker=dict(color=c, size=9), legendgroup=name, customdata=hover,
+            text=[f"{int(r)}" if pd.notna(r) else "" for r in t["rank"]] if few else None,
+            textposition="top center", textfont=dict(size=12, color=INK), cliponaxis=False,
             hovertemplate=f"<b>{name}</b><br>%{{x}}: %{{customdata}}<extra></extra>"))
         b = t[t["rank_status"].eq("band")]
         if len(b):
@@ -217,7 +221,11 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
                        f"change between two exact ranks can be measured.")
         elif moves:
             m = moves[0]
-            title = f"{m['name']}: rank {m['r0']} in {m['y0']} → rank {m['r1']} in {m['y1']} ({category})"
+            if m["change"] == 0:
+                title = f"{m['name']} had {category} rank {m['r0']} in both {m['y0']} and {m['y1']}"
+            else:
+                title = (f"{m['name']} {'moved up' if m['change'] > 0 else 'slipped'} from {category} rank {m['r0']} "
+                         f"in {m['y0']} to rank {m['r1']} in {m['y1']} ({places(m['change'])})")
             insight = (f"{m['name']} went from rank {m['r0']} in {m['y0']} to rank {m['r1']} in {m['y1']} in "
                        f"{category} ({places(m['change'])}); its best rank was {m['best']} "
                        f"(first reached in {m['best_year']}) and it had an exact rank in {m['n']} of {len(years)} "
@@ -253,12 +261,14 @@ def rank_trajectory(institutions=None, category: str = "Overall", years=None) ->
     bands = table["rank_band_nirf"].dropna().str.extract(r"^(\d+)-(\d+)$").astype(float)
     lo = np.nanmin([table["rank"].astype(float).min(), bands[0].min() if len(bands) else np.nan])
     hi = np.nanmax([table["rank"].astype(float).max(), bands[1].max() if len(bands) else np.nan])
-    pad = max(0.5, 0.06 * (hi - lo))
-    fig.update_yaxes(title_text="Rank (1 = best, shown at the top)", range=[hi + pad, max(lo - pad, 0.4)],
+    pad = max(0.8, 0.1 * (hi - lo))
+    fig.update_yaxes(title_text="Rank (1 = best, at the top)", range=[hi + pad, max(lo - pad, 0.4)],
                      tickformat="d", dtick=1 if hi - lo <= 12 else None)
     fig.update_xaxes(title_text="Year", dtick=1, range=[min(years) - 0.4, max(years) + 0.4])
     fig.update_layout(hovermode="x unified" if len(keys) <= 3 else "closest")
-    subtitle = f"{category} ranking, {span}" + (f" · {chosen}" if chosen else "")
+    rank_axis_words(fig, x=0.012)
+    subtitle = (f"Each dot is one year's {category} rank · higher on the chart = better rank"
+                + (" · number = the rank" if len(keys) <= 3 else "") + (f" · {chosen}" if chosen else ""))
     note = "Faint bars = years where NIRF published only a rank band; gaps = not ranked that year." if band_seen \
         else "Gaps = not ranked in this category that year."
     finish(fig, title, subtitle, note=note, legend_title="Institution")
@@ -538,24 +548,29 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
     labels = chart_labels(pick["institution_key"])
     pick.insert(0, "institution", pick["institution_key"].map(labels))
 
-    colors = [UP if v > 0 else DOWN for v in pick["improvement"]]
+    # The answer (the biggest climb or fall) in colour, the other bars grey; "both" keeps every bar coloured.
+    extreme = pick["improvement"].max() if direction == "up" else pick["improvement"].min()
+    colors = [(UP if v > 0 else DOWN) if direction == "both" or v == extreme else OTHER for v in pick["improvement"]]
     fig = go.Figure(go.Bar(
         x=pick["improvement"], y=pick["institution"], orientation="h", marker_color=colors,
-        text=[f"{int(s)} → {int(e)}" for s, e in zip(pick["rank_start"], pick["rank_end"])],
+        text=[f"rank {int(s)} → {int(e)}  ({signed(int(s) - int(e))})"
+              for s, e in zip(pick["rank_start"], pick["rank_end"])],
         textposition="outside", cliponaxis=False,
         customdata=np.stack([pick["canonical_name"], pick["state"], pick["rank_start"].astype(int),
                              pick["rank_end"].astype(int)], axis=1),
         hovertemplate=(f"<b>%{{customdata[0]}}</b> (%{{customdata[1]}})<br>{start_year}: rank %{{customdata[2]}}"
                        f"<br>{end_year}: rank %{{customdata[3]}}<br>Improvement: %{{x:+d}} places<extra></extra>"),
         showlegend=False))
-    # Legend entries for the two colours (bars themselves carry no legend).
-    for name, c, show in (("Moved up", UP, (pick["improvement"] > 0).any()),
-                          ("Moved down", DOWN, (pick["improvement"] < 0).any())):
-        if show:
-            fig.add_trace(go.Bar(x=[None], y=[None], name=name, marker_color=c, orientation="h"))
+    # Legend entries for the colours (bars themselves carry no legend).
+    entries = ((("Biggest climb", UP), ("Other climbers", OTHER)) if direction == "up" else
+               (("Biggest fall", DOWN), ("Other fallers", OTHER)) if direction == "down" else
+               (("Moved up", UP), ("Moved down", DOWN)))
+    for name, c in entries:
+        fig.add_trace(go.Bar(x=[None], y=[None], name=name, marker_color=c, orientation="h"))
     lo, hi = min(0, pick["improvement"].min()), max(0, pick["improvement"].max())
-    pad = 0.18 * (hi - lo)   # room for the "old -> new" labels outside the bar ends
-    fig.update_xaxes(title_text=f"Improvement in places ({start_year} rank − {end_year} rank)",
+    pad = 0.3 * (hi - lo)   # room for the "rank old -> new" labels outside the bar ends
+    fig.update_xaxes(title_text=(f"Places {'climbed' if direction == 'up' else 'fallen' if direction == 'down' else 'moved'} "
+                                 f"between {start_year} and {end_year} (rank {start_year} minus rank {end_year})"),
                      range=[lo - (pad if lo < 0 else 0), hi + (pad if hi > 0 else 0)], zeroline=True, zerolinecolor=INK_SECONDARY, zerolinewidth=1, showgrid=True)
     fig.update_yaxes(title_text="Institution", showgrid=False)
     fig.update_layout(barmode="overlay", legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
@@ -564,8 +579,9 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
     n_up, n_down = int((both["improvement"] > 0).sum()), int((both["improvement"] < 0).sum())
     lead = top_up if direction in {"up", "both"} and top_up is not None else top_down
     verb = "climbed" if lead["improvement"] > 0 else "fell"
-    title = (f"{labels[lead['institution_key']]} {verb} the most in {category}, {start_year}→{end_year} "
-             f"({places(lead['improvement'])})")
+    title = (f"{short_name(lead['canonical_name'], 50)} {verb} the most in {category}: rank {int(lead['rank_start'])} in "
+             f"{start_year} to {int(lead['rank_end'])} in {end_year} ({'up' if verb == 'climbed' else 'down'} "
+             f"{abs(int(lead['improvement']))} places)")
     insight = (f"Between {start_year} and {end_year}, {lead['canonical_name']} {verb} the most in {category}: "
                f"from rank {int(lead['rank_start'])} to {int(lead['rank_end'])} ({places(lead['improvement'])}). "
                f"Of the {len(both)} institutions with an exact rank in both years, {n_up} moved up, {n_down} moved "
@@ -578,8 +594,11 @@ def biggest_movers(category: str = "Overall", start_year: int | None = None, end
               f"improvement and show the {n} largest {'climbs' if direction == 'up' else 'falls' if direction == 'down' else 'climbs and falls'}. "
               f"Note: the length of NIRF's exact-rank list can change between years (e.g. Engineering ranked "
               f"200 exactly in 2019-2022 but 100 otherwise), which limits how far an institution can move.")
-    finish(fig, title, f"{category} ranking · labels show rank {start_year} → {end_year}",
-           height=max(380, 150 + 30 * len(pick)), legend_title="Direction")
+    what = {"up": "climbs", "down": "falls", "both": "climbs and falls"}[direction]
+    finish(fig, title, f"Each bar is one institution · longer bar = bigger {what[:-1] if direction != 'both' else 'move'} · "
+                       f"label = rank {start_year} → {end_year} · {showing(len(pick), len(both))} ranked in both years, "
+                       f"the {len(pick)} biggest {what}",
+           height=max(380, 150 + 30 * len(pick)), legend_title="Colour")
     table = pick.drop(columns="institution_key").rename(columns={"canonical_name": "full_name"})
     return ChartResult(fig, table.iloc[::-1].reset_index(drop=True), insight, method, "bar chart")
 
@@ -645,13 +664,17 @@ def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int
                              arrayminus=(t[stat] - t["q1"]).clip(lower=0), color=col, thickness=1.5, width=5),
                 **common))
         else:
-            fig.add_trace(go.Scatter(x=t["year"], y=t[stat], mode="lines+markers", line=dict(color=col), **common))
+            ends = [f"{v:.1f}" if j in (0, len(t) - 1) else "" for j, v in enumerate(t[stat])]
+            fig.add_trace(go.Scatter(x=t["year"], y=t[stat], mode="lines+markers+text", line=dict(color=col),
+                                     text=ends, textposition="top center", textfont=dict(size=12, color=INK),
+                                     cliponaxis=False, **common))
 
     first = cats[0]
     t = table[table["category"].eq(first)].sort_values("year")
     a, z = t.iloc[0], t.iloc[-1]
     change = z[stat] - a[stat]
-    title = (f"The {stat} {first} score {'rose' if change > 0 else 'fell' if change < 0 else 'did not change'} "
+    word = "average (mean)" if stat == "mean" else "middle (median)"
+    title = (f"The {word} {first} score {'rose' if change > 0 else 'fell' if change < 0 else 'did not change'} "
              f"from {a[stat]:.1f} in {int(a.year)} to {z[stat]:.1f} in {int(z.year)}")
     insight = (f"The {stat} {first} score went from {a[stat]:.1f} in {int(a.year)} to {z[stat]:.1f} in "
                f"{int(z.year)} ({signed(change, 1)} points); the middle 50% of institutions scored between "
@@ -670,13 +693,13 @@ def average_score_over_time(categories="Overall", stat: str = "mean", top_n: int
                     f"(e.g. {uneven[0]}: " + "; ".join(f"{n} in {y}" for n, y in ns.items()) +
                     "); set top_n=100 for a like-for-like comparison.")
 
-    fig.update_yaxes(title_text=f"{stat.capitalize()} overall score (0-100)")
+    fig.update_yaxes(title_text=f"{word.capitalize()} overall score (0-100)")
     fig.update_xaxes(title_text="Year", tickmode="array", tickvals=sorted(table["year"].unique()))
     if show_spread:
-        subtitle = f"Point = {stat} score; error bar = middle 50% of institutions (Q1 to Q3)"
+        subtitle = f"Each dot is one year's {word} score · the bar through it = the middle half of institutions (IQR)"
         chart = "point plot with error bars"
     else:
-        subtitle = f"Line = {stat} score per year; hover for Q1, Q3 and the number of institutions"
+        subtitle = f"Each dot is one year's {word} score of all institutions · higher = better scores"
         chart = "line chart" if len(cats) == 1 else "multi-series line chart"
     subtitle += f" · exact ranks 1-{top_n} only" if top_n else ""
     finish(fig, title, subtitle, note=CROSS_CATEGORY_NOTE if len(cats) > 1 else None, legend_title="Category")
@@ -739,30 +762,36 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
                 if r["in_top"]:
                     cell = (2, str(pos), f"{kind} {pos} (in the top {n})")
                 else:
-                    cell = (1, "", f"{kind} {pos} (outside the top {n})")
+                    cell = (1, str(pos), f"{kind} {pos} (outside the top {n})")
             else:
-                cell = (0, "", f"not ranked in {category}")
+                cell = (0, "–", f"not ranked in {category}")
             zr.append(cell[0])
             tr.append(cell[1])
             hr.append(cell[2])
         z.append(zr)
         text.append(tr)
         hover.append(hr)
-    ylab = [labels[k] for k in order]
+    ylab = [f"{labels[k]}  ({n_years(int(keep[k]))} of {len(years)})" for k in order]
     fig = go.Figure(go.Heatmap(
         z=z, x=[str(y) for y in years], y=ylab, text=text, texttemplate="%{text}", customdata=hover,
-        textfont=dict(color="white", size=11), zmin=0, zmax=2, showscale=False,
+        textfont=dict(color="white", size=12), zmin=0, zmax=2, showscale=False,
         colorscale=[[0, SURFACE], [0.33, SURFACE], [0.33, CONTEXT], [0.66, CONTEXT], [0.66, UP], [1, UP]],
         hovertemplate="<b>%{y}</b><br>%{x}: %{customdata}<extra></extra>"))
-    for name, c in ((f"In the top {n} (number = rank)", UP), (f"Ranked, outside the top {n}", CONTEXT)):
+    for name, c in ((f"In the top {n} that year (number = rank)", UP), (f"Ranked, outside the top {n}", CONTEXT),
+                    ("Not ranked (–)", SURFACE)):
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=name,
-                                 marker=dict(symbol="square", size=12, color=c)))
-    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="", title_text="Institution")
+                                 marker=dict(symbol="square", size=12, color=c, line=dict(width=1, color=AXIS))))
+    fig.update_yaxes(autorange="reversed", showgrid=False, showline=False, ticks="",
+                     title_text="Institution")
     fig.update_xaxes(showgrid=False, showline=False, ticks="", side="top", title_text="Year", type="category")
     fig.update_layout(legend=dict(orientation="h", x=0, y=-0.02, yanchor="top"), margin=dict(t=120, b=110))
 
     always = [labels[k] for k in order if keep[k] == len(years)]
-    title = (f"{len(order)} institutions were in the {category} top {n} in at least {min_years} of {n_years(len(years))}")
+    title = (f"{len(always)} institutions were in the {category} top {n} every year, {fmt_years(years)}"
+             + (f"; {len(order)} in at least {min_years} of {n_years(len(years))}" if len(order) > len(always) else "")
+             if always else
+             f"No institution was in the {category} top {n} every year; {len(order)} were in at least "
+             f"{min_years} of {n_years(len(years))}")
     insight = (f"{len(order)} institutions were in the {category} top {n} in at least {min_years} of the "
                f"{n_years(len(years))} ({fmt_years(years)}); "
                + (f"{len(always)} of them were there every year: {', '.join(always)}." if always
@@ -774,7 +803,8 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
               f"(an exact rank ≤ {n}, or a NIRF band whose worst rank is ≤ {n}). We count those years per "
               f"institution and keep everyone with at least {min_years}. Rows are sorted by the number of years in "
               f"the top {n}, then by average rank in those years.")
-    finish(fig, title, f"{category} ranking, {fmt_years(years)} · sorted by years in the top {n}",
+    finish(fig, title, f"One row per institution, one column per year · teal cell = in the top {n} that year · "
+                       f"the number in a cell is its rank · sorted by years in the top {n}",
            height=max(380, 200 + 26 * len(order)))
     table = pd.DataFrame({"institution": ylab, "years_in_top_n": [int(keep[k]) for k in order],
                           "average_rank_when_in_top_n": [round(float(mean_rank[k]), 1) for k in order]})

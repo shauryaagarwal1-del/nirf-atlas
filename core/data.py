@@ -57,6 +57,23 @@ LABELS = {
 }
 SHORT = {"score": "Overall score", "tlr": "TLR", "rpc": "RPC", "go": "GO", "oi": "OI", "pr": "PR",
          "qnr": "QnR", "qlr": "QlR", "sfc": "SFC", "rank": "Rank"}
+# Plain words first, NIRF's code in brackets: what a chart prints on an axis, a legend or a label.
+PLAIN = {
+    "score": "Overall score",
+    "tlr": "Teaching score (TLR)",
+    "rpc": "Research score (RPC)",
+    "go": "Graduation score (GO)",
+    "oi": "Outreach & inclusivity score (OI)",
+    "pr": "Perception score (PR)",
+    "qnr": "Research quantity score (QnR)",
+    "qlr": "Research quality score (QlR)",
+    "sfc": "Students, faculty & collaboration score (SFC)",
+    "rank": "Rank",
+}
+# One word for tight spots (a bar label, a title): "Teaching", "Research" ...
+WORD = {"score": "Overall", "tlr": "Teaching", "rpc": "Research", "go": "Graduation", "oi": "Outreach",
+        "pr": "Perception", "qnr": "Research quantity", "qlr": "Research quality", "sfc": "Students & faculty",
+        "rank": "Rank"}
 NUMERIC_COLUMNS = list(LABELS)
 
 # Standard rank bands in order (from the pipeline), plus NIRF's own 11-50 band used by Innovation/SDG.
