@@ -182,16 +182,14 @@ def dispersion_by_year(category: str = "Overall", top_n: int | None = None, view
             t = scored[scored["year"].eq(y)]
             col = UP if y == most else DOWN if y == least else OTHER
             fig.add_trace(go.Box(
-                y=t["score"], x=[str(y)] * len(t), name=str(y), marker_color=col, line_color=col,
+                y=t["score"], x=[str(y)] * len(t), marker_color=col, line_color=col,
+                name=(f"Most spread out ({most})" if y == most else f"Least spread out ({least})" if y == least
+                      else "Other years"), showlegend=y in (most, least) or y == next(v for v in years if v not in (most, least)),
+                legendgroup="most" if y == most else "least" if y == least else "other",
                 fillcolor=tint(col, 0.25 if y in (most, least) else 0.12),
                 boxpoints="outliers", customdata=np.stack([t["canonical_name"], t["rank_raw"]], axis=1),
                 hovertemplate="<b>%{customdata[0]}</b><br>Rank %{customdata[1]} · score %{y:.2f}<extra>" + str(y)
                               + "</extra>"))
-            fig.add_annotation(x=str(y), y=float(top_of[y]), yshift=14, text=f"SD {sd_of[y]:.1f}", showarrow=False,
-                               font=dict(size=11, color=INK if y in (most, least) else INK_SECONDARY))
-        for name, col in ((f"Most spread out ({most})", UP), (f"Least spread out ({least})", DOWN), ("Other years", OTHER)):
-            fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=name,
-                                     marker=dict(symbol="square", size=12, color=col)))
         fig.update_layout(legend=dict(orientation="h", x=0, y=1.0, yanchor="bottom"))
         fig.update_yaxes(title_text="Overall score (0-100)")
     else:
@@ -203,7 +201,11 @@ def dispersion_by_year(category: str = "Overall", top_n: int | None = None, view
                            "<br>%{customdata[1]} institutions<extra></extra>")))
         fig.update_yaxes(title_text="Standard deviation of the overall score (points)", rangemode="tozero")
         fig.update_layout(showlegend=False)
-    fig.update_xaxes(title_text="Year", type="category" if view == "box" else "linear", dtick=1)
+    if view == "box":
+        fig.update_xaxes(title_text="Year (SD = standard deviation)", type="category", tickmode="array",
+                         tickvals=[str(y) for y in years], ticktext=[f"{y}<br>SD {sd_of[y]:.1f}" for y in years])
+    else:
+        fig.update_xaxes(title_text="Year", type="linear", dtick=1)
 
     hi = table.loc[table["std"].idxmax()]
     lo = table.loc[table["std"].idxmin()]
@@ -221,7 +223,7 @@ def dispersion_by_year(category: str = "Overall", top_n: int | None = None, view
         insight += (" Careful: the number of scored institutions changes (" + "; ".join(f"{n} in {y}" for n, y in ns.items())
                     + "); set top_n=100 for a like-for-like comparison.")
     finish(fig, title, ("One box per year · a taller box = scores more spread out · box = middle half (IQR), line = "
-                        "middle value (median), dots = far-out scores · SD above each box = standard deviation"
+                        "middle value (median), dots = far-out scores · SD under each year = standard deviation"
                         if view == "box" else
                         "Each dot is one year's standard deviation (SD): higher = scores more spread out")
            + (f" · exact ranks 1-{top_n} only" if top_n else ""), legend_title="Key" if view == "box" else None)

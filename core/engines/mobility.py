@@ -25,11 +25,13 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from core.data import (NirfInputError, category_years, change_years, chart_labels, check_category, check_year, filter_df,
+                       short_name,
                        fmt_years, load_master)
 from core.engines import trends
 from core.result import ChartResult
 from core.stats import places
-from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, NEUTRAL, SEQUENTIAL, SURFACE, UP, add_lollipops,
+from core.theme import (CATEGORICAL, DOWN, INK, INK_SECONDARY, MARIGOLD, NEUTRAL, SEQUENTIAL, SURFACE, UP, add_lollipops,
+                        showing,
                         finish, ordinal_ramp)
 
 BANDS = ["1-10", "11-50", "51-100", "101+"]
@@ -100,28 +102,31 @@ def band_transitions(category: str = "Overall", year_a: int | None = None, year_
             n = int(matrix.at[a, b])
             if a == NOT_RANKED and b == NOT_RANKED:
                 zr.append(None)
-                tr.append("")
+                tr.append("–")
                 hr.append("not applicable: only institutions ranked in at least one of the two years are counted")
                 continue
             who = members.get((a, b), [])
             listing = "<br>".join(who[:12]) + (f"<br>… and {len(who) - 12} more" if len(who) > 12 else "")
             zr.append(n)
-            tr.append(str(n) if n else "")
+            tr.append(str(n))
             hr.append(f"{n} institution{'s' if n != 1 else ''}" + (f"<br>{listing}" if n else ""))
         z.append(zr)
         text.append(tr)
         hover.append(hr)
-    ylab = [f"{a}" for a in order]
-    xlab = [f"{b}" for b in order]
+    ylab = [f"Was in {a} in {year_a}" if a != NOT_RANKED else f"Not ranked in {year_a}" for a in order]
+    xlab = [f"In {b} in {year_b}" if b != NOT_RANKED else f"Not ranked in {year_b}" for b in order]
     fig = go.Figure(go.Heatmap(
         z=z, x=xlab, y=ylab, text=text, texttemplate="%{text}", customdata=hover, colorscale=SEQUENTIAL,
-        zmin=0, colorbar=dict(title=dict(text="Institutions")), textfont=dict(size=13),
-        hovertemplate=f"<b>{year_a}: %{{y}} → {year_b}: %{{x}}</b><br>%{{customdata}}<extra></extra>"))
+        zmin=0, colorbar=dict(title=dict(text="Institutions")), textfont=dict(size=14),
+        hovertemplate=f"<b>%{{y}} → %{{x}}</b><br>%{{customdata}}<extra></extra>"))
     # Outline the diagonal (stayed) and the Q7.1 cells (51-100 in A -> top 50 in B).
     for i, band in enumerate(BANDS):
         fig.add_shape(type="rect", x0=i - 0.5, x1=i + 0.5, y0=i - 0.5, y1=i + 0.5, line=dict(color=INK_SECONDARY,
                       width=1, dash="dot"))
-    fig.add_shape(type="rect", x0=-0.5, x1=1.5, y0=1.5, y1=2.5, line=dict(color=CATEGORICAL[1], width=3))
+    fig.add_shape(type="rect", x0=-0.5, x1=1.5, y0=1.5, y1=2.5, line=dict(color=MARIGOLD, width=4))
+    fig.add_annotation(x=1.5, y=1.5, xref="x", yref="y", xanchor="right", yanchor="bottom", showarrow=False,
+                       text=f"<b>the answer: {int(matrix.loc['51-100', ['1-10', '11-50']].sum())} moved from "
+                            f"51-100 into the top 50</b>", font=dict(size=11, color=INK), bgcolor=MARIGOLD, borderpad=3)
     fig.update_yaxes(title_text=f"Band in {year_a}", autorange="reversed", showgrid=False, type="category")
     fig.update_xaxes(title_text=f"Band in {year_b}", side="top", showgrid=False, type="category")
 
@@ -147,8 +152,9 @@ def band_transitions(category: str = "Overall", year_a: int | None = None, year_
         insight += (f" {from_101} climbed from 101+ (where NIRF publishes mostly bands such as 101-150) into the "
                     f"top 100.")
     fig.update_layout(margin=dict(t=150))
-    finish(fig, title, f"{category} ranking · rows = band in {year_a}, columns = band in {year_b} · dotted diagonal = "
-           f"stayed · orange box = 51-100 → top 50", height=580)
+    finish(fig, title, f"Each cell = how many institutions went from the row's band ({year_a}) to the column's band "
+                       f"({year_b}) · darker = more · the orange box is the answer · dotted cells = stayed in the same band",
+           height=600)
     method = (f"Every institution in the {category} list of {year_a} or {year_b} gets a band in each year: 1-10, 11-50, "
               f"51-100, 101+ (from its exact rank or from NIRF's own band, e.g. 76-100 is inside 51-100) or 'Not "
               f"ranked' if it is not in that year's list. We count how many institutions fall in each (band in "
@@ -215,11 +221,11 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
                 xs.append(y)
                 ys.append(ylab[k])
                 hv.append(f"rank {rank_of.at[k, y]}")
-    fig.add_trace(go.Scatter(x=xs, y=ys, mode="markers", name=f"In the top {top}", customdata=hv,
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="markers", name=f"In the top {top} that year", customdata=hv,
                              marker=dict(color=CATEGORICAL[0], size=11, opacity=0.35),
                              hovertemplate="<b>%{y}</b><br>%{x}: %{customdata}<extra></extra>"))
-    for change, name, symbol, color in (("entered", f"Entered the top {top}", "triangle-up", UP),
-                                        ("exited", f"Left the top {top} (first year outside)", "x", DOWN)):
+    for change, name, symbol, color in (("entered", f"The year it entered the top {top}", "triangle-up", UP),
+                                        ("exited", f"The first year it was out of the top {top}", "x", DOWN)):
         e = ev[ev["change"].eq(change)]
         if len(e):
             fig.add_trace(go.Scatter(
@@ -252,8 +258,9 @@ def top10_entries_exits(category: str = "Overall", top: int = 10) -> ChartResult
                     + (f"; {', '.join(outs)} left." if outs else "; nobody left."))
     else:
         insight += f" The top {top} of {last_year} is the same group as in {years[-2]}."
-    finish(fig, title, f"{category} ranking, {fmt_years(years)} · one row per institution · dot = in the top {top} "
-           f"that year", height=max(420, 200 + 30 * len(order)), legend_title="Status")
+    finish(fig, title, f"Each row is one institution · a dot = it was in the top {top} that year · triangle = the year "
+                       f"it came in · cross = the first year it was out · {category}, {fmt_years(years)}",
+           height=max(420, 200 + 30 * len(order)), legend_title="Key")
     method = (f"For every year we mark which institutions are certainly in the {category} top {top} (exact rank ≤ {top}, "
               f"or a whole NIRF band within it). Comparing each year with the previous published year: entered = in "
               f"the top {top} now but not before; exited = in the top {top} before but not now. Each row of the dot "
@@ -313,18 +320,20 @@ def band_retention(category: str = "Overall", by_band: bool = False) -> ChartRes
                 hovertemplate=f"<b>{b}</b> %{{customdata[0]}}<br>%{{y:.1f}}% stayed in {b}<extra></extra>"))
     else:
         fig.add_trace(go.Scatter(
-            x=table["year_to"], y=table["retention_pct"], mode="lines+markers", name="All bands",
+            x=table["year_to"], y=table["retention_pct"], mode="lines+markers+text", name="All bands",
+            text=[f"{v:.0f}%" for v in table["retention_pct"]], textposition="top center",
+            textfont=dict(size=12, color=INK), cliponaxis=False,
             line=dict(color=CATEGORICAL[0]), marker=dict(color=CATEGORICAL[0]), customdata=hover,
             hovertemplate=("<b>%{customdata[0]}</b><br>%{y:.1f}% stayed in the same band (%{customdata[1]} of "
                            "%{customdata[2]})<br>By band:" + band_hover + "<extra></extra>")))
-    fig.update_yaxes(title_text="Stayed in the same band (%)", range=[0, 105], ticksuffix="%")
+    fig.update_yaxes(title_text="Share that stayed in the same rank band (%)", range=[0, 108], ticksuffix="%")
     fig.update_xaxes(title_text="Year (compared with the previous published year)", dtick=1)
 
     avg = table["retention_pct"].mean()
     hi = table.loc[table["retention_pct"].idxmax()]
     lo = table.loc[table["retention_pct"].idxmin()]
     sticky = {b: table[f"{b}_pct"].mean() for b in BANDS if table[f"{b}_pct"].notna().any()}
-    title = (f"On average {avg:.0f}% of {category} institutions stay in the same band from one year to the next")
+    title = (f"On average {avg:.0f}% of {category} institutions stay in the same rank band from one year to the next")
     same_pairs = table["retention_pct"].nunique() == 1
     most, least = max(sticky, key=sticky.get), min(sticky, key=sticky.get)
     lead = (f"In {category}, on average {avg:.0f}% of the institutions ranked in two consecutive years stayed in the "
@@ -342,8 +351,12 @@ def band_retention(category: str = "Overall", by_band: bool = False) -> ChartRes
     else:
         insight = lead + pairs + (f". Most stable band: {most} ({sticky[most]:.0f}%), least stable: {least} "
                                   f"({sticky[least]:.0f}%).")
-    finish(fig, title, f"{category} ranking, {fmt_years(years)} · bands 1-10, 11-50, 51-100, 101+ · institutions "
-           f"ranked in both years", legend_title="Band in the earlier year" if by_band else None,
+    finish(fig, title, (f"Each dot is one year: the share of institutions still in the same rank band (1-10, 11-50, "
+                        f"51-100, 101+) as the year before · higher = fewer changes · {category}, {fmt_years(years)}"
+                        if not by_band else
+                        f"One line per rank band: the share of its institutions still in that band a year later · "
+                        f"{category}, {fmt_years(years)}"),
+           legend_title="Band in the earlier year" if by_band else None,
            note="Wide bands keep institutions more easily than narrow ones (a 10-place band vs a 40-place band).")
     if not by_band:
         fig.update_layout(showlegend=False)
@@ -378,7 +391,7 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
     fig = go.Figure()
     add_lollipops(
         fig, t["improvement"], t["institution"], [UP if v > 0 else DOWN for v in t["improvement"]],
-        text=[f"{int(s)} → {int(e)}" for s, e in zip(t["rank_start"], t["rank_end"])],
+        text=[f"{'+' if v > 0 else '−'}{abs(int(v))}" for v in t["improvement"]],
         customdata=np.stack([t["full_name"], t["state"], t["rank_start"].astype(int), t["rank_end"].astype(int)], axis=1),
         hovertemplate=(f"<b>%{{customdata[0]}}</b> (%{{customdata[1]}})<br>{year_a}: rank %{{customdata[2]}}"
                        f"<br>{year_b}: rank %{{customdata[3]}}<br>Change: %{{x:+d}} places<extra></extra>"))
@@ -388,7 +401,8 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=name, marker=dict(color=c, size=11)))
     lo, hi = min(0, t["improvement"].min()), max(0, t["improvement"].max())
     pad = 0.22 * (hi - lo)
-    fig.update_xaxes(title_text=f"Change in places ({year_a} rank − {year_b} rank)", showgrid=True, zeroline=True,
+    fig.update_xaxes(title_text=f"Places moved between {year_a} and {year_b} (right of zero = moved up, left = moved down)",
+                     showgrid=True, zeroline=True,
                      zerolinecolor=INK_SECONDARY, zerolinewidth=1, range=[lo - (pad if lo < 0 else 0), hi + pad])
     fig.update_yaxes(title_text="Institution", showgrid=False, type="category", categoryorder="array",
                      categoryarray=t["institution"].tolist())
@@ -404,12 +418,15 @@ def biggest_rank_moves(category: str = "Overall", year_a: int | None = None, yea
         parts.append(f"{down['full_name']} fell the most ({int(down['rank_start'])} → {int(down['rank_end'])}, "
                      f"{places(down['improvement'])})")
     title = (f"Biggest {category} moves {year_a}→{year_b}: "
-             + (f"{up['institution']} {places(up['improvement'])}" if up is not None else "")
-             + (" · " if up is not None and down is not None else "")
-             + (f"{down['institution']} {places(down['improvement'])}" if down is not None else ""))
+             + (f"{short_name(up['full_name'], 40)} climbed {abs(int(up['improvement']))} places" if up is not None else "")
+             + ("; " if up is not None and down is not None else "")
+             + (f"{short_name(down['full_name'], 40)} fell {abs(int(down['improvement']))}" if down is not None else ""))
     insight = f"Between {year_a} and {year_b} in {category}, " + " and ".join(parts) + "." + base.insight.split(".", 2)[-1]
-    finish(fig, title, f"{category} ranking · the {len(ups)} largest climbs and {len(downs)} largest falls · labels "
-           f"show rank {year_a} → {year_b}", height=max(420, 170 + 28 * len(t)), legend_title="Direction")
+    finish(fig, title, f"Each stem is one institution · right of zero = moved up, left = moved down · longer = bigger "
+                       f"move · number = places moved · the {len(ups)} biggest climbs and {len(downs)} biggest falls "
+                       f"({showing(len(t), int(base.method.split(' institutions);')[0].rsplit('(', 1)[-1]) if ' institutions);' in base.method else len(t))}"
+                       f" ranked in both years) · hover for the ranks",
+           height=max(420, 170 + 28 * len(t)), legend_title="Direction")
     method = base.method + (" Drawn as a lollipop chart (a bar chart with a thin stem and a dot), teal to the right of "
                             "zero for climbs and coral to the left for falls.")
     return ChartResult(fig, base.table, insight, method, "lollipop chart")
@@ -454,8 +471,8 @@ def up_down_same_counts(category: str = "Overall") -> ChartResult:
                              ("moved_down", "Moved down", DOWN)):
         fig.add_trace(go.Bar(
             x=table["pair"], y=table[col], name=name, marker_color=color,
-            text=table[col], textposition="inside", insidetextanchor="middle",
-            textfont=dict(color="white" if color != NEUTRAL else INK, size=11),
+            text=[f"{n} ({p:.0f}%)" for n, p in zip(table[col], table[f"{col}_pct"])], textposition="inside",
+            insidetextanchor="middle", textfont=dict(color="white" if color != NEUTRAL else INK, size=11),
             customdata=np.stack([table[f"{col}_pct"], table["compared"]], axis=1),
             hovertemplate=(f"<b>%{{x}}</b><br>{name}: %{{y}} (%{{customdata[0]}}% of %{{customdata[1]}} compared)"
                            "<extra></extra>")))
@@ -475,8 +492,9 @@ def up_down_same_counts(category: str = "Overall") -> ChartResult:
                f"({100 * tot['same'] / tot.sum():.0f}%). The largest share moving up was in {most_up['pair']} "
                f"({most_up['moved_up_pct']:.0f}% of {int(most_up['compared'])}); the typical move is "
                f"{table['median_move'].median():.0f} places.")
-    finish(fig, title, f"{category} ranking · institutions with an exact rank in both years · improvement = old rank − "
-           f"new rank", legend_title="Rank change")
+    finish(fig, title, f"Each bar is one year-to-year step · pieces = how many institutions moved up (teal), kept the "
+                       f"same rank (grey) or moved down (coral) · number = institutions (share) · {category}",
+           legend_title="Rank change")
     method = (f"For each pair of consecutive published {category} years we take the institutions with an exact rank in "
               f"both years and compute improvement = old rank − new rank: positive = moved up, negative = moved down, "
               f"0 = same rank. We count each group and stack the three counts in one bar per year pair. Institutions "
