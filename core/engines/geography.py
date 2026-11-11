@@ -679,6 +679,9 @@ def compare_states(states=("Karnataka", "Tamil Nadu"), category: str = "Overall"
         if y not in years:
             raise NirfInputError(f"The dots can only show a year of the chosen range ({span}), not {y}.")
         rows = sub[sub["year"].eq(y)]
+        if rows[rows["rank"].notna()].empty and dots_year is None:     # fall back to the last year with a rank
+            y = int(exact["year"].max())
+            rows = sub[sub["year"].eq(y)]
         if rows[rows["rank"].notna()].empty:
             raise NirfInputError(f"No institution of {_join(states)} has an exact {category} rank in {y}.")
         fig = make_subplots(rows=1, cols=2, specs=[[{"type": "choropleth"}, {"type": "xy"}]],

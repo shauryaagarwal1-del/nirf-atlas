@@ -498,7 +498,7 @@ def test_score_distribution_has_density_curve_in_count_units(m):
     n = m[(m["category_std"] == "Overall") & (m["year"] == 2025)]["score"].notna().sum()
     area = np.trapezoid(kde.y, kde.x)
     assert area == pytest.approx(n * hist.xbins.size, rel=0.03)
-    assert {a.text.split()[0] for a in r.fig.layout.annotations if a.text} >= {"Mean", "Median"}
+    assert {a.text.split()[0] for a in r.fig.layout.annotations if a.text} >= {"Average", "Middle"}
 
 
 def test_categories_without_scores_are_explained():
