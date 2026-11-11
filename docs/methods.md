@@ -380,6 +380,26 @@ of one category-year (default: its latest year).
   Sectors: 2023-2025), "at least 5 years" becomes "every year it has" (3) and the answer says so.
 - **Filters the user can change:** category, n, min_years.
 
+### Phase 20: Section 2 on the map, and every chart readable at a glance
+- **Section 2 draws the map of India** (`core/geo.py`, `assets/india_states.geojson`, unchanged): Q2.1, Q2.3 and Q2.5
+  are **choropleth maps** (darker = more; grey = none; a two-direction teal/coral scale for the change in Q2.3), Q2.2
+  shows the first and the last year side by side on one colour scale, and Q2.4 is a small map of the compared states
+  beside a **jittered strip chart** (one dot per institution on a rank axis, 1 at the top, for one year; institutions
+  NIRF lists only in a band sit as squares in a separate grey strip, counted but never placed). Numbers are printed on
+  the leading states; Delhi, Chandigarh, Puducherry and Goa are written beside the map with a leader line. Every
+  function keeps its old chart behind `view` ("ranked", "lines", "boxes"), offered as a switch in the Question Bank
+  and on the Geography page. Map labels take the ink that reads on each state in both themes (`core/theme.py ::
+  inks_on_scale`, applied again after the dark-mode swap in `themed()`).
+- **Every sample chart (Q1.1-Q8.5)** now has a title that states the answer in plain words, a one-line "how to read it"
+  subtitle, plain names first with the term in brackets (`core/data.py :: PLAIN`, `WORD`: "Teaching score (TLR)",
+  "Smoothed shape (KDE)", "Middle half (IQR)", "Straight-line link (Pearson r)"), the answer in colour and the rest
+  grey, values printed on bars and points, "better / worse" on rank axes, a number in every heatmap cell, labelled
+  box plots (lowest, middle value, typical range), shaded and named answer corners on the quadrant scatterplots, and
+  "showing N of M" wherever a chart shows fewer items than its table. Q5.4 shows the 6 institutions with the biggest
+  overall gain (the table keeps all). The correlation words follow fixed thresholds on |r| (below 0.2 very weak, 0.2-0.4
+  weak, 0.4-0.6 moderate, 0.6-0.8 strong, 0.8 and above very strong). No calculation, table or insight changed:
+  `scripts/compare_tables.py` saved the 40 tables before the work and reports 0 differences after it.
+
 ### Q2.1: Which states have the highest number of institutions in the top 100?
 - **Engine / function:** `core/engines/geography.py :: state_counts(year, category, top_n)`
 - **Definition used:** institutions of each state certainly in the top N of that category-year.

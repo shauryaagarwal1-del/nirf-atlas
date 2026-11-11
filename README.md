@@ -126,5 +126,7 @@ colleges, predictions, two questions in one message ...): [docs/exam_simulation.
 Before a demo, screenshot every page at projector size (1366x768) in the light and the dark theme and time each
 page: `python scripts/screenshot_pages.py` (saves to `docs/previews/pages/` and prints the load time of every page).
 
+The `Screenshots/` folder holds reference shots of four Question Bank charts (Q2.3 map and ranked list, Q2.4, Q5.3, Q7.1) at 1366x768; remake them with `python scripts/screenshot_pages.py --questions Q2.3 Q2.3:ranked Q2.4 Q5.3 Q7.1 --out Screenshots --themes light`.
+
 If you pulled the rename of `app/pages/` to `app/views/`, delete the old `app/pages/` folder (only `__pycache__` is
 left in it): while it exists, Streamlit can open direct links without the app's styling and filters.

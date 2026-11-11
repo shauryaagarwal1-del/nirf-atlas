@@ -808,7 +808,7 @@ def consistent_top_n(category: str = "Overall", n: int = 10, min_years: int = 5)
     finish(fig, title, f"One row per institution, one column per year · teal cell = in the top {n} that year · "
                        f"the number in a cell is its rank · sorted by years in the top {n}",
            height=max(380, 200 + 26 * len(order)))
-    table = pd.DataFrame({"institution": ylab, "years_in_top_n": [int(keep[k]) for k in order],
+    table = pd.DataFrame({"institution": [labels[k] for k in order], "years_in_top_n": [int(keep[k]) for k in order],
                           "average_rank_when_in_top_n": [round(float(mean_rank[k]), 1) for k in order]})
     ranks = sub.reset_index().pivot(index="institution_key", columns="year", values="rank_raw").reindex(order)
     for y in years:

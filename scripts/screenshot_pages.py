@@ -93,6 +93,46 @@ def full_height(page: Page) -> int:
         "[data-testid='stMainBlockContainer']"].map(s => document.querySelector(s)?.scrollHeight || 0))""")
 
 
+def question_shots(args) -> None:
+    """One PNG per question at 1366x768 (light theme by default): question text and finished chart in view."""
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    proc, url = None, args.url
+    if not url:
+        port = free_port()
+        proc = start_app(port)
+        url = f"http://127.0.0.1:{port}"
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            ctx = browser.new_context(viewport={"width": WIDTH, "height": HEIGHT}, color_scheme=args.themes[0],
+                                      device_scale_factor=1)
+            page = ctx.new_page()
+            for spec in args.questions:
+                qid, _, view = spec.partition(":")
+                for attempt in range(60):
+                    try:
+                        page.goto(f"{url}/question_bank?q={qid}", timeout=5000)
+                        break
+                    except Exception:
+                        time.sleep(1)
+                wait_until_drawn(page)
+                if view:
+                    page.get_by_text({"ranked": "Ranked list", "lines": "Lines per state", "boxes": "Boxes per year"}
+                                     .get(view, view), exact=True).first.click()
+                    page.wait_for_timeout(500)
+                    wait_until_drawn(page)
+                page.evaluate("document.querySelector('.nirf-q-head').scrollIntoView({block: 'start'})")
+                page.wait_for_timeout(2500 if page.locator('.geolayer').count() else 800)
+                name = f"{qid}_{view}.png" if view else f"{qid}.png"
+                page.screenshot(path=str(out / name))
+                print(f"saved {out / name}", flush=True)
+            browser.close()
+    finally:
+        if proc:
+            proc.terminate()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", default=str(ROOT / "docs" / "previews" / "pages"))
@@ -100,7 +140,11 @@ def main() -> None:
     ap.add_argument("--pages", nargs="*", default=PAGES)
     ap.add_argument("--themes", nargs="*", default=["light", "dark"])
     ap.add_argument("--no-full", action="store_true", help="only the first screen, not the full page")
+    ap.add_argument("--questions", nargs="*", help="Question Bank shots instead of pages, e.g. Q2.3 Q2.3:ranked Q7.1 "
+                                                   "(':view' picks the second view); saved as <id>[_<view>].png")
     args = ap.parse_args()
+    if args.questions:
+        return question_shots(args)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

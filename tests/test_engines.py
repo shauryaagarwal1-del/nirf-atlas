@@ -212,7 +212,7 @@ def test_average_score_matches_direct_mean(m):
     got = r.table.set_index("year").loc[2025, "mean"]
     assert got == pytest.approx(direct, abs=0.01)
     # A plain line with markers: no shaded band (no fill), Q1/Q3 only in the hover.
-    assert all(t.mode == "lines+markers" and not t.fill for t in r.fig.data)
+    assert all(t.mode.startswith("lines+markers") and not t.fill for t in r.fig.data)
     assert "Q1 to Q3" in r.fig.data[0].hovertemplate
 
 
